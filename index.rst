@@ -10,8 +10,8 @@ Welcome to hydrobricks's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   hydrobricks
-   _hydrobricks
+   api/modules
+   core/_hydrobricks
 
 
 
