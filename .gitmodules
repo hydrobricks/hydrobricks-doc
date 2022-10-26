@@ -1,0 +1,3 @@
+[submodule "_deps/hydrobricks"]
+	path = _deps/hydrobricks
+	url = https://github.com/hydrobricks/hydrobricks

@@ -3,6 +3,27 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+import sys
+import hydrobricks
+import _hydrobricks
+
+
+# -- Path setup --------------------------------------------------------------
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+#
+
+sys.path.insert(0, os.path.abspath(r'.'))
+BASE_PATH = os.path.abspath(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "src"))
+sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "src", "hydrobricks"))
+sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "src"))
+sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bindings"))
+
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
