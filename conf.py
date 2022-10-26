@@ -5,6 +5,24 @@
 
 import os
 import sys
+
+# -- Mock modules -------------------------------------------------------------
+
+from mock import Mock as MagicMock
+
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return Mock()
+
+
+MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
+                'pytest', 'pyyaml',
+                ]
+
+# -- Import hydrobricks ------------------------------------------------------
+
 import hydrobricks
 import _hydrobricks
 
@@ -22,21 +40,6 @@ sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "sr
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "src", "hydrobricks"))
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "src"))
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bindings"))
-
-# -- Mock modules -------------------------------------------------------------
-
-from mock import Mock as MagicMock
-
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return Mock()
-
-
-MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
-                'pytest', 'pyyaml',
-                ]
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
