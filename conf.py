@@ -21,9 +21,8 @@ MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
                 'pytest', 'pyyaml',
                 ]
 
-# -- Import hydrobricks ------------------------------------------------------
+# -- Import _hydrobricks -----------------------------------------------------
 
-import hydrobricks
 import _hydrobricks
 
 
