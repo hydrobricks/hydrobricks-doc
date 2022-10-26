@@ -1,6 +1,9 @@
 C++ binding
 ===========
 
+This reference only describes the C++ Python binding. For a full documentation of the
+C++ code, please refer to the `C++ reference <https://hydrobricks.github.io/hydrobricks-doc-core/>`__.
+
 .. automodule:: _hydrobricks
 
 ModelHydro class
