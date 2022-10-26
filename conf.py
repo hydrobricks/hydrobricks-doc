@@ -21,6 +21,8 @@ MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
                 'pytest', 'pyyaml',
                 ]
 
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
 # -- Import _hydrobricks -----------------------------------------------------
 
 import _hydrobricks
