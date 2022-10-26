@@ -1,9 +1,7 @@
-hydrobricks C++ binding
-=======================
+C++ binding
+===========
 
 .. automodule:: _hydrobricks
-
-
 
 ModelHydro class
 ----------------

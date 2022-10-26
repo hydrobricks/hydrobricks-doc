@@ -1,24 +1,18 @@
-hydrobricks.models package
-==========================
-
-Module contents
----------------
+Models
+======
 
 .. automodule:: hydrobricks.models
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
-hydrobricks.models.base\_model module
--------------------------------------
+Base model
+----------
 
 .. automodule:: hydrobricks.models.base_model
    :members:
    :undoc-members:
    :show-inheritance:
 
-hydrobricks.models.socont module
---------------------------------
+Socont
+------
 
 .. automodule:: hydrobricks.models.socont
    :members:

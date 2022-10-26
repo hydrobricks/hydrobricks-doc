@@ -1,8 +1,18 @@
-hydrobricks Python API
-======================
+API reference
+=============
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
-   hydrobricks
    hydrobricks.models
+   hydrobricks
+   hydrobricks.submodules
+   _hydrobricks
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
