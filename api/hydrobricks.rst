@@ -6,6 +6,12 @@ Module contents
 ---------------
 
 .. automodule:: hydrobricks
+
+
+Forcing
+---------------------------
+
+.. autoclass:: Forcing
    :members:
    :undoc-members:
    :show-inheritance:
