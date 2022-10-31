@@ -18,7 +18,7 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
-                'pytest', 'pyyaml', 'yaml',
+                'pytest', 'pyyaml', 'yaml', 'HydroErr'
                 ]
 
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
