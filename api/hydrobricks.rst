@@ -3,7 +3,7 @@ Components
 
 .. automodule:: hydrobricks
 
-.. api_hydrounits
+.. _api_hydrounits:
 
 HydroUnits
 ----------
@@ -12,6 +12,8 @@ HydroUnits
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_parameterset:
 
 ParameterSet
 ------------

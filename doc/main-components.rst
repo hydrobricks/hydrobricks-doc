@@ -68,6 +68,8 @@ Within it, different properties are defined for each parameter:
   it can use a default value
 * **prior**: prior distribution to use for the calibration. See :ref:`_calibration`
 
+For the options details, refer to :ref:`the Python API <api_parameterset>`.
+
 Creating a parameter set
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
