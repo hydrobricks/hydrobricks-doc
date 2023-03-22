@@ -19,7 +19,7 @@ The main components of the model are described under the :ref:`basics page<basic
    :caption: Contents:
 
    doc/getting-started
-   doc/basics
+   doc/main-components
    doc/data-requirements
    doc/models
    doc/calibration
