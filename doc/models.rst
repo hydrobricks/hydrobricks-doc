@@ -3,16 +3,16 @@
 Models
 ======
 
-The only model structure implemented so far is :ref:`GSM-SOCONT`
+The only model structure implemented so far is :ref:`GSM-Socont`
 
-GSM-SOCONT
+GSM-Socont
 ----------
 
-GSM-SOCONT is a conceptual glacio-hydrological model described in Schaefli2005_.
+GSM-Socont is a conceptual glacio-hydrological model described in Schaefli2005_.
 
 Some basic properties are given in the following table.
 
-.. list-table:: Properties of the GSM-SOCONT model
+.. list-table:: Properties of the GSM-Socont model
    :widths: 50 50
    :header-rows: 0
    :stub-columns: 1
@@ -24,7 +24,7 @@ Some basic properties are given in the following table.
 
 It has the parameters listed below.
 
-.. list-table:: Parameters of the GSM-SOCONT model
+.. list-table:: Parameters of the GSM-Socont model
    :widths: 10 10 5 5 70
    :header-rows: 1
 
@@ -152,7 +152,7 @@ It has the parameters listed below.
 
 The pre-defined constraints on the parameters are defined below.
 
-.. list-table:: Pre-defined parameter constraints for the GSM-SOCONT model
+.. list-table:: Pre-defined parameter constraints for the GSM-Socont model
    :widths: 30 70
    :header-rows: 1
 

@@ -45,7 +45,6 @@ as the number of soil storages. Within this parameter set, the basic attributes 
 defined, such as the name, aliases, units, min/max values, etc.
 
 .. code-block:: python
-
    socont = models.Socont(soil_storage_nb=2)
    parameters = socont.generate_parameters()
 
@@ -59,14 +58,29 @@ with a dictionary as argument. The dictionary can use the full parameter names
 (e.g., ``a_snow``):
 
 .. code-block:: python
-
    parameters.set_values({'A': 100, 'k_slow': 0.01, 'a_snow': 5})
 
 
 Parameter constraints
 ^^^^^^^^^^^^^^^^^^^^^
 
+Some constraints can be added between parameters. Some of these are built-in when the
+parameter set is generated and are described in the respective model description.
+For example, in GSM-Socont, the degree day for the snow must be inferior to the one for
+the ice (``a_snow < a_ice``).
 
+Constraints between parameters can be added by the user as follows:
+
+.. code-block:: python
+   parameters.define_constraint('k_slow_2', '<', 'k_slow_1')
+
+The supported operators are: ``>`` (or ``gt``), ``>=`` (or ``ge``), ``<`` (or ``lt``),
+``<=`` (or ``le``).
+
+On the contrary, pre-definied constraints can be removed:
+
+.. code-block:: python
+   parameters.remove_constraint('a_snow', '<', 'a_ice')
 
 
 Forcing data
