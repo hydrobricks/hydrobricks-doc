@@ -3,6 +3,8 @@ Components
 
 .. automodule:: hydrobricks
 
+.. api_hydrounits
+
 HydroUnits
 ----------
 

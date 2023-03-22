@@ -43,6 +43,8 @@ then needs to provide the area for each land cover type and for each hydro unit:
                      'glacier_ice': 'Area ICE Band',
                      'glacier_debris': 'Area Debris Band'})
 
+For the options details, refer to :ref:`the Python API <api_hydrounits>`.
+
 Parameters
 ----------
 
