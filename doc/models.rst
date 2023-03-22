@@ -38,116 +38,116 @@ It has the parameters listed below.
      - | 0
        | [-2, 2]
      - °C
-     - | Full name: snow_rain_transition: transition_start
-       | Optional parameter.
-       | Temperature below which precipitation is 100% snow.
+     - | Temperature below which precipitation is 100% snow.
          The snow/rain transition is linear between transition_start and transition_end
+       | Optional parameter.
+       | Full name: snow_rain_transition: transition_start
    * - ...
      - prec_t_end
      - | 2
        | [0, 4]
      - °C
-     - | Full name: snow_rain_transition: transition_end
+     - | Temperature above which precipitation is 100% liquid.
        | Optional parameter.
-       | Temperature above which precipitation is 100% liquid.
+       | Full name: snow_rain_transition: transition_end
    * - Snow
      - a_snow
      - | --
        | [1, 12]
      - mm/d/°C
-     - | Full name: snowpack: degree_day_factor
-       | Degree day snow melting factor. a\ :sub:`snow` in Schaefli2005_
+     - | Degree day snow melting factor. a\ :sub:`snow` in Schaefli2005_
+       | Full name: snowpack: degree_day_factor
    * - ...
      - melt_t_snow
      - | 0
        | [0, 5]
      - °C
-     - | Full name: snowpack: melting_temperature
+     - | Temperature above which the snow starts to melt.
        | Optional parameter.
-       | Temperature above which the snow starts to melt.
+       | Full name: snowpack: melting_temperature
    * - Glacier
      - a_ice (single type), a_ice_<name>, a_ice_<i>
      - | --
        | [5, 20]
      - mm/d/°C
-     - | Full name: <name>: degree_day_factor
-       | With <name> being the provided name of the land cover (e.g. glacier_debris)
+     - | With <name> being the provided name of the land cover (e.g. glacier_debris)
        | Degree day ice melting factor. a\ :sub:`ice` in Schaefli2005_
+       | Full name: <name>: degree_day_factor
    * - ...
      - melt_t_ice
      - | 0
        | [0, 5]
      - °C
-     - | Full name: <name>: melting_temperature
-       | Optional parameter.
-       | With <name> being the provided name of the land cover (e.g. glacier_debris)
+     - | With <name> being the provided name of the land cover (e.g. glacier_debris)
        | Temperature above which the ice starts to melt.
+       | Optional parameter.
+       | Full name: <name>: melting_temperature
    * - Glacier area lumped reservoir
      - k_snow
      - | --
        | [0.05, 0.25]
      - 1/d
-     - | Full name: glacier_area_rain_snowmelt_storage: response_factor
-       | Response factor for the glacier area lumped reservoir receiving rain and
+     - | Response factor for the glacier area lumped reservoir receiving rain and
          snowmelt water. Similar to k\ :sub:`snow` in Schaefli2005_, but different units.
+       | Full name: glacier_area_rain_snowmelt_storage: response_factor
    * - ...
      - k_ice
      - | --
        | [0.05, 1]
      - 1/d
-     - | Full name: glacier_area_icemelt_storage: response_factor
-       | Response factor for the glacier area lumped reservoir receiving ice melt water.
+     - | Response factor for the glacier area lumped reservoir receiving ice melt water.
          Similar to k\ :sub:`ice` in Schaefli2005_, but different units.
+       | Full name: glacier_area_icemelt_storage: response_factor
    * - Quick runoff (non-linear version)
      - beta
      - | --
        | [100, 30000]
      - m^(4/3)/s
-     - | Full name: surface_runoff: runoff_coefficient
-       | Parameter to calibrate.
+     - | Parameter to calibrate.
+       | Full name: surface_runoff: runoff_coefficient
    * - ...
      - J
      - | --
        | [0, 90]
      - °
-     - | Full name: surface_runoff: slope
-       | Mean slope of the catchment. Should be based on data.
+     - | Mean slope of the catchment. Should be based on data.
+       | Full name: surface_runoff: slope
    * - Quick runoff (linear version)
      - k_quick
      - | --
        | [0.05, 1]
      - 1/d
-     - | Full name: surface_runoff: response_factor
-       | Response factor for the quick reservoir.
+     - | Response factor for the quick reservoir.
+       | Full name: surface_runoff: response_factor
    * - Slow reservoir
      - A
      - | --
        | [10, 3000]
      - mm
-     - | Full name: slow_reservoir: capacity
-       | Maximum storage capacity of the reservoir.
+     - | Maximum storage capacity of the reservoir.
+       | Full name: slow_reservoir: capacity
    * - ...
      - k_slow, k_slow_1
      - | --
        | [0.001, 1]
      - 1/d
-     - | Full name: slow_reservoir: response_factor
-       | Response factor for the slow reservoir. Same as k in Schaefli2005_,
+     - | Response factor for the slow reservoir. Same as k in Schaefli2005_,
          but different units.
+       | Full name: slow_reservoir: response_factor
    * - Baseflow (optional)
      - percol
      - | --
        | [0, 10]
      - mm/d
-     - | Full name: slow_reservoir: percolation_rate
-       | Percolation rate from the first slow reservoir to the baseflow reservoir
+     - | Percolation rate from the first slow reservoir to the baseflow reservoir
+       | Full name: slow_reservoir: percolation_rate
    * - ...
      - k_slow_2
      - | --
        | [0.001, 1]
      - 1/d
-     - | Full name: slow_reservoir_2: response_factor
-       | Response factor for the baseflow reservoir.
+     - | Response factor for the baseflow reservoir.
+       | Full name: slow_reservoir_2: response_factor
 
 
 The pre-defined constraints on the parameters are defined below.
