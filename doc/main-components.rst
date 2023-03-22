@@ -6,10 +6,42 @@ Main components
 Model structure
 ---------------
 
+.. code-block:: python
+
+   socont = models.Socont(soil_storage_nb=2)
+
 
 Spatial structure
 -----------------
 
+The catchment is discretized into sub units named hydro units.
+These hydro units can represent HRUs, pixels, elevation bands, etc.
+Their properties are loaded from csv files containing at minimum data on each unit area
+and elevation. Loading such a file can be done as follows:
+
+.. code-block:: python
+
+   hydro_units = hb.HydroUnits()
+   hydro_units.load_from_csv(
+      'path/to/file.csv', area_unit='m2', column_elevation='elevation',
+      column_area='area')
+
+When there is more than one land cover (the default land cover is named ground and it
+has no specific behaviour), these can be specified.
+For example, for a catchment with a pure ice glacier and a debris-covered glacier, one
+then needs to provide the area for each land cover type and for each hydro unit:
+
+.. code-block:: python
+
+   land_cover_names = ['ground', 'glacier_ice', 'glacier_debris']
+   land_cover_types = ['ground', 'glacier', 'glacier']
+
+   hydro_units = hb.HydroUnits(land_cover_types, land_cover_names)
+   hydro_units.load_from_csv(
+      'path/to/file.csv', area_unit='km', column_elevation='Elevation Bands',
+      columns_areas={'ground': 'Area Non Glacier Band',
+                     'glacier_ice': 'Area ICE Band',
+                     'glacier_debris': 'Area Debris Band'})
 
 Parameters
 ----------
@@ -103,8 +135,29 @@ The pre-defined ranges can be changed as follows:
 Adding data-related parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Data-related parameters target for example the spatialisation of the forcing data.
+As these are not model-dependent, but data-dependent, they are not pre-defined by
+the model and need to be added ba the user:
 
+.. code-block:: python
 
+   parameters.add_data_parameter('precip_corr_factor', 1, min_value=0.7, max_value=1.3)
+   parameters.add_data_parameter('precip_gradient', 0.05, min_value=0, max_value=0.2)
+   parameters.add_data_parameter('temp_gradients', -0.6, min_value=-1, max_value=0)
+
+For the meaning of these parameters and the spatialisation procedures implemented in
+hydrobricks, refer to the section on :ref:`forcing data<Forcing data>`.
+
+It is also possible, for certain parameters, to define monthly values and ranges:
+
+.. code-block:: python
+
+   parameters.add_data_parameter(
+       'temp_gradients',
+       [-0.6, -0.6, -0.6, -0.6, -0.7, -0.7, -0.8, -0.8, -0.8, -0.7, -0.7, -0.6],
+       min_value=[-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8],
+       max_value=[-0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3])
 
 Forcing data
 ------------
+
