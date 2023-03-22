@@ -24,122 +24,121 @@ Some basic properties are given in the following table.
 It has the following parameters.
 
 .. list-table:: Parameters of the GSM-SOCONT model
-   :widths: 15 15 10 5 5 10 40
+   :widths: 15 20 10 5 5 45
    :header-rows: 1
 
    * - Component
      - Full name
      - Aliases
-     - Def. value
-     - Range
+     - Def. value and range
      - Unit
      - Comments
    * - Precipitation (snow/rain transition)
      - snow_rain_transition: transition_start
      - --
-     - 0
-     - [-2, 2]
+     - | 0
+       | [-2, 2]
      - °C
      - Temperature below which precipitation is 100% snow.
        The snow/rain transition is linear between transition_start and transition_end
    * - ...
      - snow_rain_transition: transition_end
      - --
-     - 2
-     - [0, 4]
+     - | 2
+       | [0, 4]
      - °C
      - Temperature above which precipitation is 100% liquid.
    * - Snow
      - snowpack: degree_day_factor
      - a_snow
-     - --
-     - [1, 12]
+     - | --
+       | [1, 12]
      - mm/d/°C
      - Degree day snow melting factor. a\ :sub:`snow` in Schaefli2005_
    * - ...
      - snowpack: melting_temperature
      - --
-     - 0
-     - [0, 5]
+     - | 0
+       | [0, 5]
      - °C
      - Temperature above which the snow starts to melt.
    * - Glacier
      - <name>: degree_day_factor
      - a_ice (single type), a_ice_<name>, a_ice_<i>
-     - --
-     - [5, 20]
+     - | --
+       | [5, 20]
      - mm/d/°C
      - Degree day ice melting factor. a\ :sub:`ice` in Schaefli2005_
    * - ...
      - <name>: melting_temperature
      - --
-     - 0
-     - [0, 5]
+     - | 0
+       | [0, 5]
      - °C
      - Temperature above which the ice starts to melt.
    * - Glacier area lumped reservoir
-     - glacier-area-rain-snowmelt-storage: response_factor
+     - glacier_area_rain_snowmelt_storage: response_factor
      - k_snow
-     - --
-     - [0.05, 0.25]
+     - | --
+       | [0.05, 0.25]
      - 1/d
      - Response factor for the glacier area lumped reservoir receiving rain and
        snowmelt water. Similar to k\ :sub:`snow` in Schaefli2005_, but different units.
    * - ...
-     - glacier-area-icemelt-storage: response_factor
+     - glacier_area_icemelt_storage: response_factor
      - k_ice
-     - --
-     - [0.05, 1]
+     - | --
+       | [0.05, 1]
      - 1/d
      - Response factor for the glacier area lumped reservoir receiving ice melt water.
        Similar to k\ :sub:`ice` in Schaefli2005_, but different units.
    * - Quick runoff (non-linear version)
-     - surface-runoff: runoff_coefficient
+     - surface_runoff: runoff_coefficient
      - beta
-     - --
-     - [100, 30000]
+     - | --
+       | [100, 30000]
      - m^(4/3)/s
      - Parameter to calibrate.
    * - ...
-     - surface-runoff: slope
+     - surface_runoff: slope
      - J
-     - --
-     - [0, 90]
+     - | --
+       | [0, 90]
      - °
      - Mean slope of the catchment. Should be based on data.
    * - Quick runoff (linear version)
-     - surface-runoff: response_factor
+     - surface_runoff: response_factor
      - k_quick
-     - --
-     - [0.05, 1]
+     - | --
+       | [0.05, 1]
      - 1/d
      - Response factor for the quick reservoir.
    * - Slow reservoir
-     - slow-reservoir: capacity
+     - slow_reservoir: capacity
      - A
-     - --
-     - [10, 3000]
+     - | --
+       | [10, 3000]
      - mm
      - Maximum storage capacity of the reservoir.
    * - ...
-     - slow-reservoir: response_factor
+     - slow_reservoir: response_factor
      - k_slow, k_slow_1
-     - --
-     - [0.001, 1]
+     - | --
+       | [0.001, 1]
      - 1/d
      - Response factor for the slow reservoir. Same as k in Schaefli2005_, but different units.
    * - Baseflow (optional)
-     - slow-reservoir: percolation_rate
+     - slow_reservoir: percolation_rate
      - percol
-     - --
-     - [0, 10]
+     - | --
+       | [0, 10]
      - mm/d
      - Percolation rate from the first slow reservoir to the baseflow reservoir
    * - ...
-     - slow-reservoir-2: response_factor
+     - slow_reservoir_2: response_factor
      - k_slow_2
-     - --
-     - [0.001, 1]
+     - | --
+       | [0.001, 1]
      - 1/d
      - Response factor for the baseflow reservoir.
 
