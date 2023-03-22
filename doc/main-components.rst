@@ -43,7 +43,7 @@ then needs to provide the area for each land cover type and for each hydro unit:
                      'glacier_ice': 'Area ICE Band',
                      'glacier_debris': 'Area Debris Band'})
 
-For the options details, refer to :ref:`the Python API <api_hydrounits>`.
+For a description of the options, refer to :ref:`the Python API </api/hydrobricks:api_hydrounits>`.
 
 Parameters
 ----------
@@ -68,7 +68,7 @@ Within it, different properties are defined for each parameter:
   it can use a default value
 * **prior**: prior distribution to use for the calibration. See :ref:`_calibration`
 
-For the options details, refer to :ref:`the Python API <api_parameterset>`.
+For a description of the options, refer to :ref:`the Python API <api_parameterset>`.
 
 Creating a parameter set
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,6 +98,8 @@ with a dictionary as argument. The dictionary can use the full parameter names
 
    parameters.set_values({'A': 100, 'k_slow': 0.01, 'a_snow': 5})
 
+For a description of the options, refer to `the Python API </api/hydrobricks.html#hydrobricks.ParameterSet.set_values>`_.
+For a description of the options, refer to `the Python API </en/latest/api/hydrobricks.html#hydrobricks.ParameterSet.set_values>`_.
 
 Parameter constraints
 ^^^^^^^^^^^^^^^^^^^^^
