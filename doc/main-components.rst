@@ -45,6 +45,7 @@ as the number of soil storages. Within this parameter set, the basic attributes 
 defined, such as the name, aliases, units, min/max values, etc.
 
 .. code-block:: python
+
    socont = models.Socont(soil_storage_nb=2)
    parameters = socont.generate_parameters()
 
@@ -58,6 +59,7 @@ with a dictionary as argument. The dictionary can use the full parameter names
 (e.g., ``a_snow``):
 
 .. code-block:: python
+
    parameters.set_values({'A': 100, 'k_slow': 0.01, 'a_snow': 5})
 
 
@@ -72,6 +74,7 @@ the ice (``a_snow < a_ice``).
 Constraints between parameters can be added by the user as follows:
 
 .. code-block:: python
+
    parameters.define_constraint('k_slow_2', '<', 'k_slow_1')
 
 The supported operators are: ``>`` (or ``gt``), ``>=`` (or ``ge``), ``<`` (or ``lt``),
@@ -80,7 +83,27 @@ The supported operators are: ``>`` (or ``gt``), ``>=`` (or ``ge``), ``<`` (or ``
 On the contrary, pre-definied constraints can be removed:
 
 .. code-block:: python
+
    parameters.remove_constraint('a_snow', '<', 'a_ice')
+
+
+Parameter ranges
+^^^^^^^^^^^^^^^^
+
+The parameters are usually generated with a pre-defined range.
+This range is used to ensure that a provided value falls within the authorized range
+and to define the boundaries for the calibration algorithm.
+The pre-defined ranges can be changed as follows:
+
+.. code-block:: python
+
+   parameters.change_range('a_snow', 2, 5)
+
+
+Adding data-related parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
 
 
 Forcing data
