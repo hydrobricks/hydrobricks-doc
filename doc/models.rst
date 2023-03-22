@@ -15,13 +15,14 @@ Some basic properties are given in the following table.
 .. list-table:: Properties of the GSM-SOCONT model
    :widths: 50 50
    :header-rows: 0
+   :stub-columns: 1
 
    * - Spatial structure
      - semi-lumped (elevation bands)
    * - Time step
      - daily
 
-It has the following parameters.
+It has the parameters listed below.
 
 .. list-table:: Parameters of the GSM-SOCONT model
    :widths: 10 10 5 5 70
@@ -149,6 +150,7 @@ It has the following parameters.
        | Response factor for the baseflow reservoir.
 
 
+The pre-defined constraints on the parameters are defined below.
 
 .. list-table:: Pre-defined parameter constraints for the GSM-SOCONT model
    :widths: 30 70
