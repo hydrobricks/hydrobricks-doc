@@ -3,7 +3,35 @@
 Models
 ======
 
-The only model structure implemented so far is :ref:`GSM-Socont`
+The only model structure implemented so far is :ref:`GSM-Socont`.
+
+
+Common options
+--------------
+
+All models have the following options that can be provided at model creation:
+
+* ``solver``: choice of the solver to use; the options are: ``heun_explicit`` (default),
+  ``runge_kutta``, and ``euler_explicit``.
+* ``record_all`` (default False): when True, the model will record all fluxes and state
+  values for each time step. This slows down the computations and create large output
+  files. Therefore, it must not be enabled during the calibration phase, but only when
+  one needs to analyse the behaviour of the model in details. When False, the model
+  will output the catchment discharge and some selected timeseries.
+* ``land_cover_types``: a list of the land cover types to consider (e.g., ``glacier``).
+  See :ref:`the section on the spatial structure <spatial-structure>`.
+* ``land_cover_names``: a list of the land cover names to use.
+  Each element must match the land cover types explained above.
+  The names are used in the model to distinguish similar land cover types, for example
+  when using a bare-ice glacier and a debris-covered glacier.
+  See :ref:`the section on the spatial structure <spatial-structure>`.
+
+For example:
+
+.. code-block:: python
+
+    socont = models.Socont(solver="heun_explicit", record_all=False)
+
 
 GSM-Socont
 ----------
@@ -22,6 +50,13 @@ Some basic properties are given in the following table.
    * - Time step
      - daily
 
+The implemented GSM-Socont version comes with some options:
+
+* ``soil_storage_nb``: 1 or 2. This is the number of soil reservoirs to consider
+  (the second one represents the baseflow).
+* ``surface_runoff``: ``socont_runoff`` (the original non-linear quick reservoir) or
+  ``linear_storage`` (a classic linear storage).
+
 It has the parameters listed below.
 
 .. list-table:: Parameters of the GSM-Socont model
@@ -34,7 +69,7 @@ It has the parameters listed below.
      - Unit
      - Comments
    * - Precipitation (snow/rain transition)
-     - prec_t_start
+     - ``prec_t_start``
      - | 0
        | [-2, 2]
      - °C
@@ -43,7 +78,7 @@ It has the parameters listed below.
        | Optional parameter.
        | Full name: snow_rain_transition: transition_start
    * - ...
-     - prec_t_end
+     - ``prec_t_end``
      - | 2
        | [0, 4]
      - °C
@@ -51,14 +86,14 @@ It has the parameters listed below.
        | Optional parameter.
        | Full name: snow_rain_transition: transition_end
    * - Snow
-     - a_snow
+     - ``a_snow``
      - | --
        | [1, 12]
      - mm/d/°C
      - | Degree day snow melting factor. a\ :sub:`snow` in Schaefli2005_
        | Full name: snowpack: degree_day_factor
    * - ...
-     - melt_t_snow
+     - ``melt_t_snow``
      - | 0
        | [0, 5]
      - °C
@@ -66,7 +101,7 @@ It has the parameters listed below.
        | Optional parameter.
        | Full name: snowpack: melting_temperature
    * - Glacier
-     - a_ice (single type), a_ice_<name>, a_ice_<i>
+     - ``a_ice`` (single type), ``a_ice_<name>``, ``a_ice_<i>``
      - | --
        | [5, 20]
      - mm/d/°C
@@ -74,7 +109,7 @@ It has the parameters listed below.
        | Degree day ice melting factor. a\ :sub:`ice` in Schaefli2005_
        | Full name: <name>: degree_day_factor
    * - ...
-     - melt_t_ice
+     - ``melt_t_ice``
      - | 0
        | [0, 5]
      - °C
@@ -83,7 +118,7 @@ It has the parameters listed below.
        | Optional parameter.
        | Full name: <name>: melting_temperature
    * - Glacier area lumped reservoir
-     - k_snow
+     - ``k_snow``
      - | --
        | [0.05, 0.25]
      - 1/d
@@ -91,7 +126,7 @@ It has the parameters listed below.
          snowmelt water. Similar to k\ :sub:`snow` in Schaefli2005_, but different units.
        | Full name: glacier_area_rain_snowmelt_storage: response_factor
    * - ...
-     - k_ice
+     - ``k_ice``
      - | --
        | [0.05, 1]
      - 1/d
@@ -99,35 +134,35 @@ It has the parameters listed below.
          Similar to k\ :sub:`ice` in Schaefli2005_, but different units.
        | Full name: glacier_area_icemelt_storage: response_factor
    * - Quick runoff (non-linear version)
-     - beta
+     - ``beta``
      - | --
        | [100, 30000]
      - m^(4/3)/s
      - | Parameter to calibrate.
        | Full name: surface_runoff: runoff_coefficient
    * - ...
-     - J
+     - ``J``
      - | --
        | [0, 90]
      - °
      - | Mean slope of the catchment. Should be based on data.
        | Full name: surface_runoff: slope
    * - Quick runoff (linear version)
-     - k_quick
+     - ``k_quick``
      - | --
        | [0.05, 1]
      - 1/d
      - | Response factor for the quick reservoir.
        | Full name: surface_runoff: response_factor
    * - Slow reservoir
-     - A
+     - ``A``
      - | --
        | [10, 3000]
      - mm
      - | Maximum storage capacity of the reservoir.
        | Full name: slow_reservoir: capacity
    * - ...
-     - k_slow, k_slow_1
+     - ``k_slow``, ``k_slow_1``
      - | --
        | [0.001, 1]
      - 1/d
@@ -135,14 +170,14 @@ It has the parameters listed below.
          but different units.
        | Full name: slow_reservoir: response_factor
    * - Baseflow (optional)
-     - percol
+     - ``percol``
      - | --
        | [0, 10]
      - mm/d
      - | Percolation rate from the first slow reservoir to the baseflow reservoir
        | Full name: slow_reservoir: percolation_rate
    * - ...
-     - k_slow_2
+     - ``k_slow_2``
      - | --
        | [0.001, 1]
      - 1/d

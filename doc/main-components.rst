@@ -11,6 +11,8 @@ Model structure
    socont = models.Socont(soil_storage_nb=2)
 
 
+.. _spatial-structure:
+
 Spatial structure
 -----------------
 
