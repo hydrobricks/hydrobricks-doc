@@ -50,12 +50,19 @@ Some basic properties are given in the following table.
    * - Time step
      - daily
 
+
+Specific options
+^^^^^^^^^^^^^^^^
+
 The implemented GSM-Socont version comes with some options:
 
 * ``soil_storage_nb``: 1 or 2. This is the number of soil reservoirs to consider
   (the second one represents the baseflow).
 * ``surface_runoff``: ``socont_runoff`` (the original non-linear quick reservoir) or
   ``linear_storage`` (a classic linear storage).
+
+Parameters
+^^^^^^^^^^
 
 It has the parameters listed below.
 
@@ -200,5 +207,8 @@ The pre-defined constraints on the parameters are defined below.
        | k_slow_2 < k_quick
        | k_slow_2 < k_slow_1
 
+
+References
+----------
 
 .. [Schaefli2005] Schaefli, B., Hingray, B., Niggli, M., & Musy, A. (2005). A conceptual glacio-hydrological model for high mountainous catchments. Hydrology and Earth System Sciences Discussions, 9(1), 95–109. https://doi.org/10.5194/hessd-2-73-2005
