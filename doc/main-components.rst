@@ -87,6 +87,8 @@ The csv file containing elevation bands data can look like the following example
    4562, 1.654, 0.613, 0.275
 
 
+.. _parameters:
+
 Parameters
 ----------
 
@@ -211,7 +213,7 @@ Forcing data
 ------------
 
 The meteorological data is handled by the ``Forcing`` class.
-It handles the spatialization of the weather data to create a time series per unit.
+It handles the spatialization of the weather data to create per-unit time series.
 Therefore, when creating an instance of this class, the hydro units must be provided:
 
 .. code-block:: python
@@ -236,7 +238,7 @@ Spatialization
 ^^^^^^^^^^^^^^
 
 The spatialization operation needs to be specified to generate per-unit timeseries.
-This definition must specify the variable, the method to use and its parameters:
+This definition needs information on the variable, the method to use and its parameters:
 
 .. code-block:: python
 
@@ -244,8 +246,8 @@ This definition must specify the variable, the method to use and its parameters:
        variable='temperature', method='additive_elevation_gradient',
        ref_elevation=1250, gradient=-0.6)
 
-As for such operations we might also want to calibrate the parameters, these can
-then be specified as a reference to a parameter instead of a fixed value.
+As we might also want to calibrate the parameters for such operations, these can
+also be specified as a reference to a parameter instead of a fixed value.
 In such case, one must add a data parameter as in the following example:
 
 .. code-block:: python
@@ -258,4 +260,51 @@ In such case, one must add a data parameter as in the following example:
 
 The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
 The methods and parameters are described in :ref:`the Python API <api_forcing>`.
+
+
+Running the model
+-----------------
+
+Once the :ref:`hydro units <spatial-structure>`, :ref:`parameters <parameters>` and
+:ref:`forcing <forcing-data>` defined, the model can be set up and run:
+
+.. code-block:: python
+
+   socont.setup(spatial_structure=hydro_units, output_path='/path/to/dir',
+                start_date='1981-01-01', end_date='2020-12-31')
+
+   socont.run(parameters=parameters, forcing=forcing)
+
+Then, the outlet discharge can be retrieved:
+
+.. code-block:: python
+
+   sim_ts = socont.get_outlet_discharge()
+
+More outputs can be extracted and saved to a netCDF file for further analysis:
+
+.. code-block:: python
+
+   socont.dump_outputs('/output/dir/')
+
+
+Evaluation
+^^^^^^^^^^
+
+Some metrics can be computed by providing the observation time series:
+
+.. code-block:: python
+
+   # Preparation of the obs data
+   obs = hb.Observations()
+   obs.load_from_csv(CATCHMENT_DISCHARGE, column_time='Date', time_format='%d/%m/%Y',
+                     content={'discharge': 'Discharge (mm/d)'})
+   obs_ts = obs.data_raw[0]
+
+   nse = socont.eval('nse', obs_ts)
+   kge_2012 = socont.eval('kge_2012', obs_ts)
+
+The metrics are provided by the `HydroErr package <https://hydroerr.readthedocs.io>`_ .
+All the `metrics listed under their website <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
+can be used and are named according to their function names.
 
