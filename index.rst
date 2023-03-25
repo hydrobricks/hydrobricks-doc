@@ -19,8 +19,9 @@ The main components of the model are described under the :ref:`basics page<basic
    :caption: Contents:
 
    doc/getting-started
-   doc/main-components
+   doc/basics
    doc/models
    doc/calibration
+   doc/advanced
    api/modules
 

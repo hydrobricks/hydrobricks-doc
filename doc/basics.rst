@@ -1,7 +1,7 @@
-.. _main-components:
+.. _basics:
 
-Main components
-===============
+The basics
+==========
 
 Model structure
 ---------------
@@ -275,7 +275,7 @@ Once the :ref:`hydro units <spatial-structure>`, :ref:`parameters <parameters>` 
 
    socont.run(parameters=parameters, forcing=forcing)
 
-Then, the outlet discharge can be retrieved:
+Then, the outlet discharge (in mm/d) can be retrieved:
 
 .. code-block:: python
 
@@ -287,17 +287,31 @@ More outputs can be extracted and saved to a netCDF file for further analysis:
 
    socont.dump_outputs('/output/dir/')
 
+The state variables can be initialized using the ``initialize_state_variables()``
+function between the ``setup()`` and the ``run()`` functions.
+The initialization runs the model for the given period and saves the final state variables.
+These values are then used as initial state variables for the next run:
+
+.. code-block:: python
+
+   socont.initialize_state_variables(parameters=parameters, forcing=forcing)
+   socont.run(parameters=parameters, forcing=forcing)
+
+When the model is executed multiple times successively, it clears its previous states.
+When the states initialization provided by ``initialize_state_variables()`` has been
+used, the model resets its state variables to these saved values.
+
 
 Evaluation
 ^^^^^^^^^^
 
-Some metrics can be computed by providing the observation time series:
+Some metrics can be computed by providing the observation time series (in mm/d):
 
 .. code-block:: python
 
    # Preparation of the obs data
    obs = hb.Observations()
-   obs.load_from_csv(CATCHMENT_DISCHARGE, column_time='Date', time_format='%d/%m/%Y',
+   obs.load_from_csv('/path/to/obs.csv', column_time='Date', time_format='%d/%m/%Y',
                      content={'discharge': 'Discharge (mm/d)'})
    obs_ts = obs.data_raw[0]
 
