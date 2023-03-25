@@ -15,10 +15,10 @@ All models have the following options that can be provided at model creation:
   ``runge_kutta``, and ``euler_explicit``.
 * ``record_all`` (default False): when True, the model will record all fluxes and state
   values for each time step. This slows down the computations and create large output
-  files. Therefore, it must not be enabled during the calibration phase, but only when
+  files. Therefore, it should not be enabled during the calibration phase, but only when
   one needs to analyse the behaviour of the model in details. When False, the model
   will output the catchment discharge and some selected timeseries.
-* ``land_cover_types``: a list of the land cover types to consider (e.g., ``glacier``).
+* ``land_cover_types``: a list of the land cover types to use (e.g., ``glacier``).
   See :ref:`the section on the spatial structure <spatial-structure>`.
 * ``land_cover_names``: a list of the land cover names to use.
   Each element must match the land cover types explained above.
