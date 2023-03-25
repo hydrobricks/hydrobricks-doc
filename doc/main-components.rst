@@ -6,6 +6,20 @@ Main components
 Model structure
 ---------------
 
+A model is composed of three main elements: bricks, processes, and fluxes.
+The bricks are any component that can contain water, such as a snowpack, a glacier,
+or a ground reservoir. They can contain one or more water containers.
+For example, the snowpack has a snow and a liquid water container.
+These bricks are assigned with processes that can extract water.
+Processes are for example snowmelt, ET, or outflow according some behaviour.
+The water extracted from the bricks by the processes are then transferred to fluxes,
+which deliver it to other bricks, the atmosphere, or the outlet.
+
+For now, only pre-built structures are available.
+One can create a pre-built instance of a model by using the provided class (to be
+considered as the blueprint) with some options.
+The options and the existing models are detailed in the :ref:`models page <models>`.
+
 .. code-block:: python
 
    socont = models.Socont(soil_storage_nb=2)
@@ -19,10 +33,10 @@ Spatial structure
 The catchment is discretized into sub units named hydro units.
 These hydro units can represent HRUs, pixels, elevation bands, etc.
 Their properties are loaded from csv files containing at minimum data on each unit area
-and elevation. Loading such a file can be done as follows:
+and elevation (mean elevation of each hydro unit).
+Loading such a file can be done as follows:
 
 .. code-block:: python
-   :caption: Example of the creation of hydro units with a signe land cover.
 
    hydro_units = hb.HydroUnits()
    hydro_units.load_from_csv(
@@ -33,10 +47,10 @@ The default land cover is named ``ground`` and it has no specific behaviour.
 When there is more than one land cover, these can be specified.
 Each hydro unit is then assigned a fraction of the provided land covers
 For example, for a catchment with a pure ice glacier and a debris-covered glacier, one
-then needs to provide the area for each land cover type and for each hydro unit:
+then needs to provide the area for each land cover type and for each hydro unit
+(more information in :ref:`the Python API <api_hydrounits>`):
 
 .. code-block:: python
-   :caption: Example of the creation of hydro units with multiple land covers.
 
    land_cover_names = ['ground', 'glacier_ice', 'glacier_debris']
    land_cover_types = ['ground', 'glacier', 'glacier']
@@ -48,7 +62,7 @@ then needs to provide the area for each land cover type and for each hydro unit:
                      'glacier_ice': 'Area Ice',
                      'glacier_debris': 'Area Debris'})
 
-For a description of the options, refer to :ref:`the Python API <api_hydrounits>`.
+The csv file containing elevation bands data can look like the following example.
 
 .. code-block:: text
    :caption: Example of a csv file containing elevation bands data.
@@ -77,7 +91,7 @@ Parameters
 ----------
 
 The parameters are managed as parameter sets in an object that is an instance of the
-ParameterSet class.
+``ParameterSet`` class.
 It means that there is a single variable containing all the parameters for a model.
 Within it, different properties are defined for each parameter:
 
