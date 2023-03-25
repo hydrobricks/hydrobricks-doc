@@ -262,6 +262,8 @@ The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
 The methods and parameters are described in :ref:`the Python API <api_forcing>`.
 
 
+.. _model-instance:
+
 Running the model
 -----------------
 
