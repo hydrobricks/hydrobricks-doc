@@ -93,7 +93,8 @@ Parameters
 The parameters are managed as parameter sets in an object that is an instance of the
 ``ParameterSet`` class.
 It means that there is a single variable containing all the parameters for a model.
-Within it, different properties are defined for each parameter:
+Within it, different properties are defined for each parameter
+(more information in :ref:`the Python API <api_parameterset>`):
 
 * **component**: the component to which it refers to (e.g., glacier, slow_reservoir)
 * **name**: the detailed name of the parameter (e.g., degree_day_factor)
@@ -108,9 +109,9 @@ Within it, different properties are defined for each parameter:
   calibrate
 * **mandatory**: defines if the parameter value need to be provided by the user or if
   it can use a default value
-* **prior**: prior distribution to use for the calibration. See :ref:`the calibration page <calibration>`
+* **prior**: prior distribution to use for the calibration.
+  See :ref:`the calibration page <calibration>`
 
-For a description of the options, refer to :ref:`the Python API <api_parameterset>`.
 
 Creating a parameter set
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -140,7 +141,6 @@ with a dictionary as argument. The dictionary can use the full parameter names
 
    parameters.set_values({'A': 100, 'k_slow': 0.01, 'a_snow': 5})
 
-For a description of the options, refer to `the Python API </en/latest/api/hydrobricks.html#hydrobricks.ParameterSet.set_values>`_.
 
 Parameter constraints
 ^^^^^^^^^^^^^^^^^^^^^
@@ -159,7 +159,7 @@ Constraints between parameters can be added by the user as follows:
 The supported operators are: ``>`` (or ``gt``), ``>=`` (or ``ge``), ``<`` (or ``lt``),
 ``<=`` (or ``le``).
 
-On the contrary, pre-definied constraints can be removed:
+On the contrary, pre-defined constraints can be removed:
 
 .. code-block:: python
 
@@ -193,7 +193,7 @@ the model and need to be added ba the user:
    parameters.add_data_parameter('temp_gradients', -0.6, min_value=-1, max_value=0)
 
 For the meaning of these parameters and the spatialisation procedures implemented in
-hydrobricks, refer to the section on :ref:`forcing data<Forcing data>`.
+hydrobricks, refer to the section on :ref:`forcing data<forcing-data>`.
 
 It is also possible, for certain parameters, to define monthly values and ranges:
 
@@ -205,6 +205,57 @@ It is also possible, for certain parameters, to define monthly values and ranges
        min_value=[-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8],
        max_value=[-0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3])
 
+.. _forcing-data:
+
 Forcing data
 ------------
+
+The meteorological data is handled by the ``Forcing`` class.
+It handles the spatialization of the weather data to create a time series per unit.
+Therefore, when creating an instance of this class, the hydro units must be provided:
+
+.. code-block:: python
+
+   forcing = hb.Forcing(hydro_units)
+
+The data, for example station time series, can the be loaded from csv files.
+Multiple files can be loaded successively, or a single file can contain different
+variables (as different columns).
+One needs to specify which column contains the dates, their format, and which
+column header represent what kind of variable.
+For example (more information in :ref:`the Python API <api_forcing>`):
+
+.. code-block:: python
+
+    forcing.load_from_csv(
+        'path/to/forcing.csv', column_time='Date', time_format='%d/%m/%Y',
+        content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
+                 'pet': 'pet_sim(mm/day)'})
+
+Spatialization
+^^^^^^^^^^^^^^
+
+The spatialization operation needs to be specified to generate per-unit timeseries.
+This definition must specify the variable, the method to use and its parameters:
+
+.. code-block:: python
+
+   forcing.define_spatialization(
+       variable='temperature', method='additive_elevation_gradient',
+       ref_elevation=1250, gradient=-0.6)
+
+As for such operations we might also want to calibrate the parameters, these can
+then be specified as a reference to a parameter instead of a fixed value.
+In such case, one must add a data parameter as in the following example:
+
+.. code-block:: python
+
+   forcing.define_spatialization(
+       variable='temperature', method='additive_elevation_gradient',
+       ref_elevation=1250, gradient='param:temp_gradients')
+
+   parameters.add_data_parameter('temp_gradients', -0.6, min_value=-1, max_value=0)
+
+The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
+The methods and parameters are described in :ref:`the Python API <api_forcing>`.
 
