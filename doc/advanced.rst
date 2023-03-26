@@ -6,9 +6,9 @@ Advanced features
 Land cover evolution
 --------------------
 
-The land cover types to consider are defined by the user
+The land cover types in hydrobricks are defined by the user
 (see the :ref:`hydro units section <spatial-structure>`).
-Each hydro unit is thus defined by a total area and fractional land covers.
+Each hydro unit is thus internally defined by a total area and fractional land covers.
 These land covers can have a dynamic evolution, externally driven.
 One can provide the model with a timeseries of dates and new land cover areas, such as:
 
@@ -19,11 +19,15 @@ One can provide the model with a timeseries of dates and new land cover areas, s
        '/path/to/surface_changes_glacier_debris.csv',
        hydro_units, area_unit='km2', match_with='elevation'
    )
-   changes.load_from_csv(
-       '/path/to/surface_changes_glacier_debris.csv',
-       hydro_units, area_unit='km2', match_with='elevation'
-   )
+   model.add_behaviour(changes)
 
+The definition of a land cover evolution does not replace the original definition of
+the hydro units, which need to be also provided to the function.
+The areas provided in the definition of the hydro units are the starting point of the
+model, and these changes will be enforced in due time.
+However, if some changes are defined for dates prior to the start of the modelling
+period, these changes will also be applied.
+The function ``changes.load_from_csv()`` can be called multiple times for different files.
 The corresponding csv file must contain the name of the land cover to change on the
 first row (for example here ``glacier_debris``), the dates of these changes on the
 second row, and then the change time series.
@@ -60,5 +64,5 @@ time series of the area (here in km2) for every date given above.
    4922,0.008,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
    4958,0.003,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
-There is no need to specify the corresponding change in the generic ``ground`` land
+There is no need to specify the corresponding changes in the generic ``ground`` land
 cover as it will be automatically computed to preserve the total hydro unit area.
