@@ -18,27 +18,8 @@ Here is a minimum example:
 
 .. code-block:: python
 
-   import os.path
-   import tempfile
-   from pathlib import Path
-
    import hydrobricks as hb
    import hydrobricks.models as models
-
-   # Paths
-   TEST_FILES_DIR = Path(
-       os.path.dirname(os.path.realpath(__file__)),
-       '..', '..', '..', 'tests', 'files', 'catchments'
-   )
-   CATCHMENT_BANDS = TEST_FILES_DIR / 'ch_sitter_appenzell' / 'elevation_bands.csv'
-   CATCHMENT_METEO = TEST_FILES_DIR / 'ch_sitter_appenzell' / 'meteo.csv'
-   CATCHMENT_DISCHARGE = TEST_FILES_DIR / 'ch_sitter_appenzell' / 'discharge.csv'
-
-   with tempfile.TemporaryDirectory() as tmp_dir_name:
-       tmp_dir = tmp_dir_name
-
-   os.mkdir(tmp_dir)
-   working_dir = Path(tmp_dir)
 
    # Model structure
    socont = models.Socont(soil_storage_nb=2, surface_runoff="linear_storage",
@@ -51,16 +32,16 @@ Here is a minimum example:
    # Hydro units
    hydro_units = hb.HydroUnits()
    hydro_units.load_from_csv(
-       CATCHMENT_BANDS, area_unit='m2', column_elevation='elevation',
+       'path/to/elevation_bands.csv', area_unit='m2', column_elevation='elevation',
        column_area='area')
 
    # Meteo data
-   ref_elevation = 1250  # Reference altitude for the meteo data
    forcing = hb.Forcing(hydro_units)
    forcing.load_from_csv(
-       CATCHMENT_METEO, column_time='Date', time_format='%d/%m/%Y',
+       'path/to/meteo.csv', column_time='Date', time_format='%d/%m/%Y',
        content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
                 'pet': 'pet_sim(mm/day)'})
+   ref_elevation = 1250  # Reference altitude for the meteo data
    forcing.spatialize_temperature(ref_elevation, -0.6)
    forcing.spatialize_pet()
    forcing.spatialize_precipitation(ref_elevation=ref_elevation, gradient=0.05,
@@ -68,11 +49,11 @@ Here is a minimum example:
 
    # Obs data
    obs = hb.Observations()
-   obs.load_from_csv(CATCHMENT_DISCHARGE, column_time='Date', time_format='%d/%m/%Y',
+   obs.load_from_csv('path/to/discharge.csv', column_time='Date', time_format='%d/%m/%Y',
                      content={'discharge': 'Discharge (mm/d)'})
 
    # Model setup
-   socont.setup(spatial_structure=hydro_units, output_path=str(working_dir),
+   socont.setup(spatial_structure=hydro_units, output_path=str('path/to/outputs'),
                 start_date='1981-01-01', end_date='2020-12-31')
 
    # Initialize and run the model
