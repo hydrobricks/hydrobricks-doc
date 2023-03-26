@@ -8,9 +8,9 @@ Calibration/analysis using SPOTPY
 
 The calibration and sensitivity analyses are performed by the
 `SPOTPY package <https://spotpy.readthedocs.io/en/latest/>`_.
-The links to SPOTPY are provided with hydrobricks so that it can be used directly.
+The links to SPOTPY are provided by hydrobricks so that it can be used directly.
 
-As we might not want all parameters to be calibrated, those that can change have to
+As we might not want to calibrate all parameters, those that can change have to
 be specified in the ``parameters`` instance (see :ref:`parameters <parameters>`):
 
 .. code-block:: python
@@ -36,9 +36,9 @@ Thus, when the metric needs to be minimized, we need to invert the objective fun
    spot_setup = hb.SpotpySetup(socont, parameters, forcing, obs, warmup=365,
                                obj_func='kge_2012', invert_obj_func=True)
 
-Once the setup defined, one can use any of the
-`SPOTPY algorithms <https://spotpy.readthedocs.io/en/latest/Algorithm_guide/>`_.
-For example, an optimization using the SCE-UA algorithm can be achieved:
+Once the setup defined, one can use any
+`SPOTPY algorithm <https://spotpy.readthedocs.io/en/latest/Algorithm_guide/>`_.
+For example, an optimization using the SCE-UA algorithm can be performed:
 
 .. code-block:: python
 
