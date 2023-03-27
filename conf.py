@@ -39,6 +39,7 @@ sys.path.insert(0, os.path.abspath(r'.'))
 BASE_PATH = os.path.abspath(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "src"))
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "src", "hydrobricks"))
+sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "python", "src", "preprocessing"))
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "src"))
 sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bindings"))
 
@@ -48,7 +49,7 @@ sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bind
 project = 'hydrobricks'
 copyright = '2022, Pascal Horton'
 author = 'Pascal Horton'
-release = '0.0.7'
+release = '0.4.11'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

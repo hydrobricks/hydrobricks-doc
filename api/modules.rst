@@ -7,6 +7,7 @@ API reference
    hydrobricks.models
    hydrobricks
    hydrobricks.submodules
+   hydrobricks.preprocessing
    _hydrobricks
 
 
