@@ -113,7 +113,7 @@ It has the parameters listed below.
        | [5, 20]
      - mm/d/°C
      - | With <name> being the provided name of the land cover (e.g. glacier_debris)
-       | and <i> the number of similar land cover provided.
+         and <i> the number of similar land cover provided.
        | For example: a_ice_glacier_debris or a_ice_1.
        | Degree day ice melting factor. a\ :sub:`ice` in Schaefli2005_
        | Full name: <name>: degree_day_factor
@@ -125,7 +125,7 @@ It has the parameters listed below.
      - | Temperature above which the ice starts to melt.
        | Optional parameter.
        | Full name: <name>: melting_temperature, with <name> being the provided name of
-       | the land cover (e.g. glacier_debris)
+         the land cover (e.g. glacier_debris)
    * - Glacier area lumped reservoir
      - ``k_snow``
      - | --
