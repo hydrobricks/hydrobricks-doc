@@ -31,7 +31,8 @@ Spatial structure
 -----------------
 
 The catchment is discretized into sub units named hydro units.
-These hydro units can represent HRUs, pixels, elevation bands, etc.
+These hydro units can represent HRUs (hydrological response units), pixels,
+elevation bands, etc.
 Their properties are loaded from csv files containing at minimum data on each unit area
 and elevation (mean elevation of each hydro unit).
 Loading such a file can be done as follows:
@@ -109,8 +110,8 @@ Within it, different properties are defined for each parameter
 * **default_value**: the parameter default value; only few parameters have default
   values, such as the melting temperature, and these are usually not necessary to
   calibrate
-* **mandatory**: defines if the parameter value need to be provided by the user or if
-  it can use a default value
+* **mandatory**: defines if the parameter value needs to be provided by the user
+  (i.e. it has no default value)
 * **prior**: prior distribution to use for the calibration.
   See :ref:`the calibration page <calibration>`
 
@@ -233,6 +234,33 @@ For example (more information in :ref:`the Python API <api_forcing>`):
         'path/to/forcing.csv', column_time='Date', time_format='%d/%m/%Y',
         content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
                  'pet': 'pet_sim(mm/day)'})
+
+A csv file containing forcing data can look like the following example:
+
+.. code-block:: text
+   :caption: Example of a csv file containing forcing data.
+
+   Date,precip(mm/day),temp(C),sunshine_dur(h),pet_sim(mm/day)
+   01/01/1981,8.24,-0.98,0.42,0.58
+   02/01/1981,4.02,-3.35,0.08,0
+   03/01/1981,22.27,0.96,0.44,0.95
+   04/01/1981,28.85,-2.11,0.08,0
+   05/01/1981,8.89,-5.62,0.07,0.06
+   06/01/1981,17.49,-4.72,0.09,0
+   07/01/1981,8.26,-8.58,0.14,0
+   08/01/1981,0.14,-11.47,81.73,0
+   09/01/1981,0.91,-7.37,0.1,0.05
+   10/01/1981,0.54,-3.23,0.09,0
+   11/01/1981,0.02,-4.57,1.94,0
+   12/01/1981,2.28,-4.01,69.95,0
+   13/01/1981,7.03,-6.39,0.04,0
+   14/01/1981,9.68,-7.54,73.98,0
+   15/01/1981,16.23,-3.95,0.23,0.01
+   16/01/1981,2.77,-7.28,0.18,0.19
+   17/01/1981,6.49,-1.57,1.29,0.19
+   18/01/1981,5.53,-3.7,0.07,0
+   ...
+
 
 Spatialization
 ^^^^^^^^^^^^^^

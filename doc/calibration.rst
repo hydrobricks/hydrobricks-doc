@@ -20,8 +20,8 @@ be specified in the ``parameters`` instance (see :ref:`parameters <parameters>`)
 
 Then, an instance of the SPOTPY setup can be created by providing the
 :ref:`model instance <model-instance>`, the :ref:`parameters <parameters>`, the
-:ref:`forcing <forcing-data>`, the observation time series, a warmup duration (in days),
-and the objective function to use:
+:ref:`forcing <forcing-data>`, the observation time series, a warmup duration (period
+that will not be used for the evaluation; in days), and the objective function to use:
 
 .. code-block:: python
 
