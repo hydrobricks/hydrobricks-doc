@@ -356,10 +356,10 @@ can be used and are named according to their function names.
 Outputs
 -------
 
-There are different levels of details available from the outputs:
+The results can be accessed in different ways and with different levels of detail:
 
-1. The `direct outputs`_ from the model instance
-2. A `dumped netCDF file`_ containing more details for each hydro unit
+1. The `direct outputs`_ from the model instance.
+2. A `dumped netCDF file`_ containing more details for each hydro unit.
 3. :ref:`Other <others>` outputs such as the spatialized forcing or the SPOTPY outputs.
 
 
@@ -373,9 +373,9 @@ by ``get_outlet_discharge()``:
 
 .. code-block:: python
 
-   sim_ts = socont.get_outlet_discharge()
+   sim_ts = model.get_outlet_discharge()
 
-Some outputs provide integrated values over the simulation period (thus single values):
+Some outputs provide integrated values over the simulation period:
 
 * ``get_total_outlet_discharge()``: Integrated discharge at the outlet
 * ``get_total_et()``: Integrated ET
@@ -390,12 +390,13 @@ Dumped netCDF file
 
 A detailed netCDF file can be dumped with ``model.dump_outputs('some/path')``.
 The content of the file depends on the option ``record_all`` provided at model creation.
-When True, all fluxes and states are recorded, which slows down the model.
+When True, all fluxes and states are recorded, which slows down the model execution.
+
 The file has the following dimensions:
 
 * ``time``: The temporal dimension
 * ``hydro_units``: The hydro units (e.g., elevation bands)
-* ``aggregated_values``: Elements recorded at the catchment scale (lumped ones)
+* ``aggregated_values``: Elements recorded at the catchment scale (lumped)
 * ``distributed_values``: Elements recorded at each hydro unit ([semi-]distributed)
 * ``land_covers``: The different land covers
 
@@ -405,7 +406,8 @@ It contains three important global attributes:
 * ``labels_distributed``: The labels of the distributed elements (fluxes and states)
 * ``labels_land_covers``: The labels of the land covers
 
-For example, for the GSM-Socont model with two different glacier types:
+For example, for the GSM-Socont model with two different glacier types provides
+the following attributes:
 
 .. code-block:: text
 
@@ -452,22 +454,30 @@ For example, for the GSM-Socont model with two different glacier types:
 
 Then, it provides the following variables:
 
-* ``time``: The dates as Modified Julian Dates (days since 1858-11-17 00:00)
+* ``time`` (1D): The dates as Modified Julian Dates (days since 1858-11-17 00:00).
 * ``hydro_units_ids`` (1D): The IDs of the hydro units.
 * ``hydro_units_areas`` (1D): The area of the hydro units.
 * ``sub_basin_values`` (2D): The time series of the aggregated elements
   (c.f. labels_aggregated)
 * ``hydro_units_values`` (2D): the time series of the distributed elements
   (c.f. labels_distributed). Please not here the differences between:
-   * ``output`` elements:
-   * ``content`` elements:
+   * the fluxes (mm), i.e. ``output`` elements are already weighted by the land cover
+     fraction and the relative hydro unit area. Thus, these elements can be directly
+     summed over all hydro units to obtain the total contribution of a given
+     component (e.g., ice melt), even when the hydro units have different areas.
+   * the state variables (mm) such as ``content`` or ``snow`` elements represent
+     the water stored in the respective reservoirs. In this case, this value is not
+     weighted and cannot be summed over the catchment, but must be weighted
+     by the land cover fraction and the relative hydro unit area.
 * ``land_cover_fractions`` (2D, optional): the temporal evolution of the land cover
-  fractions
-
+  fractions.
 
 
 Others
 ^^^^^^
 
-- Dumbed forcing
--
+Some other outputs are available:
+
+- Dumbed forcing: the forcing object can also be saved as a netCDF file using the
+  ``forcing.create_file()``. It thus contains the spatialized forcing time series.
+- During the calibration procedure, SPOTPY saves all assessments in csv or sql tables.
