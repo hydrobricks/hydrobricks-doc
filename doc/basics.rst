@@ -352,3 +352,122 @@ The metrics are provided by the `HydroErr package <https://hydroerr.readthedocs.
 All the `metrics listed under their website <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
 can be used and are named according to their function names.
 
+
+Outputs
+-------
+
+There are different levels of details available from the outputs:
+
+1. The `direct outputs`_ from the model instance
+2. A `dumped netCDF file`_ containing more details for each hydro unit
+3. :ref:`Other <others>` outputs such as the spatialized forcing or the SPOTPY outputs.
+
+
+Direct outputs
+^^^^^^^^^^^^^^
+
+Some outputs from the model instance are available after a model run as long as the
+Python session is still alive.
+The first one is the discharge time series at the outlet, provided
+by ``get_outlet_discharge()``:
+
+.. code-block:: python
+
+   sim_ts = socont.get_outlet_discharge()
+
+Some outputs provide integrated values over the simulation period (thus single values):
+
+* ``get_total_outlet_discharge()``: Integrated discharge at the outlet
+* ``get_total_et()``: Integrated ET
+* ``get_total_water_storage_changes()``: Changes in all water reservoirs between the
+  beginning of the period and the end.
+* ``get_total_snow_storage_changes()``: Changes in snow storage between the
+  beginning of the period and the end.
+
+
+Dumped netCDF file
+^^^^^^^^^^^^^^^^^^
+
+A detailed netCDF file can be dumped with ``model.dump_outputs('some/path')``.
+The content of the file depends on the option ``record_all`` provided at model creation.
+When True, all fluxes and states are recorded, which slows down the model.
+The file has the following dimensions:
+
+* ``time``: The temporal dimension
+* ``hydro_units``: The hydro units (e.g., elevation bands)
+* ``aggregated_values``: Elements recorded at the catchment scale (lumped ones)
+* ``distributed_values``: Elements recorded at each hydro unit ([semi-]distributed)
+* ``land_covers``: The different land covers
+
+It contains three important global attributes:
+
+* ``labels_aggregated``: The labels of the lumped elements (fluxes and states)
+* ``labels_distributed``: The labels of the distributed elements (fluxes and states)
+* ``labels_land_covers``: The labels of the land covers
+
+For example, for the GSM-Socont model with two different glacier types:
+
+.. code-block:: text
+
+   labels_aggregated =
+      "glacier-area-rain-snowmelt-storage:content",
+      "glacier-area-rain-snowmelt-storage:outflow:output",
+      "glacier-area-icemelt-storage:content",
+      "glacier-area-icemelt-storage:outflow:output",
+      "outlet";
+
+   labels_distributed =
+      "ground:content",
+      "ground:infiltration:output",
+      "ground:runoff:output",
+      "glacier-ice:content",
+      "glacier-ice:outflow-rain-snowmelt:output",
+      "glacier-ice:melt:output",
+      "glacier-debris:content",
+      "glacier-debris:outflow-rain-snowmelt:output",
+      "glacier-debris:melt:output",
+      "ground-snowpack:content",
+      "ground-snowpack:snow",
+      "ground-snowpack:melt:output",
+      "glacier-ice-snowpack:content",
+      "glacier-ice-snowpack:snow",
+      "glacier-ice-snowpack:melt:output",
+      "glacier-debris-snowpack:content",
+      "glacier-debris-snowpack:snow",
+      "glacier-debris-snowpack:melt:output",
+      "slow-reservoir:content",
+      "slow-reservoir:et:output",
+      "slow-reservoir:outflow:output",
+      "slow-reservoir:percolation:output",
+      "slow-reservoir:overflow:output",
+      "slow-reservoir-2:content",
+      "slow-reservoir-2:outflow:output",
+      "surface-runoff:content",
+      "surface-runoff:outflow:output";
+
+   labels_land_covers =
+      "ground",
+      "glacier-ice",
+      "glacier-debris";
+
+Then, it provides the following variables:
+
+* ``time``: The dates as Modified Julian Dates (days since 1858-11-17 00:00)
+* ``hydro_units_ids`` (1D): The IDs of the hydro units.
+* ``hydro_units_areas`` (1D): The area of the hydro units.
+* ``sub_basin_values`` (2D): The time series of the aggregated elements
+  (c.f. labels_aggregated)
+* ``hydro_units_values`` (2D): the time series of the distributed elements
+  (c.f. labels_distributed). Please not here the differences between:
+   * ``output`` elements:
+   * ``content`` elements:
+* ``land_cover_fractions`` (2D, optional): the temporal evolution of the land cover
+  fractions
+
+
+
+Others
+^^^^^^
+
+- Dumbed forcing
+-
