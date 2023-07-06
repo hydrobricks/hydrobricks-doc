@@ -23,5 +23,6 @@ The main components of the model are described under the :ref:`basics page<basic
    doc/models
    doc/calibration
    doc/advanced
+   doc/upgrade
    api/modules
 
