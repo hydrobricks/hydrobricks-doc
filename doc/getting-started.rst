@@ -33,20 +33,21 @@ Here is a minimum example:
    # Hydro units
    hydro_units = hb.HydroUnits()
    hydro_units.load_from_csv(
-       'path/to/elevation_bands.csv', area_unit='m2', column_elevation='elevation',
-       column_area='area')
+       'path/to/elevation_bands.csv', column_elevation='elevation', column_area='area')
 
    # Meteo data
    forcing = hb.Forcing(hydro_units)
-   forcing.load_from_csv(
+   forcing.load_station_data_from_csv(
        'path/to/meteo.csv', column_time='Date', time_format='%d/%m/%Y',
        content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
                 'pet': 'pet_sim(mm/day)'})
    ref_elevation = 1250  # Reference altitude for the meteo data
-   forcing.spatialize_temperature(ref_elevation, -0.6)
-   forcing.spatialize_pet()
-   forcing.spatialize_precipitation(ref_elevation=ref_elevation, gradient=0.05,
-                                    correction_factor=0.75)
+   forcing.spatialize_from_station_data(
+       variable='temperature', ref_elevation=ref_elevation, gradient=-0.6)
+   forcing.correct_station_data(variable='precipitation', correction_factor=0.75)
+   forcing.spatialize_from_station_data(
+       variable='precipitation', ref_elevation=ref_elevation, gradient=0.05)
+   forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
 
    # Obs data
    obs = hb.Observations()
@@ -65,7 +66,7 @@ Here is a minimum example:
    sim_ts = socont.get_outlet_discharge()
 
    # Evaluate
-   obs_ts = obs.data_raw[0]
+   obs_ts = obs.data[0]
    nse = socont.eval('nse', obs_ts)
    kge_2012 = socont.eval('kge_2012', obs_ts)
 
