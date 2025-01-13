@@ -32,17 +32,43 @@ Spatial structure
 
 The catchment is discretized into sub units named hydro units.
 These hydro units can represent HRUs (hydrological response units), pixels,
-elevation bands, etc.
-Their properties are loaded from csv files containing at minimum data on each unit area
-and elevation (mean elevation of each hydro unit).
+elevation bands, etc. They can be either loaded from a file or generated from a DEM.
+
+Loading hydro units from a csv file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The hydro units properties can be loaded from csv files containing at minimum data on each 
+unit area and elevation (mean elevation of each hydro unit).
 Loading such a file can be done as follows:
 
 .. code-block:: python
 
    hydro_units = hb.HydroUnits()
    hydro_units.load_from_csv(
-      'path/to/file.csv', area_unit='m2', column_elevation='elevation',
-      column_area='area')
+      'path/to/file.csv', column_elevation='elevation', column_area='area')
+
+The csv file containing the hydro units data needs to have two header rows: 
+first row with the column name, second with the units.
+It can look like the following example.
+
+.. code-block:: text
+   :caption: Example of a simple csv file with the hydro units area.
+
+   num, elevation, area
+   -,m,m^2
+   0, 790, 2457500
+   1, 840, 4481250
+   2, 890, 5630625
+   3, 940, 5598125
+   4, 990, 4551250
+   5, 1040, 4579375
+   6, 1090, 4128125
+   7, 1140, 4807500
+   8, 1190, 4643750
+   9, 1240, 4662500
+   10, 1290, 4158750
+   11, 1340, 3496875
+   12, 1390, 2361250
 
 The default land cover is named ``ground`` and it has no specific behaviour.
 When there is more than one land cover, these can be specified.
@@ -58,17 +84,20 @@ then needs to provide the area for each land cover type and for each hydro unit
 
    hydro_units = hb.HydroUnits(land_cover_types, land_cover_names)
    hydro_units.load_from_csv(
-      'path/to/file.csv', area_unit='km', column_elevation='Elevation',
+      'path/to/file.csv', column_elevation='Elevation',
       columns_areas={'ground': 'Area Non Glacier',
                      'glacier_ice': 'Area Ice',
                      'glacier_debris': 'Area Debris'})
 
-The csv file containing elevation bands data can look like the following example.
+The csv file containing the hydro units data needs to have two header rows: 
+first row with the column name, second with the units.
+It can look like the following example.
 
 .. code-block:: text
-   :caption: Example of a csv file containing elevation bands data.
+   :caption: Example of a csv file with the hydro units area for different land cover types.
 
    Elevation, Area Non Glacier, Area Ice, Area Debris
+   m, km2, km2, km2
    3986, 2.408, 0, 0
    4022, 2.516, 0, 0
    4058, 2.341, 0, 0.003
@@ -86,6 +115,11 @@ The csv file containing elevation bands data can look like the following example
    4490, 2.210, 0.288, 0.266
    4526, 2.136, 0.341, 0.363
    4562, 1.654, 0.613, 0.275
+
+
+Generating hydro units from a DEM
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 
 
 .. _parameters:
