@@ -35,7 +35,7 @@ These hydro units can represent HRUs (hydrological response units), pixels,
 elevation bands, etc. They can be either loaded from a file or generated from a DEM
 based on topography, aspect and radiation.
 
-.. image:: doc/f16.png
+.. image:: f16.png
    :alt: Example of discretization of a catchment into (a) elevation bands, 
    (b) aspect, and (c) radiation. Aspect and radiation discretizations are
    then combined with elevation bands to form HRUs.
