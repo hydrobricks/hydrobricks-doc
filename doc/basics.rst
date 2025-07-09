@@ -11,7 +11,7 @@ The bricks are any component that can contain water, such as a snowpack, a glaci
 or a ground reservoir. They can contain one or more water containers.
 For example, the snowpack has a snow and a liquid water container.
 These bricks are assigned with processes that can extract water.
-Processes are for example snowmelt, ET, or outflow according some behaviour.
+Processes are for example snowmelt, evapotranspiration (ET), or outflow according to the behaviour.
 The water extracted from the bricks by the processes are then transferred to fluxes,
 which deliver it to other bricks, the atmosphere, or the outlet.
 
@@ -32,7 +32,8 @@ Spatial structure
 
 The catchment is discretized into sub units named hydro units.
 These hydro units can represent HRUs (hydrological response units), pixels,
-elevation bands, etc. They can be either loaded from a file or generated from a DEM.
+elevation bands, etc. They can be either loaded from a file or generated from a DEM
+based on topography, aspect and radiation.
 
 Loading hydro units from a csv file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
