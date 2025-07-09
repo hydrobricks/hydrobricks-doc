@@ -9,6 +9,8 @@ Hydrobricks is distributed through PyPi and can be installed using pip:
 
    pip install hydrobricks
 
+Use an older version of Python (e.g., 3.11) to ensure package compatibility.
+
 Some code examples are provided in the
 `python/examples directory of the repo <https://github.com/hydrobricks/hydrobricks/tree/main/python/examples>`_.
 The `tests <https://github.com/hydrobricks/hydrobricks/tree/main/python/tests>`_
