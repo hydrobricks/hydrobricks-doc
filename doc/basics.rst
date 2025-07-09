@@ -129,7 +129,30 @@ It can look like the following example.
 Generating hydro units from a DEM
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+The hydro units can also be generated automatically from the topography, the aspect
+and the radiation.
 
+Discretizing by elevation is sufficient for the melt model ``'degree_day'``, but a 
+discretization by elevation and aspect is required when using the melt model 
+``'degree_day_aspect'`` and a discretization by elevation and radiation is reauired
+for the melt model ``'temperature_index'``.
+
+For example, to discretize the study area spanning an elevation range of 1900 m to
+2900 m into elevation bands of 40 m of height and aspect categories, we use: 
+
+.. code-block:: python
+   
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.discretize_by(['elevation', 'aspect'], 
+                            elevation_method='equal_intervals', 
+                            elevation_distance=40,
+                            min_elevation=1900, 
+                            max_elevation=2900, 
+                            )
+
+We recommand that the glacier spans 10 elevation bands. This gives a hint for 
+the optimal elevation band height. 
 
 .. _parameters:
 
