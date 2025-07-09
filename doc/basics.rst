@@ -154,6 +154,31 @@ For example, to discretize the study area spanning an elevation range of 1900 m 
 We recommand that the glacier spans 10 elevation bands. This gives a hint for 
 the optimal elevation band height. 
 
+Computing the radiation
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The daily mean potential clear-sky direct solar radiation is computed at the 
+DEM surface [W/m²] using Hock (1999)'s equation. By default, the radiation
+resolution will be the DEM resolution. If you use a high resolution DEM, make sure
+to set a lower resolution for the radiation, as it will be computationnally expensive.
+
+.. code-block:: python
+   
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.calculate_daily_potential_radiation('path/to/file', resolution)
+
+Since the radiation computation takes a few minutes and is not year-specific, it can 
+also be saved and loaded back in memory. By default, the name of the radiation file
+will be ``'annual_potential_radiation.tif'`` and can be omitted.
+
+.. code-block:: python
+
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.load_mean_annual_radiation_raster('path/to/file', filename='annual_potential_radiation.tif')
+
+
 .. _parameters:
 
 Parameters
