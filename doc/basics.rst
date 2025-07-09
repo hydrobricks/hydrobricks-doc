@@ -325,6 +325,9 @@ Therefore, when creating an instance of this class, the hydro units must be prov
 
    forcing = hb.Forcing(hydro_units)
 
+Loading forcing data from a csv file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The data, for example station time series, can the be loaded from csv files.
 Multiple files can be loaded successively, or a single file can contain different
 variables (as different columns).
@@ -393,6 +396,31 @@ In such case, one must add a data parameter as in the following example:
 The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
 The methods and parameters are described in :ref:`the Python API <api_forcing>`.
 
+Loading forcing data from a netcdf file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Forcing data can also be loaded from NetCDF files, that are very common in
+the meteorological modeling field.
+
+The function will go take all files matching the pattern (e.g., ``"RhiresD_ch01r.swisscors_*.nc"``)
+in the netcdf folder. Here pattern means that the ``*`` can be replaced by any sequence
+of characters (e.g., 1995, 1996, etc.), and allows to select a set of netcdf files.
+All the files present in the folder will be loaded in the model. Remove non-necessary files 
+for a quicker loading.
+
+The CRS of the netcdf file is always indicated in EPSG code (https://epsg.io/).
+The name of the variable to extract (e.g., 'RhiresD') and the dimensions of the dataset
+in the x, y and time axis also need to be specified. We take here the example of the 
+MeteoSwiss grid-data product for daily precipitation (version before 2022).
+
+The hydro units are provided as tif file to be able to spatialize the netdf data.
+
+.. code-block:: python
+
+   forcing.spatialize_from_gridded_data(
+       variable='precipitation', path='path/to/netcdf/folder', file_pattern="RhiresD_ch01r.swisscors_*.nc",
+       data_crs=21781, var_name='RhiresD', dim_x='chx',
+       dim_y='chy', dim_time='time', raster_hydro_units='unit_ids.tif')
 
 .. _model-instance:
 
