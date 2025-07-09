@@ -35,7 +35,9 @@ These hydro units can represent HRUs (hydrological response units), pixels,
 elevation bands, etc. They can be either loaded from a file or generated from a DEM
 based on topography, aspect and radiation.
 
-![Example of discretization](doc/f16.png)
+<p align="center">
+  <img src="f16.png" width="600" alt="Example of discretization" />
+</p>
 
 
 Loading hydro units from a csv file
