@@ -154,8 +154,8 @@ For example, to discretize the study area spanning an elevation range of 1900 m 
 We recommand that the glacier spans 10 elevation bands. This gives a hint for 
 the optimal elevation band height. 
 
-Computing the radiation
-^^^^^^^^^^^^^^^^^^^^^^^
+Computing the radiation for discretization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The daily mean potential clear-sky direct solar radiation is computed at the 
 DEM surface [W/m²] using Hock (1999)'s equation. By default, the radiation
@@ -178,6 +178,19 @@ will be ``'annual_potential_radiation.tif'`` and can be omitted.
    success = study_area.extract_dem('path/to/dem.tif')
    study_area.load_mean_annual_radiation_raster('path/to/file', filename='annual_potential_radiation.tif')
 
+The radiation can then be used to discretize the catchment:
+
+.. code-block:: python
+
+   study_area.discretize_by(['elevation', 'radiation'],
+                            elevation_method='equal_intervals', 
+                            elevation_distance=40,
+                            min_elevation=1900, 
+                            max_elevation=2900, 
+                            radiation_method='equal_intervals', 
+                            radiation_distance=65, 
+                            min_radiation=0, 
+                            max_radiation=260)
 
 .. _parameters:
 
