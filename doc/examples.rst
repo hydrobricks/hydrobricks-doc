@@ -18,7 +18,9 @@ The data preprocessing (outlet, DEM clipping, filling, watershed delineation) is
 See detailed instructions here:  
 :doc:`preprocessing`
 
-.. only:: never
+..
+    This is a hidden comment block.
+    It will not appear in the rendered docs.
     
     Step that produces the SHP files and .tif files inherent to the basin to be analysed and which 
     will be used by Hydrobricks. This procedure, for the moment, is described to be performed in QGIS. 
