@@ -102,8 +102,31 @@ Ninth step:
     - Save the area (integer only) in a .txt file in the folder “Watersheds_on_dhm25”: first line write “Area”, second line the value (without decimals)
 
 
+Step 2: Install Hydrobricks
+----------------------------
 
-Step 2: Train the Model
+If the computer deos not yet have Hydrobricks installed we can make it run with the following steps in the Anaconda prompt:
+
+    - We create a new environment in which we install all the dependencies needed to run Hydrobricks. Pay attention to using an older version of Python to ensure package compatibility:
+
+    .. conda create -n YOUR_ENVIRONMENT_NAME python=3.11
+
+    - Activate the newly created environment for running Hydrobricks. Ensure to activate said environment every time you want to use the model:
+
+    .. conda activate YOUR_ENVIRONMENT_NAME
+
+    - If you set up Hydrobricks for the first time in an environment, you need to install the necessary packages using the following line of code in the Anaconda prompt:
+
+    .. pip install numpy pandas matplotlib xarray netCDF4 h5py pyproj rasterio geopandas shapely fiona rioxarray spotpy xarray-spatial pyarrow
+
+    - Install Hydrobricks and Spyder:
+
+    .. pip install hydrobricks
+    .. pip install spyder
+
+
+
+Step 3: Train the Model
 -----------------------
 
 The training script uses the output from `load_data.py`.
