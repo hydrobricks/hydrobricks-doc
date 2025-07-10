@@ -106,6 +106,7 @@ Step 2: Install Hydrobricks
 ----------------------------
 
 If the computer deos not yet have Hydrobricks installed we can make it run with the following steps in the Anaconda prompt:
+    
     - We create a new environment in which we install all the dependencies needed to run Hydrobricks. Pay attention to using an older version of Python to ensure package compatibility:
 
     .. code-block:: console
