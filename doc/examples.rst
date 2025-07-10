@@ -120,6 +120,7 @@ Outputs
 The folders where the results are stored are called “OutputFigures” and “Outputs”. These folders are automatically created by Hydrobricks in the same path where the others are stored.
 
 Outputs list: 
+    something
     
     - “socont_...” are the files which record all the intermediate simulations before the best simulation (recorded in “best_fit_...”) is identified. Useless, except in the case of debugging. 
     
