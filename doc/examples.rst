@@ -20,10 +20,15 @@ So always make sure that the EPSG is 2056.
 
 First step: 
     Create a SHP file of the outlet location using the map of Switzerland
+
     - Layer ➔ Create Layer ➔ New Shapefile Layer
+
     - Specify the name (example TR_intake_EPSG2056) and save it in the folder “Inatkes_locations”
+
     - Geometry type “Point” and EPSG:2056
+
     - Right-click on the newly created Layer ➔ Toggle Editing ➔ Add point feature
+    
     - Click on the point where there is the outlet/water intake
 
 Second step: 
