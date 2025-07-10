@@ -106,23 +106,30 @@ Step 2: Install Hydrobricks
 ----------------------------
 
 If the computer deos not yet have Hydrobricks installed we can make it run with the following steps in the Anaconda prompt:
-
     - We create a new environment in which we install all the dependencies needed to run Hydrobricks. Pay attention to using an older version of Python to ensure package compatibility:
 
-    .. conda create -n YOUR_ENVIRONMENT_NAME python=3.11
+    .. code-block:: console
+        
+        conda create -n YOUR_ENVIRONMENT_NAME python=3.11
 
     - Activate the newly created environment for running Hydrobricks. Ensure to activate said environment every time you want to use the model:
 
-    .. conda activate YOUR_ENVIRONMENT_NAME
+    .. code-block:: console
+        
+        conda activate YOUR_ENVIRONMENT_NAME
 
     - If you set up Hydrobricks for the first time in an environment, you need to install the necessary packages using the following line of code in the Anaconda prompt:
 
-    .. pip install numpy pandas matplotlib xarray netCDF4 h5py pyproj rasterio geopandas shapely fiona rioxarray spotpy xarray-spatial pyarrow
+    .. code-block:: console
+        
+        pip install numpy pandas matplotlib xarray netCDF4 h5py pyproj rasterio geopandas shapely fiona rioxarray spotpy xarray-spatial pyarrow
 
     - Install Hydrobricks and Spyder:
 
-    .. pip install hydrobricks
-    .. pip install spyder
+    .. code-block:: console
+        
+        pip install hydrobricks
+        pip install spyder
 
 
 
