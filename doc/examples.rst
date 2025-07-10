@@ -120,8 +120,6 @@ Outputs
 The folders where the results are stored are called “OutputFigures” and “Outputs”. These folders are automatically created by Hydrobricks in the same path where the others are stored.
 
 Outputs list: 
-    something
-    
     - “socont_...” are the files which record all the intermediate simulations before the best simulation (recorded in “best_fit_...”) is identified. Useless, except in the case of debugging. 
     
     - “forcing.nc”: Netcdf file containing precipitation, temperature, potential evapotranspiration (PET) and radiation if you run a Hock model. This is a file for Hydrobricks which is only useful in debugging, or to avoid recalculating the forcing each time. More information: https://hydrobricks.readthedocs.io/en/latest/doc/basics.html#forcing-data.
@@ -138,7 +136,7 @@ Outputs list:
     
     - “bootstrapping_stats.csv”: the values obtained when we 1) block-bootstrapped the flows by taking one-year blocks to respect the seasonality of the flow in order to create 100 new series, 2) applied the NSE (Nash-Sutcliffe model efficiency criteria) and KGE (Kling-Gupta model efficiency criteria) to each of these series to compare them with the observed flow, 3) averaged these 100 NSE and KGE values (separately). This gives us a reference to know whether the KGE and NSE values obtained from our simulations are good or not.
 
-“best_fit_simulated_discharge_SCEUA…”: all the files starting with “best_fit_simulated_discharge” are files in which the flow resulting from simulations is saved. “SCEUA” is the name of the convergence algorithm used to obtain the best result (see Argentin et al., 2024).
+    - “best_fit_simulated_discharge_SCEUA…”: all the files starting with “best_fit_simulated_discharge” are files in which the flow resulting from simulations is saved. “SCEUA” is the name of the convergence algorithm used to obtain the best result (see Argentin et al., 2024).
     
     - “melt:degree_day” means that the TI simple melt model has been used
     
@@ -146,7 +144,7 @@ Outputs list:
     
     - “melt:temperature_index” for the radiation-based melting model (Hock model)
 
-Lastly, there is the metric used to compare the results of each run: nse for Nash-Sutcliffe efficiency, kge_2012 for King-Gupta efficiency (2012) etc. The names correspond to those given by Hydroerr (https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html).
+    - Lastly, there is the metric used to compare the results of each run: nse for Nash-Sutcliffe efficiency, kge_2012 for King-Gupta efficiency (2012) etc. The names correspond to those given by Hydroerr (https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html).
     
     - “best_fit_simulation_stats_SCEUA”: it shows the simulation score and the associated parameters. The simulation score is in the first line (Minimal objective value). This is the value of the NSE or KGE depending on the metric chosen for the simulation. Below, you'll find the parameters here (https://hydrobricks.readthedocs.io/en/latest/doc/basics.html#parameters ) and in table 2 of Argentin et al., 2024. The number of parameters and the parameters change depending on the font model used.
     
