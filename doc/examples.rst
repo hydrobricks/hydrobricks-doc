@@ -16,7 +16,7 @@ Step 1: Preprocess the data in QGIS
 The data preprocessing (outlet, DEM clipping, filling, watershed delineation) is performed in QGIS.
 
 See detailed instructions here:  
-:doc:`preprocessing`
+:doc:`altroclima_preprocessing`
 
 
 Step 2: Install Hydrobricks
@@ -66,4 +66,4 @@ Outputs
 Hydrobricks produces a variety of outputs stored in automatically created folders.
 
 See detailed output descriptions here:  
-:doc:`outputs`
+:doc:`altroclima_outputs`
