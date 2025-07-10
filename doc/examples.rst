@@ -57,13 +57,13 @@ Fourth step:
 Fifth step: 
     Correct manually the location of the outlet point(s) so that they match the stream network. If the location of the water intake (made in step one) is not exactly on the stream network, create a new .shp file that is exactly in the middle of the stream network pixel
     
-    - Layer  Create Layer  New Shapefile Layer
+    - Layer ➔ Create Layer ➔ New Shapefile Layer
     
     - Specify the name (example TR_outlet_EPSG2056) and save it in the folder “Outlet_locations_on_dhm25”
     
     - Geometry type “Point” and EPSG:2056
     
-    - Right-click on the newly created Layer  Toggle Editing  Add point feature 
+    - Right-click on the newly created Layer ➔ Toggle Editing ➔ Add point feature 
     
     - Click on the point where there is the water intake
 
@@ -72,7 +72,7 @@ Sixth step:
     
     - Right-click on the new Outlet.shp ➔ Open Attribute table ➔ Open Field Calculator
     
-    - In the middle panel, select Geometry ➔ Double-click on $x ➔ Set Output field name to “X-coord”, and Output field type to “Decimal number (real)”. Do the same for Y
+    - In the middle panel, select Geometry ➔ Double-click on $x ➔ Set Output field name to “X-coord”, and Output field type to “Decimal number (real)”. Do the same for Y.
 
 Seventh step: 
     Generate Watershed of the Stream Network
