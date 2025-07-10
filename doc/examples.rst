@@ -13,6 +13,11 @@ modulable and allow for different catchment inputs.
 Step 1: Preprocess the data in QGIS
 -----------------------------------
 
+The data preprocessing (outlet, DEM clipping, filling, watershed delineation) is performed in QGIS.
+
+See detailed instructions here:  
+:doc:`preprocessing`
+
 Step that produces the SHP files and .tif files inherent to the basin to be analysed and which 
 will be used by Hydrobricks. This procedure, for the moment, is described to be performed in QGIS. 
 All the following steps will be done with the new Swiss coordinate system EPSG:2056 - CH1903+ / LV95.
@@ -106,7 +111,7 @@ Step 2: Install Hydrobricks
 ----------------------------
 If the computer deos not yet have Hydrobricks installed we can make it run with the following steps in the Anaconda prompt:
     
-- We create a new environment in which we install all the dependencies needed to run Hydrobricks. Pay attention to using an older version of Python to ensure package compatibility:
+- We create a new environment in which we install all the dependencies needed to run Hydrobricks. Pay attention to using an older version of Python (e.g. Python v3.11) to ensure package compatibility:
 
 .. code-block:: console
     
