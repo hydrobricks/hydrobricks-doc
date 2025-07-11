@@ -1,3 +1,5 @@
+.. _altroclima_preprocessing:
+
 Preprocessing the Input Data
 ============================
 
