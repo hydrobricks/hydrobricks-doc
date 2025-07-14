@@ -697,6 +697,15 @@ It contains three important global attributes:
 * ``labels_distributed``: The labels of the distributed elements (fluxes and states)
 * ``labels_land_covers``: The labels of the land covers
 
+The attributes stored in the file can be found using the following command:
+
+.. code-block:: python
+
+    # Load the netcdf file
+    results = hb.Results(path/to/netcdf_results_file)
+    # Print the attributes
+    print(results.results.attrs)
+
 For example, for the GSM-Socont model with two different glacier types provides
 the following attributes:
 
