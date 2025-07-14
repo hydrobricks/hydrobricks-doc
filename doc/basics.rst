@@ -450,9 +450,16 @@ Therefore, when creating an instance of this class, the hydro units must be prov
 .. code-block:: python
 
    forcing = hb.Forcing(hydro_units)
+   
+Two types of input data can be used for forcing data:
+1. Loading of meteorological station data and spatialization through lapse rates
+2. Loading of gridded NetCDF data and spatialization
+
+Loading of meteorological station data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Loading forcing data from a csv file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""""""""""""""
 
 The data, for example station time series, can the be loaded from csv files.
 Multiple files can be loaded successively, or a single file can contain different
@@ -496,7 +503,7 @@ A csv file containing forcing data can look like the following example:
 
 
 Spatialization
-^^^^^^^^^^^^^^
+""""""""""""""
 
 The spatialization operation needs to be specified to generate per-unit timeseries.
 This definition needs information on the variable, the method to use and its parameters:
