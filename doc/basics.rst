@@ -215,7 +215,7 @@ reflect diurnal variation and terrain shading.
 .. _melt-models:
 
 Melt Models
-===========
+-----------
 
 Three melt models are currently available in **Hydrobricks** to simulate snow and 
 glacier melt processes. These models are designed to address varying spatial 
@@ -228,9 +228,6 @@ Available melt models:
 * **degree_day_aspect**: aspect-based temperature-index model (ATI)
 * **temperature_index**: Hock’s temperature-index model (HTI)
 
-Model configuration
--------------------
-
 The melt model is specified when instantiating the :code:`Socont` hydrological 
 model. For example:
 
@@ -242,7 +239,7 @@ model. For example:
                     snow_melt_process=melt_model)
 
 Model descriptions
-------------------
+^^^^^^^^^^^^^^^^^^
 
 Melt processes in snow- and glacier-dominated catchments are typically modeled 
 using temperature-index (TI) approaches due to limited availability of detailed
@@ -315,7 +312,7 @@ radiation data is too long to compute. For more details, refer to Argentin et al
 (2025).
 
 References
-----------
+^^^^^^^^^^
 
 - Argentin, F., Horton, P., Schaefli, B., et al. (2025). *Hydrobricks: a modular framework for spatially distributed hydrological modeling*. Hydrology and Earth System Sciences.
 - Hock, R. (1999). *A distributed temperature-index ice- and snowmelt model including potential direct solar radiation*. J. Glaciol.
@@ -571,24 +568,6 @@ Then, the outlet discharge (in mm/d) can be retrieved:
 .. code-block:: python
 
    sim_ts = socont.get_outlet_discharge()
-   
-
-Note on the warmup period
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-The warmup period, also called the spin-up period, is a period of 1 or 2 years 
-used to initialize the hydrological model. The hydrological model can be seen as
-a connected set of water reservoirs (the snow reservoir, the baseflow reservoir,
-etc.). At the beginning of the simulation, all reservoirs are empty. The warmup
-period is used to fill those reservoirs (notably the snow reservoir) with water.
-As a consequence, the snow content and discharge simulated in these years are
-usually underestimated and should not be considered for analysis, calibration
-or evaluation. 
-
-
-More outputs
-^^^^^^^^^^^^
 
 
 More outputs can be extracted and saved to a netCDF file for further analysis:
@@ -610,6 +589,20 @@ These values are then used as initial state variables for the next run:
 When the model is executed multiple times successively, it clears its previous states.
 When the states initialization provided by ``initialize_state_variables()`` has been
 used, the model resets its state variables to these saved values.
+
+
+Note on the warmup period
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+The warmup period, also called the spin-up period, is a period of 1 or 2 years 
+used to initialize the hydrological model. The hydrological model can be seen as
+a connected set of water reservoirs (the snow reservoir, the baseflow reservoir,
+etc.). At the beginning of the simulation, all reservoirs are empty. The warmup
+period is used to fill those reservoirs (notably the snow reservoir) with water.
+As a consequence, the snow content and discharge simulated in these years are
+usually underestimated and should not be considered for analysis, calibration
+or evaluation. 
 
 
 Evaluation
