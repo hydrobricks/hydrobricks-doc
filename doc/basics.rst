@@ -134,11 +134,19 @@ and the radiation.
 
 Discretizing by elevation is sufficient for the melt model ``'degree_day'``, but a 
 discretization by elevation and aspect is required when using the melt model 
-``'degree_day_aspect'`` and a discretization by elevation and radiation is reauired
-for the melt model ``'temperature_index'``.
+``'degree_day_aspect'`` and a discretization by elevation and radiation is required
+for the melt model ``'temperature_index'``. See :ref:`melt models<melt-models>`.
 
-For example, to discretize the study area spanning an elevation range of 1900 m to
-2900 m into elevation bands of 40 m of height and aspect categories, we use: 
+We recommand that the glacier spans 10 elevation bands (Schaefli et al., 2005). 
+This gives a hint for the optimal elevation band height. Furthermore, the minimum
+and maximum band elevation should be slightly smaller, respectively bigger the
+elevations found in the catchment.
+
+For example, to discretize a study area spanning an elevation range of 1912 m to
+2893 m, with a glacier ranging from 2480 m to 2890 m, we use a minimum band 
+elevation of 1900 m, a maximum band elevation of 2900 m and elevation bands of 
+40 m of height. We also choose to discretize by aspect.
+This gives the following function call: 
 
 .. code-block:: python
    
@@ -150,9 +158,12 @@ For example, to discretize the study area spanning an elevation range of 1900 m 
                             min_elevation=1900, 
                             max_elevation=2900, 
                             )
+                            
 
-We recommand that the glacier spans 10 elevation bands. This gives a hint for 
-the optimal elevation band height. 
+References
+""""""""""
+
+- Schaefli, B., Hingray, B., Niggli, M., & Musy, A. (2005). A conceptual glacio-hydrological model for high mountainous catchments. Hydrology and Earth System Sciences, 9(1-2), 95–109. https://doi.org/10.5194/hess-9-95-2005
 
 Computing the radiation for discretization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -529,8 +540,8 @@ In such case, one must add a data parameter as in the following example:
 The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
 The methods and parameters are described in :ref:`the Python API <api_forcing>`.
 
-Loading forcing data from a netcdf file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Loading of gridded netcdf file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Forcing data can also be loaded from NetCDF files, that are very common in
 the meteorological modeling field.
