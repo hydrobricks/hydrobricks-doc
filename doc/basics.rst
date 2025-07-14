@@ -703,45 +703,45 @@ the following attributes:
 .. code-block:: text
 
    labels_aggregated =
-      "glacier-area-rain-snowmelt-storage:content",
-      "glacier-area-rain-snowmelt-storage:outflow:output",
-      "glacier-area-icemelt-storage:content",
-      "glacier-area-icemelt-storage:outflow:output",
+      "glacier_area_rain_snowmelt_storage:content",
+      "glacier_area_rain_snowmelt_storage:outflow:output",
+      "glacier_area_icemelt_storage:content",
+      "glacier_area_icemelt_storage:outflow:output",
       "outlet";
 
    labels_distributed =
       "ground:content",
       "ground:infiltration:output",
       "ground:runoff:output",
-      "glacier-ice:content",
-      "glacier-ice:outflow-rain-snowmelt:output",
-      "glacier-ice:melt:output",
-      "glacier-debris:content",
-      "glacier-debris:outflow-rain-snowmelt:output",
-      "glacier-debris:melt:output",
-      "ground-snowpack:content",
-      "ground-snowpack:snow",
-      "ground-snowpack:melt:output",
-      "glacier-ice-snowpack:content",
-      "glacier-ice-snowpack:snow",
-      "glacier-ice-snowpack:melt:output",
-      "glacier-debris-snowpack:content",
-      "glacier-debris-snowpack:snow",
-      "glacier-debris-snowpack:melt:output",
-      "slow-reservoir:content",
-      "slow-reservoir:et:output",
-      "slow-reservoir:outflow:output",
-      "slow-reservoir:percolation:output",
-      "slow-reservoir:overflow:output",
-      "slow-reservoir-2:content",
-      "slow-reservoir-2:outflow:output",
-      "surface-runoff:content",
-      "surface-runoff:outflow:output";
+      "glacier_ice:content",
+      "glacier_ice:outflow_rain_snowmelt:output",
+      "glacier_ice:melt:output",
+      "glacier_debris:content",
+      "glacier_debris:outflow_rain_snowmelt:output",
+      "glacier_debris:melt:output",
+      "ground_snowpack:content",
+      "ground_snowpack:snow",
+      "ground_snowpack:melt:output",
+      "glacier_ice_snowpack:content",
+      "glacier_ice_snowpack:snow",
+      "glacier_ice_snowpack:melt:output",
+      "glacier_debris_snowpack:content",
+      "glacier_debris_snowpack:snow",
+      "glacier_debris_snowpack:melt:output",
+      "slow_reservoir:content",
+      "slow_reservoir:et:output",
+      "slow_reservoir:outflow:output",
+      "slow_reservoir:percolation:output",
+      "slow_reservoir:overflow:output",
+      "slow_reservoir_2:content",
+      "slow_reservoir_2:outflow:output",
+      "surface_runoff:content",
+      "surface_runoff:outflow:output";
 
    labels_land_covers =
       "ground",
-      "glacier-ice",
-      "glacier-debris";
+      "glacier_ice",
+      "glacier_debris";
 
 Then, it provides the following variables:
 
