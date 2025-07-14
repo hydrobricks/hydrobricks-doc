@@ -6,10 +6,23 @@ Advanced features
 Land cover evolution
 --------------------
 
-The land cover types in hydrobricks are defined by the user
+The land cover types in hydrobricks are defined by the user 
 (see the :ref:`hydro units section <spatial-structure>`).
-Each hydro unit is thus internally defined by a total area and fractional land covers.
-These land covers can have a dynamic evolution, externally driven.
+Each hydro unit is thus internally defined by a total area and fractional land
+covers. These land covers can have a dynamic evolution. This evolution can be
+externally driven or internally computed.
+
+Hydrobricks offers the following options:
+
+1. Evolution set through csv file
+2. Evolution computed from shapefiles
+3. Evolution computed from shapefiles and delta-h method
+4. Evolution computed from ice thickness and delta-h method
+
+
+Evolution set through csv file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 One can provide the model with a timeseries of dates and new land cover areas, such as:
 
 .. code-block:: python
