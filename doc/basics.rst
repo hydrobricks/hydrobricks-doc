@@ -759,7 +759,7 @@ Then, it provides the following variables:
    * the state variables (mm) such as ``content`` or ``snow`` elements represent
      the water stored in the respective reservoirs. In this case, this value is not
      weighted and cannot be summed over the catchment, but must be weighted
-     by the land cover fraction and the relative hydro unit area.
+     by the land cover fraction and the relative hydro unit area. 
 * ``land_cover_fractions`` (2D, optional): the temporal evolution of the land cover
   fractions.
 
