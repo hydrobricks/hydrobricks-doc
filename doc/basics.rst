@@ -191,7 +191,26 @@ The radiation can then be used to discretize the catchment:
                             radiation_distance=65, 
                             min_radiation=0, 
                             max_radiation=260)
+                            
+Radiation is calculated using:
 
+.. math::
+
+   I_{\mathrm{pot}} = I_0 \left( \frac{R_m}{R} \right)^2 \Psi_a^{\left( \frac{P}{P_0 \mathrm{cos}(Z)} \right)} \mathrm{cos}(\theta)
+
+where:
+
+- :math:`I_0` is the solar constant (1368 W m⁻²),
+- :math:`\left( R_m/R \right)^2` is the Earth's orbit's eccentricity correction factor,
+- :math:`R`, :math:`R_m` are the instantaneous and the mean Sun-Earth distances,
+- :math:`\Psi_a` is the mean atmospheric clear-sky transmissivity,
+- :math:`P`, :math:`P_0` are the local and the mean sea-level atmospheric pressures,
+- :math:`R`, :math:`R_m` are Sun–Earth distances,
+- :math:`Z` is the local zenith angle,
+- :math:`\theta` is the angle of incidence between the normal to the grid slope and the solar beam.
+
+Radiation is calculated every 15 minutes and aggregated daily to accurately
+reflect diurnal variation and terrain shading.
 .. _parameters:
 
 Parameters
