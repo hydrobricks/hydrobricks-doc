@@ -320,7 +320,6 @@ References
 - Argentin, F., Horton, P., Schaefli, B., et al. (2025). *Hydrobricks: a modular framework for spatially distributed hydrological modeling*. Hydrology and Earth System Sciences.
 - Hock, R. (1999). *A distributed temperature-index ice- and snowmelt model including potential direct solar radiation*. J. Glaciol.
 - Rango, A., & Martinec, J. (1995). *Revisiting the degree-day method for snowmelt computations*. Water Resources Bulletin.
-- 
 
 .. _parameters:
 
@@ -572,6 +571,25 @@ Then, the outlet discharge (in mm/d) can be retrieved:
 .. code-block:: python
 
    sim_ts = socont.get_outlet_discharge()
+   
+
+Note on the warmup period
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+The warmup period, also called the spin-up period, is a period of 1 or 2 years 
+used to initialize the hydrological model. The hydrological model can be seen as
+a connected set of water reservoirs (the snow reservoir, the baseflow reservoir,
+etc.). At the beginning of the simulation, all reservoirs are empty. The warmup
+period is used to fill those reservoirs (notably the snow reservoir) with water.
+As a consequence, the snow content and discharge simulated in these years are
+usually underestimated and should not be considered for analysis, calibration
+or evaluation. 
+
+
+More outputs
+^^^^^^^^^^^^
+
 
 More outputs can be extracted and saved to a netCDF file for further analysis:
 
