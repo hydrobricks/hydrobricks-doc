@@ -19,6 +19,13 @@ Hydrobricks offers the following options:
 3. Evolution computed from shapefiles and delta-h method
 4. Evolution computed from ice thickness and delta-h method
 
+The definition of a land cover evolution does not replace the original 
+definition of the hydro units, which need to be also provided to the function.
+The areas provided in the definition of the hydro units are the starting point
+of the model, and these changes will be enforced in due time. However, if some
+changes are defined for dates prior to the start of the modelling period, these
+changes will also be applied.
+
 
 Evolution set through csv file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,12 +34,12 @@ One can provide the model with a timeseries of dates and new land cover areas, s
 
 .. code-block:: python
 
-   changes = behaviours.BehaviourLandCoverChange()
+   changes = actions.ActionLandCoverChange()
    changes.load_from_csv(
        '/path/to/surface_changes_glacier_debris.csv',
        hydro_units, area_unit='km2', match_with='elevation'
    )
-   model.add_behaviour(changes)
+   model.add_action(changes)
 
 The definition of a land cover evolution does not replace the original definition of
 the hydro units, which need to be also provided to the function.
@@ -79,3 +86,9 @@ time series of the area (here in km2) for every date given above.
 
 There is no need to specify the corresponding changes in the generic ``ground`` land
 cover as it will be automatically computed to preserve the total hydro unit area.
+
+
+Evolution computed from shapefiles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
