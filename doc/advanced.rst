@@ -26,6 +26,9 @@ of the model, and these changes will be enforced in due time. However, if some
 changes are defined for dates prior to the start of the modelling period, these
 changes will also be applied.
 
+The two last options are specific to glacier land covers. They do not handle
+debris covers on glaciers.
+
 .. _first-option:
 
 Evolution set through csv file
@@ -142,5 +145,65 @@ For example:
                       '/path/to/Glacier_debris_2008.shp',
    		      '/path/to/Glacier_debris_2010.shp', 
    		      '/path/to/Glacier_debris_2016.shp']
+
+
+.. _third-option:
+
+Evolution computed from shapefiles and delta-h method
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The delta-h method from Huss et al. (2010), implemented by Seibert et al. (2018) is also available in Hydrobricks.
+A contrario to the two first methods, in the delta-h approach the glacial evolution is not forced from the outside but decided by the modeled melt of the glacier.
+Hydrobricks compute the amount the glacier melted in the year, and retrieves the corresponding glacier area from the lookup table.
+This makes this method and the following most appropriate for future discharge modeling or past discharge data when no glacier extent timeseries are available, whereas the two first methods are most appropriate when glacier timeseries of glacier extents are available.
+
+.. code-block:: python
+
+   glacier_evolution = preprocessing.GlacierEvolutionDeltaH()
+   glacier_df = glacier_evolution.compute_initial_ice_thickness(
+   	study_area, ice_thickness=glacier_thickness,
+   	elevation_bands_distance=elev_distance / 10)
+   glacier_evolution.compute_lookup_table()
+   
+The glacier lookup table ``glacier_evolution`` can then be linked to Hydrobricks.
+At the beginning of October, the hydrological model will sum up all the glacier
+mass loss that occurred during the hydrological year and will modify the land
+cover according to the areas stored in the glacier lookup table: 
+   
+.. code-block:: python
+    
+   changes = actions.ActionGlacierEvolutionDeltaH()
+   changes.load_from(glacier_evolution, land_cover='glacier',
+                     update_month='October')
+
+This method also creates a dataframe that can then be exported as csv files, and
+reloaded in if needed using the :ref:`first option <first-option>`:
+
+.. code-block:: python
+
+   glacier_df.to_csv('/path/to/surface_changes_glacier.csv', index=False)
+            
+The glacier lookup table can be saved as a csv file:
+
+.. code-block:: python
+            
+   glacier_evolution.save_as_csv('/path/to/results/folder/')
+
+
+References
+""""""""""
+
+- Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences.
+- Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences.
+
+Note: Options and compatibility with radiation/aspect discretization
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+- 
+- 
+- 
+
+
+
 
 
