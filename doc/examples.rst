@@ -49,17 +49,6 @@ If the computer deos not yet have Hydrobricks installed we can make it run with 
     pip install spyder
 
 
-Step 3: Train the Model
------------------------
-
-The training script uses the output from `load_data.py`.
-
-.. literalinclude:: ../examples/workflow/train_model.py
-   :language: python
-   :caption: examples/workflow/train_model.py
-   :linenos:
-
-
 Outputs
 --------
 
