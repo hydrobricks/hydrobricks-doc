@@ -157,6 +157,8 @@ A contrario to the two first methods, in the delta-h approach the glacial evolut
 Hydrobricks compute the amount the glacier melted in the year, and retrieves the corresponding glacier area from the lookup table.
 This makes this method and the following most appropriate for future discharge modeling or past discharge data when no glacier extent timeseries are available, whereas the two first methods are most appropriate when glacier timeseries of glacier extents are available.
 
+We recommend 10 glacier elevation bands per HRU elevation band.
+
 .. code-block:: python
 
    glacier_evolution = preprocessing.GlacierEvolutionDeltaH()
@@ -189,12 +191,34 @@ The glacier lookup table can be saved as a csv file:
             
    glacier_evolution.save_as_csv('/path/to/results/folder/')
    
+   
+
+.. _fourth-option:
+
+Evolution computed from ice thickness and delta-h method
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+References
+""""""""""
+
+- Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences.
+- Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences.
+
+Note: Options and compatibility with radiation/aspect discretization
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+- 
+- 
+- 
+
 
 
 .. _glacier-thickness-options:
    
 Glacier thickness-related options
-"""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The glacier evolution methods require appropriate configuration of the following two options:
 
@@ -222,7 +246,7 @@ These options must be set depending on the method used for glacier evolution:
         glacier_infinite_storage = False
         snow_ice_transformation = True
 
-They are specified during model initialization, for example:
+They are specified during model initialization:
 
 .. code-block:: python
 
@@ -275,17 +299,7 @@ Resources:
 References
 """"""""""
 
-- Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences.
-- Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences.
-
-Note: Options and compatibility with radiation/aspect discretization
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-- 
-- 
-- 
-
-
+- Bernhardt, M., & Schulz, K. (2010). SnowSlide: A simple routine for calculating gravitational snow transport. Geophysical Research Letters.
 
 
 
