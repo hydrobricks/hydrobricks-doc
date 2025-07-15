@@ -229,6 +229,47 @@ They are specified during model initialization, for example:
    socont = models.Socont(...,
                           glacier_infinite_storage = glacier_infinite_storage,
                           snow_ice_transformation = snow_ice_transformation)
+                          
+                          
+.. _snow-redistribution:
+   
+Snow redistribution option
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. figure:: images/without_snow_redistribution.png
+   :alt: Snow height without snow redistribution
+   :figwidth: 40%
+   :align: center
+   
+.. figure:: images/with_snow_redistribution.png
+   :alt: Snow height with snow redistribution
+   :figwidth: 40%
+   :align: center
+
+Hydrobricks supports a snow redistribution mechanism based on the SnowSlide
+algorithm (Bernhardt & Schulz, 2010). This option simulates gravitational snow
+transport and can help improve snow distribution modeling across elevation 
+bands and avoid 'snow towers'.
+
+Default example:
+
+.. code-block:: python
+
+   socont = models.Socont(soil_storage_nb = 2,
+   			  snow_redistribution = 'transport:snow_slide')
+
+In addition, you must provide a connectivity CSV file describing the lateral
+redistribution pathways between hydro units:
+
+.. code-block:: python
+
+   hydro_units.set_connectivity(/path/to/connectivity.csv)
+
+Resources:
+    
+    `Working example implementation <https://github.com/hydrobricks/hydrobricks/blob/feature/glacier-evolution/python/examples/basics/snow_redistribution.py>`_
+    
+    `Script to compute the connectivity CSV <https://github.com/hydrobricks/hydrobricks/blob/main/python/examples/preprocessing/compute_lateral_connectivity.py>`_
 
 
 References
