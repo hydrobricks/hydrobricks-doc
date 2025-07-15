@@ -188,6 +188,47 @@ The glacier lookup table can be saved as a csv file:
 .. code-block:: python
             
    glacier_evolution.save_as_csv('/path/to/results/folder/')
+   
+
+
+.. _glacier-thickness-options:
+   
+Glacier thickness-related options
+"""""""""""""""""""""""""""""""""
+
+The glacier evolution methods require appropriate configuration of the following two options:
+
+    ``glacier_infinite_storage``: Boolean flag indicating whether glaciers have unlimited thickness (i.e., no thinning due to melt).
+
+    ``snow_ice_transformation``: Rate at which snow transforms into ice, expressed in mm/day. The default value is 0.002 mm/day.
+
+These options must be set depending on the method used for glacier evolution:
+
+    For methods 1 and 2 (:ref:`CSV input <first-option>` or 
+    :ref:`shapefile input <second-option>`), the computation only takes into
+    account the area, and not the ice thickness. As such:
+
+    .. code-block:: python
+
+        glacier_infinite_storage = True
+        snow_ice_transformation = False
+
+    For methods 3 and 4 (:ref:`shapefiles with delta-h <third-option>` or 
+    :ref:`ice thickness with delta-h <fourth-option>`), the computation relies
+    on the ice thickness to compute the area. As such:
+	
+    .. code-block:: python
+    
+        glacier_infinite_storage = False
+        snow_ice_transformation = True
+
+They are specified during model initialization, for example:
+
+.. code-block:: python
+
+   socont = models.Socont(...,
+                          glacier_infinite_storage = glacier_infinite_storage,
+                          snow_ice_transformation = snow_ice_transformation)
 
 
 References
