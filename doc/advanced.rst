@@ -26,6 +26,7 @@ of the model, and these changes will be enforced in due time. However, if some
 changes are defined for dates prior to the start of the modelling period, these
 changes will also be applied.
 
+.. _first-option:
 
 Evolution set through csv file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,12 +42,6 @@ One can provide the model with a timeseries of dates and new land cover areas, s
    )
    model.add_action(changes)
 
-The definition of a land cover evolution does not replace the original definition of
-the hydro units, which need to be also provided to the function.
-The areas provided in the definition of the hydro units are the starting point of the
-model, and these changes will be enforced in due time.
-However, if some changes are defined for dates prior to the start of the modelling
-period, these changes will also be applied.
 The function ``changes.load_from_csv()`` can be called multiple times for different files.
 The corresponding csv file must contain the name of the land cover to change on the
 first row (for example here ``glacier_debris``), the dates of these changes on the
@@ -88,7 +83,64 @@ There is no need to specify the corresponding changes in the generic ``ground`` 
 cover as it will be automatically computed to preserve the total hydro unit area.
 
 
+.. _second-option:
+
 Evolution computed from shapefiles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+One can provide the model with a timeseries of dates and shapefiles, such as:
+
+.. code-block:: python
+
+   times = ['2008-01-01', '2010-01-01', '2016-01-01']
+   ice_glaciers = ['/path/to/Glacier_ice_2008.shp',
+   		   '/path/to/Glacier_ice_2010.shp', 
+   		   '/path/to/Glacier_ice_2016.shp']
+   debris_glaciers = ['/path/to/Glacier_debris_2008.shp',
+   		      '/path/to/Glacier_debris_2010.shp', 
+   		      '/path/to/Glacier_debris_2016.shp']
+   changes, changes_df = actions.ActionLandCoverChange.create_action_for_glaciers(
+       study_area, times, ice_glaciers, debris_glaciers, 
+       with_debris=True, method='raster', interpolate_yearly=True)
+   model.add_action(changes)
+
+This method also creates a dataframe that can then be exported as csv files, and
+reloaded in if needed using the :ref:`first option <first-option>`:
+
+.. code-block:: python
+
+   changes_df[0].to_csv('/path/to/surface_changes_glacier_ice.csv', index=False)
+   changes_df[1].to_csv('/path/to/surface_changes_glacier_debris.csv', index=False)
+   changes_df[2].to_csv('/path/to/surface_changes_ground.csv', index=False)
+   
+And the hydrological units can also separately be initialized using the
+following lines:
+
+.. code-block:: python
+
+   hyd_units.initialize_from_land_cover_change('glacier_ice', changes_df[0])
+   hyd_units.initialize_from_land_cover_change('glacier_debris', changes_df[1])
+
+Tips and tricks
+"""""""""""""""
+
+If information about land cover evolution is only available for a date after
+the beginning of the simulation period, it is possible to assume a constant
+land cover by duplicating the first data and assigning it the simulation 
+begining date. This evolution, is of course, debatable...
+
+For example:
+
+.. code-block:: python
+
+   times = ['2005-01-01', '2008-01-01', '2010-01-01', '2016-01-01']
+   ice_glaciers = ['/path/to/Glacier_ice_2008.shp',
+                   '/path/to/Glacier_ice_2008.shp',
+   		   '/path/to/Glacier_ice_2010.shp', 
+   		   '/path/to/Glacier_ice_2016.shp']
+   debris_glaciers = ['/path/to/Glacier_debris_2008.shp',
+                      '/path/to/Glacier_debris_2008.shp',
+   		      '/path/to/Glacier_debris_2010.shp', 
+   		      '/path/to/Glacier_debris_2016.shp']
 
 
