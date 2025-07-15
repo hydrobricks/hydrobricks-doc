@@ -161,11 +161,13 @@ We recommend 10 glacier elevation bands per HRU elevation band.
 
 .. code-block:: python
 
+   elev_distance = 40 # 40 m HRU elevation band
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    glacier_evolution = preprocessing.GlacierEvolutionDeltaH()
    glacier_df = glacier_evolution.compute_initial_ice_thickness(
-   	study_area, ice_thickness=glacier_thickness,
-   	elevation_bands_distance=elev_distance / 10)
-   glacier_evolution.compute_lookup_table()
+   	study_area, ice_thickness = glacier_thickness,
+   	elevation_bands_distance = elev_distance / 10)
+   glacier_evolution.compute_lookup_table(update_width=False)
    
 The glacier lookup table ``glacier_evolution`` can then be linked to Hydrobricks.
 At the beginning of October, the hydrological model will sum up all the glacier
