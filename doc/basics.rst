@@ -11,7 +11,7 @@ The bricks are any component that can contain water, such as a snowpack, a glaci
 or a ground reservoir. They can contain one or more water containers.
 For example, the snowpack has a snow and a liquid water container.
 These bricks are assigned with processes that can extract water.
-Processes are for example snowmelt, ET, or outflow according some behaviour.
+Processes are for example snowmelt, evapotranspiration (ET), or outflow according to the behaviour.
 The water extracted from the bricks by the processes are then transferred to fluxes,
 which deliver it to other bricks, the atmosphere, or the outlet.
 
@@ -32,7 +32,16 @@ Spatial structure
 
 The catchment is discretized into sub units named hydro units.
 These hydro units can represent HRUs (hydrological response units), pixels,
-elevation bands, etc. They can be either loaded from a file or generated from a DEM.
+elevation bands, etc. They can be either loaded from a file or generated from a DEM
+based on topography, aspect and radiation.
+
+.. image:: f16.png
+   :alt: Example of discretization of a catchment into (a) elevation bands, 
+   (b) aspect, and (c) radiation. Aspect and radiation discretizations are
+   then combined with elevation bands to form HRUs.
+   Argentin, Horton, et al. (2025) https://doi.org/10.5194/hess-29-1725-2025
+   :width: 600px
+   :align: center
 
 Loading hydro units from a csv file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +129,205 @@ It can look like the following example.
 Generating hydro units from a DEM
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+The hydro units can also be generated automatically from the topography, the aspect
+and the radiation.
 
+Discretizing by elevation is sufficient for the melt model ``'degree_day'``, but a 
+discretization by elevation and aspect is required when using the melt model 
+``'degree_day_aspect'`` and a discretization by elevation and radiation is required
+for the melt model ``'temperature_index'``. See :ref:`melt models<melt-models>`.
+
+We recommand that the glacier spans 10 elevation bands (Schaefli et al., 2005). 
+This gives a hint for the optimal elevation band height. Furthermore, the minimum
+and maximum band elevation should be slightly smaller, respectively bigger the
+elevations found in the catchment.
+
+For example, to discretize a study area spanning an elevation range of 1912 m to
+2893 m, with a glacier ranging from 2480 m to 2890 m, we use a minimum band 
+elevation of 1900 m, a maximum band elevation of 2900 m and elevation bands of 
+40 m of height. We also choose to discretize by aspect.
+This gives the following function call: 
+
+.. code-block:: python
+   
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.discretize_by(['elevation', 'aspect'], 
+                            elevation_method='equal_intervals', 
+                            elevation_distance=40,
+                            min_elevation=1900, 
+                            max_elevation=2900, 
+                            )
+                            
+
+References
+""""""""""
+
+- Schaefli, B., Hingray, B., Niggli, M., & Musy, A. (2005). A conceptual glacio-hydrological model for high mountainous catchments. Hydrology and Earth System Sciences, 9(1-2), 95–109. https://doi.org/10.5194/hess-9-95-2005
+
+Computing the radiation for discretization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The daily mean potential clear-sky direct solar radiation is computed at the 
+DEM surface [W/m²] using Hock (1999)'s equation. By default, the radiation
+resolution will be the DEM resolution. If you use a high resolution DEM, make sure
+to set a lower resolution for the radiation, as it will be computationnally expensive.
+
+.. code-block:: python
+   
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.calculate_daily_potential_radiation('path/to/file', resolution)
+
+Since the radiation computation takes a few minutes and is not year-specific, it can 
+also be saved and loaded back in memory. By default, the name of the radiation file
+will be ``'annual_potential_radiation.tif'`` and can be omitted.
+
+.. code-block:: python
+
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.load_mean_annual_radiation_raster('path/to/file', filename='annual_potential_radiation.tif')
+
+The radiation can then be used to discretize the catchment:
+
+.. code-block:: python
+
+   study_area.discretize_by(['elevation', 'radiation'],
+                            elevation_method='equal_intervals', 
+                            elevation_distance=40,
+                            min_elevation=1900, 
+                            max_elevation=2900, 
+                            radiation_method='equal_intervals', 
+                            radiation_distance=65, 
+                            min_radiation=0, 
+                            max_radiation=260)
+                            
+Radiation is calculated using:
+
+.. math::
+
+   I_{\mathrm{pot}} = I_0 \left( \frac{R_m}{R} \right)^2 \Psi_a^{\left( \frac{P}{P_0 \mathrm{cos}(Z)} \right)} \mathrm{cos}(\theta)
+
+where:
+
+- :math:`I_0` is the solar constant (1368 W m⁻²),
+- :math:`\left( R_m/R \right)^2` is the Earth's orbit's eccentricity correction factor,
+- :math:`R`, :math:`R_m` are the instantaneous and the mean Sun-Earth distances,
+- :math:`\Psi_a` is the mean atmospheric clear-sky transmissivity,
+- :math:`P`, :math:`P_0` are the local and the mean sea-level atmospheric pressures,
+- :math:`R`, :math:`R_m` are Sun–Earth distances,
+- :math:`Z` is the local zenith angle,
+- :math:`\theta` is the angle of incidence between the normal to the grid slope and the solar beam.
+
+Radiation is calculated every 15 minutes and aggregated daily to accurately
+reflect diurnal variation and terrain shading.
+
+.. _melt-models:
+
+Melt Models
+-----------
+
+Three melt models are currently available in **Hydrobricks** to simulate snow and 
+glacier melt processes. These models are designed to address varying spatial 
+complexity and are suited for high-elevation catchments with limited observational
+data.
+
+Available melt models:
+  
+* **degree_day**: classical temperature-index model (TI)
+* **degree_day_aspect**: aspect-based temperature-index model (ATI)
+* **temperature_index**: Hock’s temperature-index model (HTI)
+
+The melt model is specified when instantiating the :code:`Socont` hydrological 
+model. For example:
+
+.. code-block:: python
+
+    melt_model = "melt:degree_day"  # "melt:degree_day", "melt:degree_day_aspect", or "melt:temperature_index"
+    socont = Socont(soil_storage_nb=2, 
+                    surface_runoff="linear_storage",
+                    snow_melt_process=melt_model)
+
+Model descriptions
+^^^^^^^^^^^^^^^^^^
+
+Melt processes in snow- and glacier-dominated catchments are typically modeled 
+using temperature-index (TI) approaches due to limited availability of detailed
+energy balance data. The general form (Rango and Martinec, 1995) of a 
+temperature-index melt model is:
+
+.. math::
+
+   M_{\mathrm{TI}}(t) = 
+    \begin{cases}
+        a_j(T_a(t) - T_T) & : T_a(t) > T_T \mathrm{~~~with~} j \in \mathrm{snow, ice}\\
+        0 & : T_a(t) \leq T_T
+    \end{cases}
+
+where:
+
+- :math:`M_{\mathrm{TI}}(t)` is the melt rate at time step :math:`t` (mm d⁻¹),
+- :math:`a_j` is the degree-day factor for ice or snow (mm d⁻¹ °C⁻¹),
+- :math:`T_a` is the air temperature (°C),
+- :math:`T_T` is the threshold melt temperature (°C).
+
+**1. degree_day (TI model)**
+
+This is the classic temperature-index model where melt depends solely on air 
+temperature above a threshold (see equation above). It is used with HRUs defined
+as evenly spaced elevation bands. It is simple.
+
+**2. degree_day_aspect (ATI model)**
+
+The aspect-based temperature-index model refines the standard TI approach by
+accounting for topographic aspect. The study area is discretized into aspect
+classes (e.g., north, south, east/west), and each receives a different 
+degree-day factor:
+
+- Enhances spatial realism of melt estimation.
+- Reflects directional differences in solar exposure.
+- Suitable for mountainous terrain with varied aspect.
+
+**3. temperature_index (HTI model)**
+
+This model, based on Hock (1999), incorporates **potential clear-sky direct 
+solar radiation** to improve melt estimates:
+
+.. math::
+
+    M_{\mathrm{HTI}}(t) = 
+        \begin{cases}
+            (m + r_j I_{\mathrm{pot}})(T_a(t) - T_T) & : T_a(t) > T_T \mathrm{~~~with~} j \in \mathrm{snow, ice}\\
+            0 & : T_a(t) \leq T_T
+        \end{cases}
+
+where:
+
+- :math:`M_{\mathrm{HTI}}` is the melt rate (mm d⁻¹),
+- :math:`m` is the melt factor common to both ice and snow (mm d⁻¹ °C⁻¹),,
+- :math:`r_j` is the radiation factor for ice or snow (mm d⁻¹ °C⁻¹ m² W⁻¹),
+- :math:`I_{pot}` is the potential clear-sky direct solar radiation (W m⁻²),
+- :math:`T_a` is the air temperature (°C),
+- :math:`T_T` is the threshold melt temperature (°C).
+
+This model offers:
+
+- Direct representation of irradiation effects on melt.
+- Improved accuracy in catchments influenced by shadows and aspect.
+- More complexity, requiring solar radiation computation at sub-daily time steps.
+
+**HTI** is recommended for its physical realism, especially when snow and glacier
+melt dominate runoff processes. **TI** provides a practical simple option when 
+radiation data is too long to compute. For more details, refer to Argentin et al.
+(2025).
+
+References
+^^^^^^^^^^
+
+- Argentin, F., Horton, P., Schaefli, B., et al. (2025). *Hydrobricks: a modular framework for spatially distributed hydrological modeling*. Hydrology and Earth System Sciences.
+- Hock, R. (1999). *A distributed temperature-index ice- and snowmelt model including potential direct solar radiation*. J. Glaciol.
+- Rango, A., & Martinec, J. (1995). *Revisiting the degree-day method for snowmelt computations*. Water Resources Bulletin.
 
 .. _parameters:
 
@@ -254,6 +461,16 @@ Therefore, when creating an instance of this class, the hydro units must be prov
 .. code-block:: python
 
    forcing = hb.Forcing(hydro_units)
+   
+Two types of input data can be used for forcing data:
+1. Loading of meteorological station data and spatialization through lapse rates
+2. Loading of gridded NetCDF data and spatialization
+
+Loading of meteorological station data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Loading forcing data from a csv file
+""""""""""""""""""""""""""""""""""""
 
 The data, for example station time series, can the be loaded from csv files.
 Multiple files can be loaded successively, or a single file can contain different
@@ -297,7 +514,7 @@ A csv file containing forcing data can look like the following example:
 
 
 Spatialization
-^^^^^^^^^^^^^^
+""""""""""""""
 
 The spatialization operation needs to be specified to generate per-unit timeseries.
 This definition needs information on the variable, the method to use and its parameters:
@@ -323,6 +540,31 @@ In such case, one must add a data parameter as in the following example:
 The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
 The methods and parameters are described in :ref:`the Python API <api_forcing>`.
 
+Loading of gridded netcdf file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Forcing data can also be loaded from NetCDF files, that are very common in
+the meteorological modeling field.
+
+The function will go take all files matching the pattern (e.g., ``"RhiresD_ch01r.swisscors_*.nc"``)
+in the netcdf folder. Here pattern means that the ``*`` can be replaced by any sequence
+of characters (e.g., 1995, 1996, etc.), and allows to select a set of netcdf files.
+All the files present in the folder will be loaded in the model. Remove non-necessary files 
+for a quicker loading.
+
+The CRS of the netcdf file is always indicated in EPSG code (https://epsg.io/).
+The name of the variable to extract (e.g., 'RhiresD') and the dimensions of the dataset
+in the x, y and time axis also need to be specified. We take here the example of the 
+MeteoSwiss grid-data product for daily precipitation (version before 2022).
+
+The hydro units are provided as tif file to be able to spatialize the netdf data.
+
+.. code-block:: python
+
+   forcing.spatialize_from_gridded_data(
+       variable='precipitation', path='path/to/netcdf/folder', file_pattern="RhiresD_ch01r.swisscors_*.nc",
+       data_crs=21781, var_name='RhiresD', dim_x='chx',
+       dim_y='chy', dim_time='time', raster_hydro_units='unit_ids.tif')
 
 .. _model-instance:
 
@@ -345,6 +587,7 @@ Then, the outlet discharge (in mm/d) can be retrieved:
 
    sim_ts = socont.get_outlet_discharge()
 
+
 More outputs can be extracted and saved to a netCDF file for further analysis:
 
 .. code-block:: python
@@ -364,6 +607,20 @@ These values are then used as initial state variables for the next run:
 When the model is executed multiple times successively, it clears its previous states.
 When the states initialization provided by ``initialize_state_variables()`` has been
 used, the model resets its state variables to these saved values.
+
+
+Note on the warmup period
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+The warmup period, also called the spin-up period, is a period of 1 or 2 years 
+used to initialize the hydrological model. The hydrological model can be seen as
+a connected set of water reservoirs (the snow reservoir, the baseflow reservoir,
+etc.). At the beginning of the simulation, all reservoirs are empty. The warmup
+period is used to fill those reservoirs (notably the snow reservoir) with water.
+As a consequence, the snow content and discharge simulated in these years are
+usually underestimated and should not be considered for analysis, calibration
+or evaluation. 
 
 
 Evaluation
@@ -440,51 +697,60 @@ It contains three important global attributes:
 * ``labels_distributed``: The labels of the distributed elements (fluxes and states)
 * ``labels_land_covers``: The labels of the land covers
 
+The attributes stored in the file can be found using the following command:
+
+.. code-block:: python
+
+    # Load the netcdf file
+    results = hb.Results(path/to/netcdf_results_file)
+    # Print the attributes
+    print(results.results.attrs)
+
 For example, for the GSM-Socont model with two different glacier types provides
 the following attributes:
 
 .. code-block:: text
 
    labels_aggregated =
-      "glacier-area-rain-snowmelt-storage:content",
-      "glacier-area-rain-snowmelt-storage:outflow:output",
-      "glacier-area-icemelt-storage:content",
-      "glacier-area-icemelt-storage:outflow:output",
+      "glacier_area_rain_snowmelt_storage:content",
+      "glacier_area_rain_snowmelt_storage:outflow:output",
+      "glacier_area_icemelt_storage:content",
+      "glacier_area_icemelt_storage:outflow:output",
       "outlet";
 
    labels_distributed =
       "ground:content",
       "ground:infiltration:output",
       "ground:runoff:output",
-      "glacier-ice:content",
-      "glacier-ice:outflow-rain-snowmelt:output",
-      "glacier-ice:melt:output",
-      "glacier-debris:content",
-      "glacier-debris:outflow-rain-snowmelt:output",
-      "glacier-debris:melt:output",
-      "ground-snowpack:content",
-      "ground-snowpack:snow",
-      "ground-snowpack:melt:output",
-      "glacier-ice-snowpack:content",
-      "glacier-ice-snowpack:snow",
-      "glacier-ice-snowpack:melt:output",
-      "glacier-debris-snowpack:content",
-      "glacier-debris-snowpack:snow",
-      "glacier-debris-snowpack:melt:output",
-      "slow-reservoir:content",
-      "slow-reservoir:et:output",
-      "slow-reservoir:outflow:output",
-      "slow-reservoir:percolation:output",
-      "slow-reservoir:overflow:output",
-      "slow-reservoir-2:content",
-      "slow-reservoir-2:outflow:output",
-      "surface-runoff:content",
-      "surface-runoff:outflow:output";
+      "glacier_ice:content",
+      "glacier_ice:outflow_rain_snowmelt:output",
+      "glacier_ice:melt:output",
+      "glacier_debris:content",
+      "glacier_debris:outflow_rain_snowmelt:output",
+      "glacier_debris:melt:output",
+      "ground_snowpack:content",
+      "ground_snowpack:snow",
+      "ground_snowpack:melt:output",
+      "glacier_ice_snowpack:content",
+      "glacier_ice_snowpack:snow",
+      "glacier_ice_snowpack:melt:output",
+      "glacier_debris_snowpack:content",
+      "glacier_debris_snowpack:snow",
+      "glacier_debris_snowpack:melt:output",
+      "slow_reservoir:content",
+      "slow_reservoir:et:output",
+      "slow_reservoir:outflow:output",
+      "slow_reservoir:percolation:output",
+      "slow_reservoir:overflow:output",
+      "slow_reservoir_2:content",
+      "slow_reservoir_2:outflow:output",
+      "surface_runoff:content",
+      "surface_runoff:outflow:output";
 
    labels_land_covers =
       "ground",
-      "glacier-ice",
-      "glacier-debris";
+      "glacier_ice",
+      "glacier_debris";
 
 Then, it provides the following variables:
 
@@ -502,7 +768,7 @@ Then, it provides the following variables:
    * the state variables (mm) such as ``content`` or ``snow`` elements represent
      the water stored in the respective reservoirs. In this case, this value is not
      weighted and cannot be summed over the catchment, but must be weighted
-     by the land cover fraction and the relative hydro unit area.
+     by the land cover fraction and the relative hydro unit area. 
 * ``land_cover_fractions`` (2D, optional): the temporal evolution of the land cover
   fractions.
 
