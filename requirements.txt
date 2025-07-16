@@ -1,3 +1,4 @@
 pip
 mock
-hydrobricks==0.4.11
+hydrobricks==0.7.6
+sphinx_rtd_theme
