@@ -12,6 +12,7 @@ Hydrobricks comes with pre-build model structures, but it aims at allowing struc
 definition from the user through the Python API.
 The existing model structures can be found under the :ref:`models page<models>`.
 The main components of the model are described under the :ref:`basics page<basics>`.
+Additional useful resources are provided under the :ref:`resources page<resources>`.
 
 
 .. toctree::
@@ -23,6 +24,7 @@ The main components of the model are described under the :ref:`basics page<basic
    doc/models
    doc/calibration
    doc/advanced
+   doc/resources
    doc/upgrade
    api/modules
 
