@@ -268,12 +268,12 @@ They are specified during model initialization:
 Snow redistribution option
 --------------------------
 
-.. figure:: images/without_snow_redistribution.png
+.. figure:: images/snow_redistribution_before.png
    :alt: Snow height without snow redistribution
    :figwidth: 40%
    :align: center
    
-.. figure:: images/with_snow_redistribution.png
+.. figure:: images/snow_redistribution_after.png
    :alt: Snow height with snow redistribution
    :figwidth: 40%
    :align: center
