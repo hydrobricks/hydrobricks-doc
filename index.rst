@@ -21,6 +21,7 @@ The main components of the model are described under the :ref:`basics page<basic
    doc/getting-started
    doc/basics
    doc/models
+   doc/processes
    doc/calibration
    doc/advanced
    doc/upgrade
