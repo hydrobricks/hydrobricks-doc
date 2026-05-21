@@ -35,11 +35,10 @@ These hydro units can represent HRUs (hydrological response units), pixels,
 elevation bands, etc. They can be either loaded from a file or generated from a DEM
 based on topography, aspect and radiation.
 
-.. image:: f16.png
+.. image:: images/hydro_units.png
    :alt: Example of discretization of a catchment into (a) elevation bands, 
    (b) aspect, and (c) radiation. Aspect and radiation discretizations are
-   then combined with elevation bands to form HRUs.
-   Argentin, Horton, et al. (2025) https://doi.org/10.5194/hess-29-1725-2025
+   then combined with elevation bands to form HRUs. Source: Argentin2025_
    :width: 600px
    :align: center
 
@@ -137,15 +136,10 @@ discretization by elevation and aspect is required when using the melt model
 ``'degree_day_aspect'`` and a discretization by elevation and radiation is required
 for the melt model ``'temperature_index'``. See :ref:`melt models<melt-models>`.
 
-We recommand that the glacier spans 10 elevation bands (Schaefli et al., 2005). 
-This gives a hint for the optimal elevation band height. Furthermore, the minimum
-and maximum band elevation should be slightly smaller, respectively bigger the
-elevations found in the catchment.
-
 For example, to discretize a study area spanning an elevation range of 1912 m to
 2893 m, with a glacier ranging from 2480 m to 2890 m, we use a minimum band 
 elevation of 1900 m, a maximum band elevation of 2900 m and elevation bands of 
-40 m of height. We also choose to discretize by aspect.
+40 m. We also choose to discretize by aspect.
 This gives the following function call: 
 
 .. code-block:: python
@@ -160,16 +154,11 @@ This gives the following function call:
                             )
                             
 
-References
-""""""""""
-
-- Schaefli, B., Hingray, B., Niggli, M., & Musy, A. (2005). A conceptual glacio-hydrological model for high mountainous catchments. Hydrology and Earth System Sciences, 9(1-2), 95–109. https://doi.org/10.5194/hess-9-95-2005
-
 Computing the radiation for discretization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The daily mean potential clear-sky direct solar radiation is computed at the 
-DEM surface [W/m²] using Hock (1999)'s equation. By default, the radiation
+DEM surface [W/m²] using Hock1999_'s equation. By default, the radiation
 resolution will be the DEM resolution. If you use a high resolution DEM, make sure
 to set a lower resolution for the radiation, as it will be computationnally expensive.
 
@@ -254,7 +243,7 @@ Model descriptions
 
 Melt processes in snow- and glacier-dominated catchments are typically modeled 
 using temperature-index (TI) approaches due to limited availability of detailed
-energy balance data. The general form (Rango and Martinec, 1995) of a 
+energy balance data. The general form (Rango1995_) of a 
 temperature-index melt model is:
 
 .. math::
@@ -291,7 +280,7 @@ degree-day factor:
 
 **3. temperature_index (HTI model)**
 
-This model, based on Hock (1999), incorporates **potential clear-sky direct 
+This model, based on Hock1999_, incorporates **potential clear-sky direct 
 solar radiation** to improve melt estimates:
 
 .. math::
@@ -319,15 +308,8 @@ This model offers:
 
 **HTI** is recommended for its physical realism, especially when snow and glacier
 melt dominate runoff processes. **TI** provides a practical simple option when 
-radiation data is too long to compute. For more details, refer to Argentin et al.
-(2025).
+radiation data is too long to compute. For more details, refer to Argentin2025_.
 
-References
-^^^^^^^^^^
-
-- Argentin, F., Horton, P., Schaefli, B., et al. (2025). *Hydrobricks: a modular framework for spatially distributed hydrological modeling*. Hydrology and Earth System Sciences.
-- Hock, R. (1999). *A distributed temperature-index ice- and snowmelt model including potential direct solar radiation*. J. Glaciol.
-- Rango, A., & Martinec, J. (1995). *Revisiting the degree-day method for snowmelt computations*. Water Resources Bulletin.
 
 .. _parameters:
 
@@ -790,3 +772,11 @@ Some other outputs are available:
 - Annual potential radiation raster (``annual_potential_radiation.tif``): the annual potential 
   radiation can be saved as a geotiff file, with the radiation values as values.
 - During the calibration procedure, SPOTPY saves all assessments in csv or sql tables.
+
+
+References
+----------
+
+.. [Argentin2025] Argentin, A.-L., Horton, P., Schaefli, B., Shokory, J., Pitscheider, F., Repnik, L., Gianini, M., Bizzi, S., Lane, S. N., & Comiti, F. (2025). Scale dependency in modeling nivo-glacial hydrological systems: The case of the Arolla basin, Switzerland. Hydrology and Earth System Sciences, 29(6), 1725–1748. https://doi.org/10.5194/hess-29-1725-2025
+.. [Hock1999] Hock, R. (1999). A distributed temperature-index ice- and snowmelt model including potential direct solar radiation. Journal of Glaciology, 45(149), 101–111. https://doi.org/10.3189/s0022143000003087
+.. [Rango1995] Rango, A., & Martinec, J. (1995). Revisiting The Degree‐Day Method For Snowmelt Computations. JAWRA Journal of the American Water Resources Association, 31(4), 657–669. https://doi.org/10.1111/j.1752-1688.1995.tb03392.x
