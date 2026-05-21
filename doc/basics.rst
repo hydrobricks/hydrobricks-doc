@@ -133,29 +133,29 @@ and the radiation.
 
 Discretizing by elevation is sufficient for the melt model ``'degree_day'``, but a 
 discretization by elevation and aspect is required when using the melt model 
-``'degree_day_aspect'`` and a discretization by elevation and radiation is required
+``'degree_day_aspect'`` and a discretization by elevation and radiation is recommended
 for the melt model ``'temperature_index'``. See :ref:`melt models<melt-models>`.
 
 For example, to discretize a study area spanning an elevation range of 1912 m to
 2893 m, with a glacier ranging from 2480 m to 2890 m, we use a minimum band 
 elevation of 1900 m, a maximum band elevation of 2900 m and elevation bands of 
-40 m. We also choose to discretize by aspect.
-This gives the following function call: 
+50 m. If we also choose to discretize by aspect, it gives the following function call: 
 
 .. code-block:: python
    
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    success = study_area.extract_dem('path/to/dem.tif')
-   study_area.discretize_by(['elevation', 'aspect'], 
-                            elevation_method='equal_intervals', 
-                            elevation_distance=40,
-                            min_elevation=1900, 
-                            max_elevation=2900, 
-                            )
+   study_area.discretize_by(
+      ['elevation', 'aspect'], 
+      elevation_method='equal_intervals', 
+      elevation_distance=50,
+      min_elevation=1900, 
+      max_elevation=2900, 
+   )
                             
 
-Computing the radiation for discretization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Discretizing by potential solar radiation
+"""""""""""""""""""""""""""""""""""""""""
 
 The daily mean potential clear-sky direct solar radiation is computed at the 
 DEM surface [W/m²] using Hock1999_'s equation. By default, the radiation
@@ -182,36 +182,18 @@ The radiation can then be used to discretize the catchment:
 
 .. code-block:: python
 
-   study_area.discretize_by(['elevation', 'radiation'],
-                            elevation_method='equal_intervals', 
-                            elevation_distance=40,
-                            min_elevation=1900, 
-                            max_elevation=2900, 
-                            radiation_method='equal_intervals', 
-                            radiation_distance=65, 
-                            min_radiation=0, 
-                            max_radiation=260)
-                            
-Radiation is calculated using:
-
-.. math::
-
-   I_{\mathrm{pot}} = I_0 \left( \frac{R_m}{R} \right)^2 \Psi_a^{\left( \frac{P}{P_0 \mathrm{cos}(Z)} \right)} \mathrm{cos}(\theta)
-
-where:
-
-- :math:`I_0` is the solar constant (1368 W m⁻²),
-- :math:`\left( R_m/R \right)^2` is the Earth's orbit's eccentricity correction factor,
-- :math:`R`, :math:`R_m` are the instantaneous and the mean Sun-Earth distances,
-- :math:`\Psi_a` is the mean atmospheric clear-sky transmissivity,
-- :math:`P`, :math:`P_0` are the local and the mean sea-level atmospheric pressures,
-- :math:`R`, :math:`R_m` are Sun–Earth distances,
-- :math:`Z` is the local zenith angle,
-- :math:`\theta` is the angle of incidence between the normal to the grid slope and the solar beam.
-
-Radiation is calculated every 15 minutes and aggregated daily to accurately
-reflect diurnal variation and terrain shading.
-
+   study_area.discretize_by(
+      ['elevation', 'radiation'],
+      elevation_method='equal_intervals', 
+      elevation_distance=50,
+      min_elevation=1900, 
+      max_elevation=2900, 
+      radiation_method='equal_intervals', 
+      radiation_distance=65, 
+      min_radiation=0, 
+      max_radiation=260
+   )
+   
 
 .. _parameters:
 
@@ -681,4 +663,3 @@ References
 
 .. [Argentin2025] Argentin, A.-L., Horton, P., Schaefli, B., Shokory, J., Pitscheider, F., Repnik, L., Gianini, M., Bizzi, S., Lane, S. N., & Comiti, F. (2025). Scale dependency in modeling nivo-glacial hydrological systems: The case of the Arolla basin, Switzerland. Hydrology and Earth System Sciences, 29(6), 1725–1748. https://doi.org/10.5194/hess-29-1725-2025
 .. [Hock1999] Hock, R. (1999). A distributed temperature-index ice- and snowmelt model including potential direct solar radiation. Journal of Glaciology, 45(149), 101–111. https://doi.org/10.3189/s0022143000003087
-.. [Rango1995] Rango, A., & Martinec, J. (1995). Revisiting The Degree‐Day Method For Snowmelt Computations. JAWRA Journal of the American Water Resources Association, 31(4), 657–669. https://doi.org/10.1111/j.1752-1688.1995.tb03392.x
