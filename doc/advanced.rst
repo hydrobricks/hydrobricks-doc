@@ -14,10 +14,10 @@ externally driven or internally computed.
 
 Hydrobricks offers the following options:
 
-1. Evolution set through csv file
-2. Evolution computed from shapefiles
-3. Evolution computed from shapefiles and delta-h method
-4. Evolution computed from ice thickness and delta-h method
+1. Land cover evolution defined through csv files
+2. Land cover evolution defined through shapefiles
+3. Glacier evolution with the delta-h method from shapefiles
+4. Glacier evolution with the delta-h method from ice thickness
 
 The definition of a land cover evolution does not replace the original 
 definition of the hydro units, which need to be also provided to the function.
@@ -26,13 +26,13 @@ of the model, and these changes will be enforced in due time. However, if some
 changes are defined for dates prior to the start of the modelling period, these
 changes will also be applied.
 
-The two last options are specific to glacier land covers. They do not handle
+The two last options are specific to glacier land covers and do not handle
 debris covers on glaciers.
 
-.. _first-option:
+.. _land_cover_evolution_csv:
 
-Evolution set through csv file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Land cover evolution defined through csv files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 One can provide the model with a timeseries of dates and new land cover areas, such as:
 
@@ -41,7 +41,9 @@ One can provide the model with a timeseries of dates and new land cover areas, s
    changes = actions.ActionLandCoverChange()
    changes.load_from_csv(
        '/path/to/surface_changes_glacier_debris.csv',
-       hydro_units, area_unit='km2', match_with='elevation'
+       hydro_units, 
+       area_unit='km2', 
+       match_with='elevation'
    )
    model.add_action(changes)
 
@@ -86,29 +88,38 @@ There is no need to specify the corresponding changes in the generic ``ground`` 
 cover as it will be automatically computed to preserve the total hydro unit area.
 
 
-.. _second-option:
+.. _land_cover_evolution_shapefiles:
 
-Evolution computed from shapefiles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Land cover evolution defined through shapefiles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 One can provide the model with a timeseries of dates and shapefiles, such as:
 
 .. code-block:: python
 
    times = ['2008-01-01', '2010-01-01', '2016-01-01']
-   ice_glaciers = ['/path/to/Glacier_ice_2008.shp',
-   		   '/path/to/Glacier_ice_2010.shp', 
-   		   '/path/to/Glacier_ice_2016.shp']
-   debris_glaciers = ['/path/to/Glacier_debris_2008.shp',
-   		      '/path/to/Glacier_debris_2010.shp', 
-   		      '/path/to/Glacier_debris_2016.shp']
+   ice_glaciers = [
+      '/path/to/glacier_ice_2008.shp',
+   	'/path/to/glacier_ice_2010.shp', 
+   	'/path/to/glacier_ice_2016.shp'
+   ]
+   debris_glaciers = [
+      '/path/to/glacier_debris_2008.shp',
+   	'/path/to/glacier_debris_2010.shp', 
+   	'/path/to/glacier_debris_2016.shp'
+   ]
    changes, changes_df = actions.ActionLandCoverChange.create_action_for_glaciers(
-       study_area, times, ice_glaciers, debris_glaciers, 
-       with_debris=True, method='raster', interpolate_yearly=True)
+       study_area, 
+       times, 
+       ice_glaciers, 
+       debris_glaciers, 
+       with_debris=True,
+       method='raster', 
+       interpolate_yearly=True)
    model.add_action(changes)
 
 This method also creates a dataframe that can then be exported as csv files, and
-reloaded in if needed using the :ref:`first option <first-option>`:
+reloaded in if needed using the :ref:`csv option <land_cover_evolution_csv>`:
 
 .. code-block:: python
 
@@ -130,43 +141,51 @@ Tips and tricks
 If information about land cover evolution is only available for a date after
 the beginning of the simulation period, it is possible to assume a constant
 land cover by duplicating the first data and assigning it the simulation 
-begining date. This evolution, is of course, debatable...
+begining date.
 
 For example:
 
 .. code-block:: python
 
    times = ['2005-01-01', '2008-01-01', '2010-01-01', '2016-01-01']
-   ice_glaciers = ['/path/to/Glacier_ice_2008.shp',
-                   '/path/to/Glacier_ice_2008.shp',
-   		   '/path/to/Glacier_ice_2010.shp', 
-   		   '/path/to/Glacier_ice_2016.shp']
-   debris_glaciers = ['/path/to/Glacier_debris_2008.shp',
-                      '/path/to/Glacier_debris_2008.shp',
-   		      '/path/to/Glacier_debris_2010.shp', 
-   		      '/path/to/Glacier_debris_2016.shp']
+   ice_glaciers = [
+      '/path/to/Glacier_ice_2008.shp',
+      '/path/to/Glacier_ice_2008.shp',
+   	'/path/to/Glacier_ice_2010.shp', 
+   	'/path/to/Glacier_ice_2016.shp'
+   ]
 
 
-.. _third-option:
+Glacier evolution
+-----------------
 
-Evolution computed from shapefiles and delta-h method
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _glacier_evolution_delta_h_shapefiles:
 
-The delta-h method from Huss et al. (2010), implemented by Seibert et al. (2018) is also available in Hydrobricks.
-A contrario to the two first methods, in the delta-h approach the glacial evolution is not forced from the outside but decided by the modeled melt of the glacier.
-Hydrobricks compute the amount the glacier melted in the year, and retrieves the corresponding glacier area from the lookup table.
-This makes this method and the following most appropriate for future discharge modeling or past discharge data when no glacier extent timeseries are available, whereas the two first methods are most appropriate when glacier timeseries of glacier extents are available.
+Glacier evolution with the delta-h method from shapefiles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We recommend 10 glacier elevation bands per HRU elevation band.
+The delta-h method from Huss2010_, as implemented by Seibert2018_ is also available in Hydrobricks.
+A contrario to the two first methods, in the delta-h approach the glacial evolution 
+is not forced from the outside but adjusted by the modeled glacier melt.
+Hydrobricks compute the amount glacier melted in the year, and retrieves 
+the corresponding glacier area from the lookup table.
+This makes this method and the following most appropriate for future discharge 
+modeling when no glacier extent timeseries are available, and we want the 
+glacier evolution to be driven by the modeled melt, rather than by an 
+externally defined evolution.
+
+We recommend 10m elevation bands for the glacier evolution, similar to the 
+ones used in Seibert et al. (2018).
 
 .. code-block:: python
 
-   elev_distance = 40 # 40 m HRU elevation band
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    glacier_evolution = preprocessing.GlacierEvolutionDeltaH()
    glacier_df = glacier_evolution.compute_initial_ice_thickness(
-   	study_area, ice_thickness = glacier_thickness,
-   	elevation_bands_distance = elev_distance / 10)
+   	study_area, 
+      ice_thickness = glacier_thickness,
+   	elevation_bands_distance = 10
+   )
    glacier_evolution.compute_lookup_table(update_width=False)
    
 The glacier lookup table ``glacier_evolution`` can then be linked to Hydrobricks.
@@ -195,29 +214,14 @@ The glacier lookup table can be saved as a csv file:
    
    
 
-.. _fourth-option:
+.. _glacier_evolution_delta_h_ice_thickness:
 
-Evolution computed from ice thickness and delta-h method
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-References
-""""""""""
-
-- Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences.
-- Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences.
-
-Note: Options and compatibility with radiation/aspect discretization
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-- 
-- 
-- 
+Glacier evolution with the delta-h method from ice thickness
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 
-.. _glacier-thickness-options:
+.. _glacier_thickness_options:
    
 Glacier thickness-related options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -252,15 +256,17 @@ They are specified during model initialization:
 
 .. code-block:: python
 
-   socont = models.Socont(...,
-                          glacier_infinite_storage = glacier_infinite_storage,
-                          snow_ice_transformation = snow_ice_transformation)
+   socont = models.Socont(
+      ...,
+      glacier_infinite_storage=glacier_infinite_storage,
+      snow_ice_transformation=snow_ice_transformation
+   )
                           
                           
 .. _snow-redistribution:
    
 Snow redistribution option
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 .. figure:: images/without_snow_redistribution.png
    :alt: Snow height without snow redistribution
@@ -273,7 +279,7 @@ Snow redistribution option
    :align: center
 
 Hydrobricks supports a snow redistribution mechanism based on the SnowSlide
-algorithm (Bernhardt & Schulz, 2010). This option simulates gravitational snow
+algorithm (Bernhardt2010_). This option simulates gravitational snow
 transport and can help improve snow distribution modeling across elevation 
 bands and avoid 'snow towers'.
 
@@ -299,9 +305,8 @@ Resources:
 
 
 References
-""""""""""
+----------
 
-- Bernhardt, M., & Schulz, K. (2010). SnowSlide: A simple routine for calculating gravitational snow transport. Geophysical Research Letters.
-
-
-
+.. [Bernhardt2010] Bernhardt, M., & Schulz, K. (2010). SnowSlide: A simple routine for calculating gravitational snow transport. Geophysical Research Letters, 37(11), 1–6. https://doi.org/10.1029/2010GL043086
+.. [Huss2010] Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences.
+.. [Seibert2018] Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences.
