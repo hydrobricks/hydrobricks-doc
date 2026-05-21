@@ -18,14 +18,10 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
-                'pytest', 'pyyaml', 'yaml', 'HydroErr'
+                'pytest', 'pyyaml', 'yaml', 'HydroErr', '_hydrobricks'
                 ]
 
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-# -- Import _hydrobricks -----------------------------------------------------
-
-import _hydrobricks
 
 
 # -- Path setup --------------------------------------------------------------
