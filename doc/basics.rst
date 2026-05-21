@@ -778,6 +778,15 @@ Others
 
 Some other outputs are available:
 
-- Dumbed forcing: the forcing object can also be saved as a netCDF file using the
+- Dumbed forcing (``forcing.nc``): the forcing object can also be saved as a netCDF file using the
   ``forcing.create_file()``. It thus contains the spatialized forcing time series.
+  See: https://hydrobricks.readthedocs.io/en/latest/doc/basics.html#forcing-data
+- Log files (``hydrobricks_...log``): the model creates log files during the execution, 
+  that can be used to check the model execution and debug if necessary.
+- Geotiff file with the hydro units (``hydro_units.tif``): the hydro units can be 
+  saved as a geotiff file, with the unit IDs as values.
+- A csv file with the hydro units properties (``hydro_units.csv``): the properties of the
+  hydro units (e.g., elevation, area, land cover fractions) can be saved as a csv file.
+- Annual potential radiation raster (``annual_potential_radiation.tif``): the annual potential 
+  radiation can be saved as a geotiff file, with the radiation values as values.
 - During the calibration procedure, SPOTPY saves all assessments in csv or sql tables.
