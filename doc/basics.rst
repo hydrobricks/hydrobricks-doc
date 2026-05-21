@@ -11,7 +11,7 @@ The bricks are any component that can contain water, such as a snowpack, a glaci
 or a ground reservoir. They can contain one or more water containers.
 For example, the snowpack has a snow and a liquid water container.
 These bricks are assigned with processes that can extract water.
-Processes are for example snowmelt, ET, or outflow according some behaviour.
+Processes are for example snowmelt, evapotranspiration (ET), or outflow according to the behaviour.
 The water extracted from the bricks by the processes are then transferred to fluxes,
 which deliver it to other bricks, the atmosphere, or the outlet.
 
@@ -32,7 +32,15 @@ Spatial structure
 
 The catchment is discretized into sub units named hydro units.
 These hydro units can represent HRUs (hydrological response units), pixels,
-elevation bands, etc. They can be either loaded from a file or generated from a DEM.
+elevation bands, etc. They can be either loaded from a file or generated from a DEM
+based on topography, aspect and radiation.
+
+.. image:: images/hydro_units.png
+   :alt: Example of discretization of a catchment into (a) elevation bands, 
+   (b) aspect, and (c) radiation. Aspect and radiation discretizations are
+   then combined with elevation bands to form HRUs. Source: Argentin2025_
+   :width: 600px
+   :align: center
 
 Loading hydro units from a csv file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,6 +128,71 @@ It can look like the following example.
 Generating hydro units from a DEM
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+The hydro units can also be generated automatically from the topography, the aspect
+and the radiation.
+
+Discretizing by elevation is sufficient for the melt model ``'degree_day'``, but a 
+discretization by elevation and aspect is required when using the melt model 
+``'degree_day_aspect'`` and a discretization by elevation and radiation is recommended
+for the melt model ``'temperature_index'``. See :ref:`melt models<melt-models>`.
+
+For example, to discretize a study area spanning an elevation range of 1912 m to
+2893 m, with a glacier ranging from 2480 m to 2890 m, we use a minimum band 
+elevation of 1900 m, a maximum band elevation of 2900 m and elevation bands of 
+50 m. If we also choose to discretize by aspect, it gives the following function call: 
+
+.. code-block:: python
+   
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.discretize_by(
+      ['elevation', 'aspect'], 
+      elevation_method='equal_intervals', 
+      elevation_distance=50,
+      min_elevation=1900, 
+      max_elevation=2900, 
+   )
+                            
+
+Discretizing by potential solar radiation
+"""""""""""""""""""""""""""""""""""""""""
+
+The daily mean potential clear-sky direct solar radiation is computed at the 
+DEM surface [W/m²] using Hock1999_'s equation. By default, the radiation
+resolution will be the DEM resolution. If you use a high resolution DEM, make sure
+to set a lower resolution for the radiation, as it will be computationnally expensive.
+
+.. code-block:: python
+   
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.calculate_daily_potential_radiation('path/to/file', resolution)
+
+Since the radiation computation takes a few minutes and is not year-specific, it can 
+also be saved and loaded back in memory. By default, the name of the radiation file
+will be ``'annual_potential_radiation.tif'`` and can be omitted.
+
+.. code-block:: python
+
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+   success = study_area.extract_dem('path/to/dem.tif')
+   study_area.load_mean_annual_radiation_raster('path/to/file', filename='annual_potential_radiation.tif')
+
+The radiation can then be used to discretize the catchment:
+
+.. code-block:: python
+
+   study_area.discretize_by(
+      ['elevation', 'radiation'],
+      elevation_method='equal_intervals', 
+      elevation_distance=50,
+      min_elevation=1900, 
+      max_elevation=2900, 
+      radiation_method='equal_intervals', 
+      radiation_distance=65, 
+      min_radiation=0, 
+      max_radiation=260
+   )
 
 
 .. _parameters:
@@ -254,6 +327,16 @@ Therefore, when creating an instance of this class, the hydro units must be prov
 .. code-block:: python
 
    forcing = hb.Forcing(hydro_units)
+   
+Two types of input data can be used for forcing data:
+1. Loading of meteorological station data and spatialization through lapse rates
+2. Loading of gridded NetCDF data and spatialization
+
+Loading of meteorological station data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Loading forcing data from a csv file
+""""""""""""""""""""""""""""""""""""
 
 The data, for example station time series, can the be loaded from csv files.
 Multiple files can be loaded successively, or a single file can contain different
@@ -297,7 +380,7 @@ A csv file containing forcing data can look like the following example:
 
 
 Spatialization
-^^^^^^^^^^^^^^
+""""""""""""""
 
 The spatialization operation needs to be specified to generate per-unit timeseries.
 This definition needs information on the variable, the method to use and its parameters:
@@ -323,6 +406,38 @@ In such case, one must add a data parameter as in the following example:
 The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
 The methods and parameters are described in :ref:`the Python API <api_forcing>`.
 
+Loading of gridded netcdf file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Forcing data can also be loaded from NetCDF files, that are very common in
+the meteorological modeling field.
+
+The function will go take all files matching the pattern (e.g., ``"RhiresD_ch01r.swisscors_*.nc"``)
+in the netcdf folder. Here pattern means that the ``*`` can be replaced by any sequence
+of characters (e.g., 1995, 1996, etc.), and allows to select a set of netcdf files.
+All the files present in the folder will be loaded in the model. Remove non-necessary files 
+for a quicker loading.
+
+The CRS of the netcdf file is always indicated in EPSG code (https://epsg.io/).
+The name of the variable to extract (e.g., 'RhiresD') and the dimensions of the dataset
+in the x, y and time axis also need to be specified. We take here the example of the 
+MeteoSwiss grid-data product for daily precipitation (version before 2022).
+
+The hydro units are provided as tif file to be able to spatialize the netdf data.
+
+.. code-block:: python
+
+   forcing.spatialize_from_gridded_data(
+      variable='precipitation', 
+      path='path/to/netcdf/folder', 
+      file_pattern="RhiresD_ch01r.swisscors_*.nc",
+      data_crs=21781, 
+      var_name='RhiresD', 
+      dim_x='chx',
+      dim_y='chy', 
+      dim_time='time', 
+      raster_hydro_units='unit_ids.tif'
+   )
 
 .. _model-instance:
 
@@ -345,6 +460,7 @@ Then, the outlet discharge (in mm/d) can be retrieved:
 
    sim_ts = socont.get_outlet_discharge()
 
+
 More outputs can be extracted and saved to a netCDF file for further analysis:
 
 .. code-block:: python
@@ -364,6 +480,20 @@ These values are then used as initial state variables for the next run:
 When the model is executed multiple times successively, it clears its previous states.
 When the states initialization provided by ``initialize_state_variables()`` has been
 used, the model resets its state variables to these saved values.
+
+
+Note on the warmup period
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The warmup period, also called the spin-up period, is a period of 1 or 2 years 
+used to initialize the hydrological model (state variables). 
+The hydrological model can be seen as a connected set of water reservoirs 
+(the snow reservoir, the baseflow reservoir, etc.). 
+At the beginning of the simulation, all reservoirs are empty. The warmup
+period is used to fill those reservoirs (notably the snow reservoir) with water.
+As a consequence, the snow content and discharge simulated in these years are
+usually underestimated and should not be considered for analysis, calibration
+or evaluation. 
 
 
 Evaluation
@@ -440,51 +570,60 @@ It contains three important global attributes:
 * ``labels_distributed``: The labels of the distributed elements (fluxes and states)
 * ``labels_land_covers``: The labels of the land covers
 
+The attributes stored in the file can be found using the following command:
+
+.. code-block:: python
+
+    # Load the netcdf file
+    results = hb.Results(path/to/netcdf_results_file)
+    # Print the attributes
+    print(results.results.attrs)
+
 For example, for the GSM-Socont model with two different glacier types provides
 the following attributes:
 
 .. code-block:: text
 
    labels_aggregated =
-      "glacier-area-rain-snowmelt-storage:content",
-      "glacier-area-rain-snowmelt-storage:outflow:output",
-      "glacier-area-icemelt-storage:content",
-      "glacier-area-icemelt-storage:outflow:output",
+      "glacier_area_rain_snowmelt_storage:content",
+      "glacier_area_rain_snowmelt_storage:outflow:output",
+      "glacier_area_icemelt_storage:content",
+      "glacier_area_icemelt_storage:outflow:output",
       "outlet";
 
    labels_distributed =
       "ground:content",
       "ground:infiltration:output",
       "ground:runoff:output",
-      "glacier-ice:content",
-      "glacier-ice:outflow-rain-snowmelt:output",
-      "glacier-ice:melt:output",
-      "glacier-debris:content",
-      "glacier-debris:outflow-rain-snowmelt:output",
-      "glacier-debris:melt:output",
-      "ground-snowpack:content",
-      "ground-snowpack:snow",
-      "ground-snowpack:melt:output",
-      "glacier-ice-snowpack:content",
-      "glacier-ice-snowpack:snow",
-      "glacier-ice-snowpack:melt:output",
-      "glacier-debris-snowpack:content",
-      "glacier-debris-snowpack:snow",
-      "glacier-debris-snowpack:melt:output",
-      "slow-reservoir:content",
-      "slow-reservoir:et:output",
-      "slow-reservoir:outflow:output",
-      "slow-reservoir:percolation:output",
-      "slow-reservoir:overflow:output",
-      "slow-reservoir-2:content",
-      "slow-reservoir-2:outflow:output",
-      "surface-runoff:content",
-      "surface-runoff:outflow:output";
+      "glacier_ice:content",
+      "glacier_ice:outflow_rain_snowmelt:output",
+      "glacier_ice:melt:output",
+      "glacier_debris:content",
+      "glacier_debris:outflow_rain_snowmelt:output",
+      "glacier_debris:melt:output",
+      "ground_snowpack:content",
+      "ground_snowpack:snow",
+      "ground_snowpack:melt:output",
+      "glacier_ice_snowpack:content",
+      "glacier_ice_snowpack:snow",
+      "glacier_ice_snowpack:melt:output",
+      "glacier_debris_snowpack:content",
+      "glacier_debris_snowpack:snow",
+      "glacier_debris_snowpack:melt:output",
+      "slow_reservoir:content",
+      "slow_reservoir:et:output",
+      "slow_reservoir:outflow:output",
+      "slow_reservoir:percolation:output",
+      "slow_reservoir:overflow:output",
+      "slow_reservoir_2:content",
+      "slow_reservoir_2:outflow:output",
+      "surface_runoff:content",
+      "surface_runoff:outflow:output";
 
    labels_land_covers =
       "ground",
-      "glacier-ice",
-      "glacier-debris";
+      "glacier_ice",
+      "glacier_debris";
 
 Then, it provides the following variables:
 
@@ -502,7 +641,7 @@ Then, it provides the following variables:
    * the state variables (mm) such as ``content`` or ``snow`` elements represent
      the water stored in the respective reservoirs. In this case, this value is not
      weighted and cannot be summed over the catchment, but must be weighted
-     by the land cover fraction and the relative hydro unit area.
+     by the land cover fraction and the relative hydro unit area. 
 * ``land_cover_fractions`` (2D, optional): the temporal evolution of the land cover
   fractions.
 
@@ -512,6 +651,22 @@ Others
 
 Some other outputs are available:
 
-- Dumbed forcing: the forcing object can also be saved as a netCDF file using the
+- Dumbed forcing (``forcing.nc``): the forcing object can also be saved as a netCDF file using the
   ``forcing.create_file()``. It thus contains the spatialized forcing time series.
+  See: https://hydrobricks.readthedocs.io/en/latest/doc/basics.html#forcing-data
+- Log files (``hydrobricks_...log``): the model creates log files during the execution, 
+  that can be used to check the model execution and debug if necessary.
+- Geotiff file with the hydro units (``hydro_units.tif``): the hydro units can be 
+  saved as a geotiff file, with the unit IDs as values.
+- A csv file with the hydro units properties (``hydro_units.csv``): the properties of the
+  hydro units (e.g., elevation, area, land cover fractions) can be saved as a csv file.
+- Annual potential radiation raster (``annual_potential_radiation.tif``): the annual potential 
+  radiation can be saved as a geotiff file, with the radiation values as values.
 - During the calibration procedure, SPOTPY saves all assessments in csv or sql tables.
+
+
+References
+----------
+
+.. [Argentin2025] Argentin, A.-L., Horton, P., Schaefli, B., Shokory, J., Pitscheider, F., Repnik, L., Gianini, M., Bizzi, S., Lane, S. N., & Comiti, F. (2025). Scale dependency in modeling nivo-glacial hydrological systems: The case of the Arolla basin, Switzerland. Hydrology and Earth System Sciences, 29(6), 1725–1748. https://doi.org/10.5194/hess-29-1725-2025
+.. [Hock1999] Hock, R. (1999). A distributed temperature-index ice- and snowmelt model including potential direct solar radiation. Journal of Glaciology, 45(149), 101–111. https://doi.org/10.3189/s0022143000003087

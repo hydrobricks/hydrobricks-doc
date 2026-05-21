@@ -22,6 +22,7 @@ Additional useful resources are provided under the :ref:`resources page<resource
    doc/getting-started
    doc/basics
    doc/models
+   doc/processes
    doc/calibration
    doc/advanced
    doc/resources
