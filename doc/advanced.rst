@@ -300,5 +300,5 @@ References
 ----------
 
 .. [Bernhardt2010] Bernhardt, M., & Schulz, K. (2010). SnowSlide: A simple routine for calculating gravitational snow transport. Geophysical Research Letters, 37(11), 1–6. https://doi.org/10.1029/2010GL043086
-.. [Huss2010] Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences.
-.. [Seibert2018] Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences.
+.. [Huss2010] Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences, 14(5), 815–829. https://doi.org/10.5194/hess-14-815-2010
+.. [Seibert2018] Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences, 22(4), 2211–2224. https://doi.org/10.5194/hess-22-2211-2018
