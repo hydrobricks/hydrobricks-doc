@@ -259,15 +259,16 @@ They are specified during model initialization:
 Snow redistribution
 -------------------
 
-.. figure:: images/snow_redistribution_before.png
-   :alt: Snow height without snow redistribution
-   :figwidth: 40%
-   :align: center
-   
-.. figure:: images/snow_redistribution_after.png
-   :alt: Snow height with snow redistribution
-   :figwidth: 40%
-   :align: center
+.. list-table::
+   :widths: 50 50
+
+   * - .. figure:: images/snow_redistribution_before.png
+          :alt: Snow height without snow redistribution
+          :align: center
+
+     - .. figure:: images/snow_redistribution_after.png
+          :alt: Snow height with snow redistribution
+          :align: center
 
 Hydrobricks supports a snow redistribution mechanism based on the SnowSlide
 algorithm (Bernhardt2010_). This option simulates gravitational snow
