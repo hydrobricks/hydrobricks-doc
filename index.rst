@@ -24,7 +24,6 @@ The main components of the model are described under the :ref:`basics page<basic
    doc/calibration
    doc/advanced
    doc/examples
-   doc/altroclima_preprocessing
    doc/upgrade
    api/modules
 
