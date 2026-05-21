@@ -193,7 +193,7 @@ The radiation can then be used to discretize the catchment:
       min_radiation=0, 
       max_radiation=260
    )
-   
+
 
 .. _parameters:
 
@@ -428,9 +428,16 @@ The hydro units are provided as tif file to be able to spatialize the netdf data
 .. code-block:: python
 
    forcing.spatialize_from_gridded_data(
-       variable='precipitation', path='path/to/netcdf/folder', file_pattern="RhiresD_ch01r.swisscors_*.nc",
-       data_crs=21781, var_name='RhiresD', dim_x='chx',
-       dim_y='chy', dim_time='time', raster_hydro_units='unit_ids.tif')
+      variable='precipitation', 
+      path='path/to/netcdf/folder', 
+      file_pattern="RhiresD_ch01r.swisscors_*.nc",
+      data_crs=21781, 
+      var_name='RhiresD', 
+      dim_x='chx',
+      dim_y='chy', 
+      dim_time='time', 
+      raster_hydro_units='unit_ids.tif'
+   )
 
 .. _model-instance:
 
@@ -478,11 +485,11 @@ used, the model resets its state variables to these saved values.
 Note on the warmup period
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
 The warmup period, also called the spin-up period, is a period of 1 or 2 years 
-used to initialize the hydrological model. The hydrological model can be seen as
-a connected set of water reservoirs (the snow reservoir, the baseflow reservoir,
-etc.). At the beginning of the simulation, all reservoirs are empty. The warmup
+used to initialize the hydrological model (state variables). 
+The hydrological model can be seen as a connected set of water reservoirs 
+(the snow reservoir, the baseflow reservoir, etc.). 
+At the beginning of the simulation, all reservoirs are empty. The warmup
 period is used to fill those reservoirs (notably the snow reservoir) with water.
 As a consequence, the snow content and discharge simulated in these years are
 usually underestimated and should not be considered for analysis, calibration
