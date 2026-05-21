@@ -12,13 +12,6 @@ Each hydro unit is thus internally defined by a total area and fractional land
 covers. These land covers can have a dynamic evolution. This evolution can be
 externally driven or internally computed.
 
-Hydrobricks offers the following options:
-
-1. Land cover evolution defined through csv files
-2. Land cover evolution defined through shapefiles
-3. Glacier evolution with the delta-h method from shapefiles
-4. Glacier evolution with the delta-h method from ice thickness
-
 The definition of a land cover evolution does not replace the original 
 definition of the hydro units, which need to be also provided to the function.
 The areas provided in the definition of the hydro units are the starting point
@@ -31,8 +24,8 @@ debris covers on glaciers.
 
 .. _land_cover_evolution_csv:
 
-Land cover evolution defined through csv files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using csv files
+^^^^^^^^^^^^^^^
 
 One can provide the model with a timeseries of dates and new land cover areas, such as:
 
@@ -90,8 +83,8 @@ cover as it will be automatically computed to preserve the total hydro unit area
 
 .. _land_cover_evolution_shapefiles:
 
-Land cover evolution defined through shapefiles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using shapefiles
+^^^^^^^^^^^^^^^^
 
 One can provide the model with a timeseries of dates and shapefiles, such as:
 
@@ -161,8 +154,8 @@ Glacier evolution
 
 .. _glacier_evolution_delta_h_shapefiles:
 
-Glacier evolution with the delta-h method from shapefiles
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Delta-h method
+^^^^^^^^^^^^^^
 
 The delta-h method from Huss2010_, as implemented by Seibert2018_ is also available in Hydrobricks.
 A contrario to the two first methods, in the delta-h approach the glacial evolution 
@@ -212,19 +205,17 @@ The glacier lookup table can be saved as a csv file:
             
    glacier_evolution.save_as_csv('/path/to/results/folder/')
    
+
+.. _glacier_evolution_area_scaling:
+
+Simple area-scaling method
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. _glacier_options:
    
-
-.. _glacier_evolution_delta_h_ice_thickness:
-
-Glacier evolution with the delta-h method from ice thickness
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-
-.. _glacier_thickness_options:
-   
-Glacier thickness-related options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Glacier-related options
+^^^^^^^^^^^^^^^^^^^^^^^
 
 The glacier evolution methods require appropriate configuration of the following two options:
 
@@ -265,8 +256,8 @@ They are specified during model initialization:
                           
 .. _snow-redistribution:
    
-Snow redistribution option
---------------------------
+Snow redistribution
+-------------------
 
 .. figure:: images/snow_redistribution_before.png
    :alt: Snow height without snow redistribution
