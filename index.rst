@@ -24,7 +24,6 @@ Additional resources contributed by the community are listed on the
    doc/parameters
    doc/forcing
    doc/processes
-   doc/calibration
    doc/advanced
    doc/resources
    doc/upgrade

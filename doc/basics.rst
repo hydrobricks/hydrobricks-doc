@@ -203,13 +203,10 @@ With the radiation loaded, pass it as a discretization criterion:
 
 .. _running:
 
-Running the model and outputs
-------------------------------
-
 .. _model-instance:
 
 Running the model
-^^^^^^^^^^^^^^^^^^
+------------------
 
 Once you have defined the :ref:`hydro units <spatial-structure>`,
 :ref:`parameters <parameters>`, and :ref:`forcing <forcing-data>`, set up and
@@ -236,7 +233,7 @@ To export all internal fluxes and states to a NetCDF file for further analysis:
 
 
 Initializing state variables
-"""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, all water storages (snowpack, soil reservoirs, etc.) start empty at
 the beginning of the simulation. To initialize them to more realistic values,
@@ -254,7 +251,7 @@ saved values at the start of each run rather than to empty reservoirs.
 
 
 Warmup period
-""""""""""""""
+^^^^^^^^^^^^^^
 
 Even with ``initialize_state_variables()``, the very first years of a
 simulation are typically unreliable because the storages have not yet settled
@@ -270,7 +267,7 @@ setup accepts a ``warmup`` argument for this purpose — see the
 
 
 Evaluation
-"""""""""""
+^^^^^^^^^^^
 
 After a run, performance metrics can be computed by comparing the simulated
 discharge to observations. Load observations from a CSV file (discharge in
@@ -293,7 +290,7 @@ can be used by passing its function name as a string.
 
 
 Outputs
-^^^^^^^^
+-------
 
 Results are available at three levels of detail:
 
@@ -306,7 +303,7 @@ Results are available at three levels of detail:
 
 
 Direct outputs
-"""""""""""""""
+^^^^^^^^^^^^^^
 
 The following outputs are accessible on the model object after a run:
 
@@ -326,7 +323,7 @@ The following outputs are accessible on the model object after a run:
 .. _netcdf-output-file:
 
 NetCDF output file
-"""""""""""""""""""
+^^^^^^^^^^^^^^^^^^
 
 A detailed NetCDF file is exported with ``model.dump_outputs('some/path')``.
 How much data it contains depends on the ``record_all`` option set at model
@@ -431,7 +428,7 @@ Example output for GSM-Socont with two glacier types:
 .. _others:
 
 Auxiliary outputs
-""""""""""""""""""
+^^^^^^^^^^^^^^^^^
 
 * **Spatialized forcing** (``forcing.nc``): the per-unit forcing time series,
   saved with ``forcing.create_file()``. Useful for inspecting what the model
