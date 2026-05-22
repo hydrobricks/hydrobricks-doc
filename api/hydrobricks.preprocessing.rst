@@ -10,4 +10,3 @@ Compute elevation bands
    :members:
    :undoc-members:
    :show-inheritance:
-

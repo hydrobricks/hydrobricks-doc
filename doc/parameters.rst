@@ -111,6 +111,8 @@ values and ranges can be specified:
        max_value=[-0.3]*12)
 
 
+.. _calibration:
+
 Calibration using SPOTPY
 --------------------------
 
