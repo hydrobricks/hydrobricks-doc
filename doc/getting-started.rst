@@ -3,18 +3,18 @@
 Getting started
 ===============
 
-Hydrobricks is distributed through PyPi and can be installed using pip:
+Hydrobricks is distributed through PyPI and can be installed with pip:
 
-.. code-block:: python
+.. code-block:: bash
 
    pip install hydrobricks
 
-Some code examples are provided in the
-`python/examples directory of the repo <https://github.com/hydrobricks/hydrobricks/tree/main/python/examples>`_.
-The `tests <https://github.com/hydrobricks/hydrobricks/tree/main/python/tests>`_
-can also be a useful resource to understand the behaviour of some functions.
+Additional code examples can be found in the
+`python/examples directory of the repository <https://github.com/hydrobricks/hydrobricks/tree/main/python/examples>`_.
+The `test suite <https://github.com/hydrobricks/hydrobricks/tree/main/python/tests>`_
+is also a useful reference for understanding function behaviour.
 
-Here is a minimum example:
+A minimal working example is shown below:
 
 .. code-block:: python
 
@@ -39,12 +39,11 @@ Here is a minimum example:
    forcing = hb.Forcing(hydro_units)
    forcing.load_station_data_from_csv(
        'path/to/meteo.csv', column_time='Date', time_format='%d/%m/%Y',
-       content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
-                'pet': 'pet_sim(mm/day)'})
-   ref_elevation = 1250  # Reference altitude for the meteo data
+       content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)'})
+   ref_elevation = 1250  # Reference altitude of the meteo station
+   forcing.correct_station_data(variable='precipitation', correction_factor=0.75)
    forcing.spatialize_from_station_data(
        variable='temperature', ref_elevation=ref_elevation, gradient=-0.6)
-   forcing.correct_station_data(variable='precipitation', correction_factor=0.75)
    forcing.spatialize_from_station_data(
        variable='precipitation', ref_elevation=ref_elevation, gradient=0.05)
    forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
@@ -55,7 +54,7 @@ Here is a minimum example:
                      content={'discharge': 'Discharge (mm/d)'})
 
    # Model setup
-   socont.setup(spatial_structure=hydro_units, output_path=str('path/to/outputs'),
+   socont.setup(spatial_structure=hydro_units, output_path='path/to/outputs',
                 start_date='1981-01-01', end_date='2020-12-31')
 
    # Initialize and run the model

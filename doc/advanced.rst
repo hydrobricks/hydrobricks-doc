@@ -6,244 +6,269 @@ Advanced features
 Land cover evolution
 --------------------
 
-The land cover types in hydrobricks are defined by the user 
-(see the :ref:`hydro units section <spatial-structure>`).
-Each hydro unit is thus internally defined by a total area and fractional land
-covers. These land covers can have a dynamic evolution. This evolution can be
-externally driven or internally computed.
+Land cover fractions can evolve over time within each hydro unit. For multi-decade
+simulations, glacier retreat can substantially alter the catchment response, and
+ignoring it produces unrealistic results.
 
-The definition of a land cover evolution does not replace the original 
-definition of the hydro units, which need to be also provided to the function.
-The areas provided in the definition of the hydro units are the starting point
-of the model, and these changes will be enforced in due time. However, if some
-changes are defined for dates prior to the start of the modelling period, these
-changes will also be applied.
+Three approaches are available, depending on the available input data:
 
-The two last options are specific to glacier land covers and do not handle
-debris covers on glaciers.
+* **External data** (CSV or shapefiles): the area time series is supplied directly,
+  derived from remote sensing or an external model. This is the most straightforward
+  approach when historical glacier extents are available.
+* **Melt-driven evolution** (delta-h or area scaling): glacier area is computed
+  internally from modelled ice loss, without requiring an observed area time series.
+  This is the only viable option for future projections.
+
+The initial hydro unit areas serve as the starting point; evolution data takes effect
+at the dates provided. Changes dated before the simulation start are applied immediately.
+
+.. note::
+
+   The melt-driven methods (delta-h and area scaling) apply only to bare-ice glacier
+   land covers and do not handle debris-covered glacier areas.
+
 
 .. _land_cover_evolution_csv:
 
-Using csv files
+Using CSV files
 ^^^^^^^^^^^^^^^
 
-One can provide the model with a timeseries of dates and new land cover areas, such as:
+The most direct approach: supply a CSV file recording land cover areas at a series of
+dates. Hydrobricks interpolates between snapshots during the simulation.
 
 .. code-block:: python
 
    changes = actions.ActionLandCoverChange()
    changes.load_from_csv(
        '/path/to/surface_changes_glacier_debris.csv',
-       hydro_units, 
-       area_unit='km2', 
+       hydro_units,
+       area_unit='km2',
        match_with='elevation'
    )
    model.add_action(changes)
 
-The function ``changes.load_from_csv()`` can be called multiple times for different files.
-The corresponding csv file must contain the name of the land cover to change on the
-first row (for example here ``glacier_debris``), the dates of these changes on the
-second row, and then the change time series.
-These changes list all hydro units that need to change; those that do not need to
-change should not be listed in the file.
-There are two ways to identify the hydro units: by elevation
-(``match_with='elevation'``) or by ID (``match_with='id'``).
-In the following example, these changes start with the unit elevation and contain the
-time series of the area (here in km2) for every date given above.
+``load_from_csv()`` can be called multiple times for different files — for instance,
+one per land cover type.
+
+The CSV format:
+
+* **First row**: land cover name (e.g., ``glacier_debris``), repeated for each date column.
+* **Second row**: the date of each snapshot.
+* **Remaining rows**: one row per hydro unit that changes, starting with the unit
+  identifier (elevation or ID), then the area at each snapshot date.
+
+Hydro units not listed in the file are assumed unchanged. The ``ground`` fraction is
+adjusted automatically to preserve the total unit area.
+
+Hydro units can be identified either by elevation (``match_with='elevation'``) or by
+ID (``match_with='id'``).
 
 .. code-block:: text
-   :caption: Example of a csv file containing a land cover evolution.
+   :caption: Example CSV file for land cover evolution (areas in km²).
 
-   bands,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris,glacier_debris
-   ,01/08/2020,01/08/2025,01/08/2030,01/08/2035,01/08/2040,01/08/2045,01/08/2050,01/08/2055,01/08/2060,01/08/2065,01/08/2070,01/08/2075,01/08/2080,01/08/2085,01/08/2090,01/08/2095,01/08/2100
-   4274,0.013,0.003,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-   4310,0.019,0.009,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-   4346,0.052,0.042,0.032,0.022,0.012,0.002,0,0,0,0,0,0,0,0,0,0,0
-   4382,0.072,0.062,0.052,0.042,0.032,0.022,0.012,0.002,0,0,0,0,0,0,0,0,0
-   4418,0.129,0.119,0.109,0.099,0.089,0.079,0.069,0.059,0.049,0.039,0.029,0.019,0.009,0,0,0,0
-   4454,0.252,0.242,0.232,0.222,0.212,0.202,0.192,0.182,0.172,0.162,0.152,0.142,0.132,0.122,0.112,0.102,0.092
-   4490,0.288,0.278,0.268,0.258,0.248,0.238,0.228,0.218,0.208,0.198,0.188,0.178,0.168,0.158,0.148,0.138,0.128
-   4526,0.341,0.331,0.321,0.311,0.301,0.291,0.281,0.271,0.261,0.251,0.241,0.231,0.221,0.211,0.201,0.191,0.181
-   4562,0.613,0.603,0.593,0.583,0.573,0.563,0.553,0.543,0.533,0.523,0.513,0.503,0.493,0.483,0.473,0.463,0.453
-   4598,0.648,0.638,0.628,0.618,0.608,0.598,0.588,0.578,0.568,0.558,0.548,0.538,0.528,0.518,0.508,0.498,0.488
-   4634,0.618,0.608,0.598,0.588,0.578,0.568,0.558,0.548,0.538,0.528,0.518,0.508,0.498,0.488,0.478,0.468,0.458
-   4670,0.478,0.468,0.458,0.448,0.438,0.428,0.418,0.408,0.398,0.388,0.378,0.368,0.358,0.348,0.338,0.328,0.318
-   4706,0.306,0.296,0.286,0.276,0.266,0.256,0.246,0.236,0.226,0.216,0.206,0.196,0.186,0.176,0.166,0.156,0.146
-   4742,0.338,0.328,0.318,0.308,0.298,0.288,0.278,0.268,0.258,0.248,0.238,0.228,0.218,0.208,0.198,0.188,0.178
-   4778,0.199,0.189,0.179,0.169,0.159,0.149,0.139,0.129,0.119,0.109,0.099,0.089,0.079,0.069,0.059,0.049,0.039
-   4814,0.105,0.095,0.085,0.075,0.065,0.055,0.045,0.035,0.025,0.015,0.005,0,0,0,0,0,0
-   4850,0.051,0.041,0.031,0.021,0.011,0.001,0,0,0,0,0,0,0,0,0,0,0
-   4886,0.019,0.009,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-   4922,0.008,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-   4958,0.003,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-
-There is no need to specify the corresponding changes in the generic ``ground`` land
-cover as it will be automatically computed to preserve the total hydro unit area.
+   bands,glacier_debris,glacier_debris,glacier_debris,...
+   ,01/08/2020,01/08/2025,01/08/2030,...
+   4274,0.013,0.003,0,...
+   4310,0.019,0.009,0,...
+   4346,0.052,0.042,0.032,...
+   4382,0.072,0.062,0.052,...
+   4418,0.129,0.119,0.109,...
 
 
 .. _land_cover_evolution_shapefiles:
 
 Using shapefiles
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-One can provide the model with a timeseries of dates and shapefiles, such as:
+Glacier extents from field surveys or remote sensing are often available as shapefiles.
+Hydrobricks can derive the land cover time series automatically from a sequence of such
+extents:
 
 .. code-block:: python
 
    times = ['2008-01-01', '2010-01-01', '2016-01-01']
    ice_glaciers = [
       '/path/to/glacier_ice_2008.shp',
-   	'/path/to/glacier_ice_2010.shp', 
-   	'/path/to/glacier_ice_2016.shp'
+      '/path/to/glacier_ice_2010.shp',
+      '/path/to/glacier_ice_2016.shp'
    ]
    debris_glaciers = [
       '/path/to/glacier_debris_2008.shp',
-   	'/path/to/glacier_debris_2010.shp', 
-   	'/path/to/glacier_debris_2016.shp'
+      '/path/to/glacier_debris_2010.shp',
+      '/path/to/glacier_debris_2016.shp'
    ]
    changes, changes_df = actions.ActionLandCoverChange.create_action_for_glaciers(
-       study_area, 
-       times, 
-       ice_glaciers, 
-       debris_glaciers, 
-       with_debris=True,
-       method='raster', 
-       interpolate_yearly=True)
+      study_area,
+      times,
+      ice_glaciers,
+      debris_glaciers,
+      with_debris=True,
+      method='raster',
+      interpolate_yearly=True)
    model.add_action(changes)
 
-This method also creates a dataframe that can then be exported as csv files, and
-reloaded in if needed using the :ref:`csv option <land_cover_evolution_csv>`:
+The function also returns a dataframe that can be exported as CSV and reloaded later
+using the :ref:`CSV option <land_cover_evolution_csv>`, avoiding repeated raster
+processing on subsequent runs:
 
 .. code-block:: python
 
    changes_df[0].to_csv('/path/to/surface_changes_glacier_ice.csv', index=False)
    changes_df[1].to_csv('/path/to/surface_changes_glacier_debris.csv', index=False)
    changes_df[2].to_csv('/path/to/surface_changes_ground.csv', index=False)
-   
-And the hydrological units can also separately be initialized using the
-following lines:
+
+The hydro units can also be initialized directly from the derived time series:
 
 .. code-block:: python
 
    hyd_units.initialize_from_land_cover_change('glacier_ice', changes_df[0])
    hyd_units.initialize_from_land_cover_change('glacier_debris', changes_df[1])
 
-Tips and tricks
-"""""""""""""""
 
-If information about land cover evolution is only available for a date after
-the beginning of the simulation period, it is possible to assume a constant
-land cover by duplicating the first data and assigning it the simulation 
-begining date.
+Handling missing early data
+""""""""""""""""""""""""""""
 
-For example:
+If the earliest available glacier extent is dated after the simulation start, assume a
+constant initial state by duplicating the earliest entry and assigning it the simulation
+start date:
 
 .. code-block:: python
 
    times = ['2005-01-01', '2008-01-01', '2010-01-01', '2016-01-01']
    ice_glaciers = [
+      '/path/to/Glacier_ice_2008.shp',  # used as the 2005 initial state
       '/path/to/Glacier_ice_2008.shp',
-      '/path/to/Glacier_ice_2008.shp',
-   	'/path/to/Glacier_ice_2010.shp', 
-   	'/path/to/Glacier_ice_2016.shp'
+      '/path/to/Glacier_ice_2010.shp',
+      '/path/to/Glacier_ice_2016.shp'
    ]
 
 
 Glacier evolution
 -----------------
 
-.. _glacier_evolution_delta_h_shapefiles:
+The two methods below drive glacier area changes from modelled ice loss rather than
+external observations. Both require an initial ice thickness raster and produce a
+lookup table that maps cumulative mass loss to glacier area. This makes them suitable
+for future projections where no observed extent time series exist.
+
+
+.. _glacier_evolution_delta_h:
 
 Delta-h method
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
-The delta-h method from Huss2010_, as implemented by Seibert2018_ is also available in Hydrobricks.
-A contrario to the two first methods, in the delta-h approach the glacial evolution 
-is not forced from the outside but adjusted by the modeled glacier melt.
-Hydrobricks compute the amount glacier melted in the year, and retrieves 
-the corresponding glacier area from the lookup table.
-This makes this method and the following most appropriate for future discharge 
-modeling when no glacier extent timeseries are available, and we want the 
-glacier evolution to be driven by the modeled melt, rather than by an 
-externally defined evolution.
+The delta-h method (:cite:t:`Huss2010`, as implemented by :cite:t:`Seibert2018`) redistributes ice loss
+according to a characteristic elevation-dependent melt profile, capturing the tendency
+of glaciers to thin faster at lower elevations. It is the preferred approach for medium
+and large glaciers. We recommend using 10 m elevation bands for the glacier, consistent
+with :cite:t:`Seibert2018`.
 
-We recommend 10m elevation bands for the glacier evolution, similar to the 
-ones used in Seibert et al. (2018).
+First, compute the initial ice thickness and build the lookup table from an ice
+thickness raster:
 
 .. code-block:: python
 
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    glacier_evolution = preprocessing.GlacierEvolutionDeltaH()
    glacier_df = glacier_evolution.compute_initial_ice_thickness(
-   	study_area, 
-      ice_thickness = glacier_thickness,
-   	elevation_bands_distance = 10
+      study_area,
+      ice_thickness=glacier_thickness,
+      elevation_bands_distance=10
    )
    glacier_evolution.compute_lookup_table(update_width=False)
-   
-The glacier lookup table ``glacier_evolution`` can then be linked to Hydrobricks.
-At the beginning of October, the hydrological model will sum up all the glacier
-mass loss that occurred during the hydrological year and will modify the land
-cover according to the areas stored in the glacier lookup table: 
-   
+
+Then link the lookup table to the model. The glacier area is updated each October (the
+end of the hydrological year):
+
 .. code-block:: python
-    
+
    changes = actions.ActionGlacierEvolutionDeltaH()
    changes.load_from(glacier_evolution, land_cover='glacier',
                      update_month='October')
+   model.add_action(changes)
 
-This method also creates a dataframe that can then be exported as csv files, and
-reloaded in if needed using the :ref:`first option <first-option>`:
+The lookup table and initial glacier dataframe can be saved for later reuse:
 
 .. code-block:: python
 
    glacier_df.to_csv('/path/to/surface_changes_glacier.csv', index=False)
-            
-The glacier lookup table can be saved as a csv file:
-
-.. code-block:: python
-            
    glacier_evolution.save_as_csv('/path/to/results/folder/')
-   
+
 
 .. _glacier_evolution_area_scaling:
 
 Simple area-scaling method
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The area-scaling method derives glacier area from ice volume using a volume–area
+power-law relationship. It is simpler than delta-h and best suited for small glaciers
+where a detailed elevation-dependent melt profile is not warranted.
+
+First, compute the lookup table from an ice thickness raster:
+
+.. code-block:: python
+
+   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
+
+   glacier_evolution = hb.preprocessing.GlacierEvolutionAreaScaling()
+   glacier_evolution.compute_lookup_table(
+       study_area, ice_thickness='path/to/ice_thickness.tif')
+
+   # Save for later reuse
+   glacier_evolution.save_as_csv('/path/to/results/')
+
+Then link the lookup table to the model:
+
+.. code-block:: python
+
+   changes = hb.actions.ActionGlacierEvolutionAreaScaling()
+   changes.load_from(glacier_evolution, land_cover='glacier', update_month='October')
+   model.add_action(changes)
+
+If the lookup table has been saved previously, skip recomputation and load it directly:
+
+.. code-block:: python
+
+   changes = hb.actions.ActionGlacierEvolutionAreaScaling()
+   changes.load_from_csv('/path/to/results/')
+   model.add_action(changes)
 
 
 .. _glacier_options:
-   
+
 Glacier-related options
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The glacier evolution methods require appropriate configuration of the following two options:
+Two options control the internal glacier representation and must match the evolution
+method in use:
 
-    ``glacier_infinite_storage``: Boolean flag indicating whether glaciers have unlimited thickness (i.e., no thinning due to melt).
+``glacier_infinite_storage``
+   When ``True``, the glacier is treated as having unlimited thickness: the area can
+   change but ice does not thin. Use with the externally driven methods (CSV or
+   shapefiles), which supply area directly without tracking ice volume.
 
-    ``snow_ice_transformation``: Rate at which snow transforms into ice, expressed in mm/day. The default value is 0.002 mm/day.
+``snow_ice_transformation``
+   Rate at which accumulated snow converts to glacier ice [mm/day]; default
+   ``0.002`` mm/day. Set to ``False`` to disable. Enable with the melt-driven methods,
+   which track ice thickness to derive area.
 
-These options must be set depending on the method used for glacier evolution:
+Recommended settings:
 
-    For methods 1 and 2 (:ref:`CSV input <first-option>` or 
-    :ref:`shapefile input <second-option>`), the computation only takes into
-    account the area, and not the ice thickness. As such:
+* For **externally driven** area changes (CSV or shapefile):
 
-    .. code-block:: python
+  .. code-block:: python
 
-        glacier_infinite_storage = True
-        snow_ice_transformation = False
+     glacier_infinite_storage = True
+     snow_ice_transformation = False
 
-    For methods 3 and 4 (:ref:`shapefiles with delta-h <third-option>` or 
-    :ref:`ice thickness with delta-h <fourth-option>`), the computation relies
-    on the ice thickness to compute the area. As such:
-	
-    .. code-block:: python
-    
-        glacier_infinite_storage = False
-        snow_ice_transformation = True
+* For **melt-driven** glacier evolution (delta-h or area scaling):
 
-They are specified during model initialization:
+  .. code-block:: python
+
+     glacier_infinite_storage = False
+     snow_ice_transformation = True
+
+Pass these options at model initialization:
 
 .. code-block:: python
 
@@ -252,10 +277,10 @@ They are specified during model initialization:
       glacier_infinite_storage=glacier_infinite_storage,
       snow_ice_transformation=snow_ice_transformation
    )
-                          
-                          
+
+
 .. _snow-redistribution:
-   
+
 Snow redistribution
 -------------------
 
@@ -270,35 +295,26 @@ Snow redistribution
           :alt: Snow height with snow redistribution
           :align: center
 
-Hydrobricks supports a snow redistribution mechanism based on the SnowSlide
-algorithm (Bernhardt2010_). This option simulates gravitational snow
-transport and can help improve snow distribution modeling across elevation 
-bands and avoid 'snow towers'.
+Without redistribution, elevation-band models can accumulate unrealistic amounts of snow
+at high elevations — so-called "snow towers". Hydrobricks addresses this with the
+SnowSlide algorithm (:cite:t:`Bernhardt2010`), which simulates gravitational transport of snow
+downslope across elevation bands.
 
-Default example:
-
-.. code-block:: python
-
-   socont = models.Socont(soil_storage_nb = 2,
-   			  snow_redistribution = 'transport:snow_slide')
-
-In addition, you must provide a connectivity CSV file describing the lateral
-redistribution pathways between hydro units:
+Enable snow redistribution at model creation:
 
 .. code-block:: python
 
-   hydro_units.set_connectivity(/path/to/connectivity.csv)
+   socont = models.Socont(soil_storage_nb=2,
+                          snow_redistribution='transport:snow_slide')
+
+A connectivity CSV file describing the downslope pathways between hydro units is also
+required:
+
+.. code-block:: python
+
+   hydro_units.set_connectivity('/path/to/connectivity.csv')
 
 Resources:
-    
-    `Working example implementation <https://github.com/hydrobricks/hydrobricks/blob/feature/glacier-evolution/python/examples/basics/snow_redistribution.py>`_
-    
-    `Script to compute the connectivity CSV <https://github.com/hydrobricks/hydrobricks/blob/main/python/examples/preprocessing/compute_lateral_connectivity.py>`_
 
-
-References
-----------
-
-.. [Bernhardt2010] Bernhardt, M., & Schulz, K. (2010). SnowSlide: A simple routine for calculating gravitational snow transport. Geophysical Research Letters, 37(11), 1–6. https://doi.org/10.1029/2010GL043086
-.. [Huss2010] Huss, M., Jouvet, G., Farinotti, D., & Bauder, A. (2010). Future high-mountain hydrology: A new parameterization of glacier retreat. Hydrology and Earth System Sciences, 14(5), 815–829. https://doi.org/10.5194/hess-14-815-2010
-.. [Seibert2018] Seibert, J., Vis, M., Kohn, I., Weiler, M., & Stahl, K. (2018). Technical note: Representing glacier geometry changes in a semi-distributed hydrological model. Hydrology and Earth System Sciences, 22(4), 2211–2224. https://doi.org/10.5194/hess-22-2211-2018
+* `Working example implementation <https://github.com/hydrobricks/hydrobricks/blob/main/python/examples/basics/snow_redistribution.py>`_
+* `Script to compute the connectivity CSV <https://github.com/hydrobricks/hydrobricks/blob/main/python/examples/preprocessing/compute_lateral_connectivity.py>`_

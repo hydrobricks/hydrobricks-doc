@@ -7,21 +7,8 @@ import os
 import sys
 
 # -- Mock modules -------------------------------------------------------------
-
-from mock import Mock as MagicMock
-
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return Mock()
-
-
-MOCK_MODULES = ['numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
-                'pytest', 'pyyaml', 'yaml', 'HydroErr', '_hydrobricks'
-                ]
-
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+# Use autodoc_mock_imports (set below) instead of manual sys.modules patching
+# so that Sphinx 9.x does not attempt Path(Mock()) and raise TypeError.
 
 
 # -- Path setup --------------------------------------------------------------
@@ -45,7 +32,7 @@ sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bind
 project = 'hydrobricks'
 copyright = '2022, Pascal Horton'
 author = 'Pascal Horton'
-release = '0.4.11'
+release = '0.8.7'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -56,9 +43,19 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
+    'sphinxcontrib.bibtex',
 ]
 
+bibtex_bibfiles = ['doc/references.bib']
+bibtex_default_style = 'plain'
+bibtex_reference_style = 'author_year'
+
 autosummary_generate = True
+
+autodoc_mock_imports = [
+    'numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
+    'pytest', 'pyyaml', 'yaml', 'HydroErr', '_hydrobricks',
+]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
