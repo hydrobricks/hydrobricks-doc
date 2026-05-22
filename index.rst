@@ -20,9 +20,9 @@ Additional resources contributed by the community are listed on the
 
    doc/getting-started
    doc/basics
-   doc/forcing
-   doc/running
    doc/models
+   doc/parameters
+   doc/forcing
    doc/processes
    doc/calibration
    doc/advanced
