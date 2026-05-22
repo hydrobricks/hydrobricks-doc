@@ -1,18 +1,9 @@
-Submodules
-==========
-
-hydrobricks.plotting module
----------------------------
+Plotting
+========
 
 .. automodule:: hydrobricks.plotting
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
-hydrobricks.utils module
-------------------------
-
-.. automodule:: hydrobricks.utils
+.. automodule:: hydrobricks.plotting.plot_results
    :members:
    :undoc-members:
    :show-inheritance:

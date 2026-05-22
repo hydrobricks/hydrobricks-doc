@@ -4,10 +4,11 @@ API reference
 .. toctree::
    :maxdepth: 1
 
-   hydrobricks.models
    hydrobricks
-   hydrobricks.submodules
+   hydrobricks.models
+   hydrobricks.actions
    hydrobricks.preprocessing
+   hydrobricks.submodules
    _hydrobricks
 
 

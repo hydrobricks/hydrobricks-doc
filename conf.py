@@ -55,6 +55,9 @@ autosummary_generate = True
 autodoc_mock_imports = [
     'numpy', 'matplotlib', 'matplotlib.pyplot', 'pandas', 'netCDF4',
     'pytest', 'pyyaml', 'yaml', 'HydroErr', '_hydrobricks',
+    'hydrobricks._hydrobricks',  # C++ extension: not available without building
+    'cftime',  # direct import in forcing.py (num2date)
+    'scipy', 'scipy.ndimage',  # real scipy has broken internal import on this machine
 ]
 
 templates_path = ['_templates']
