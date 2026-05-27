@@ -46,11 +46,10 @@ from a CSV file, or generated automatically from a DEM.
    :alt: Example of discretization of a catchment into hydro units.
    :width: 600px
    :align: center
-
-   Example of discretization of a catchment based on (a) elevation bands,
-   (b) aspect, and (c) potential solar radiation. Aspect or potential 
-   solar radiation is then combined with elevation bands to form hydro units. 
-   Source: :cite:t:`Argentin2025`
+*Example of discretization of a catchment based on (a) elevation bands,
+(b) aspect, and (c) potential solar radiation. Aspect or potential 
+solar radiation is then combined with elevation bands to form hydro units. 
+Source: :cite:t:`Argentin2025`*
 
 
 Loading hydro units from a CSV file
@@ -75,7 +74,7 @@ with units. A minimal example:
    :caption: Example of a CSV file with hydro unit areas.
 
    num, elevation, area
-   -,m,m^2
+   -, m, m^2
    0, 790, 2457500
    1, 840, 4481250
    2, 890, 5630625
@@ -93,8 +92,8 @@ with units. A minimal example:
 By default, each hydro unit has a single ``ground`` land cover. Catchments
 with glaciers or other distinct surface types require multiple land covers.
 Each land cover has a type (which determines its physical behaviour) and a
-name (which distinguishes it from other covers of the same type). For example,
-a catchment with bare-ice and debris-covered glacier areas uses three covers:
+name (which distinguishes it from other land covers of the same type). For example,
+a catchment with bare-ice and debris-covered glacier areas uses three land covers:
 
 .. code-block:: python
 
