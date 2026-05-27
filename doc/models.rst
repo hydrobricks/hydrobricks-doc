@@ -6,7 +6,7 @@ Models
 The following model structures are currently implemented:
 
 * :ref:`GSM-Socont <gsm-socont>`
-* :ref:`GR4J <gr4j>`.
+* :ref:`GR4J <gr4j>`
 
 
 Common options
@@ -63,18 +63,18 @@ Parameters
 **Precipitation (snow/rain transition)**
 
 * ``prec_t_start`` (optional)
-  * Unit: °C
-  * Default: 0 °C
-  * Range: [-2, 2] °C
-  * Description: Temperature below which precipitation is 100% snow. The rain/snow transition is linear between ``prec_t_start`` and ``prec_t_end``.
-  * Full name: ``snow_rain_transition:transition_start``
+  - Unit: °C
+  - Default: 0 °C
+  - Range: [-2, 2] °C
+  - Description: Temperature below which precipitation is 100% snow. The rain/snow transition is linear between ``prec_t_start`` and ``prec_t_end``.
+  - Full name: ``snow_rain_transition:transition_start``
 
 * ``prec_t_end`` (optional)
-  * Unit: °C
-  * Default: 2 °C
-  * Range: [0, 4] °C
-  * Description: Temperature above which precipitation is 100% liquid.
-  * Full name: ``snow_rain_transition:transition_end``
+  - Unit: °C
+  - Default: 2 °C
+  - Range: [0, 4] °C
+  - Description: Temperature above which precipitation is 100% liquid.
+  - Full name: ``snow_rain_transition:transition_end``
 
 
 .. list-table:: Parameters of the GSM-Socont model
