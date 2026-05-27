@@ -39,12 +39,45 @@ Example:
 Snow / Glacier melt
 ^^^^^^^^^^^^^^^^^^^
 
-The melt model is selected via the ``snow_melt_process`` option. The ``melt:degree_day``
-model uses model-specific parameter aliases (``a_snow``, ``a_ice``, etc.) documented in
-each model's own parameter section. The following options share a common parameter set
-applicable to all models.
+The melt model is selected via the ``snow_melt_process`` option. See
+:ref:`melt models <melt-models>` for the governing equations of each option.
 
-See :ref:`melt models <melt-models>` for the governing equations of each option.
+**Snow / Glacier** (``melt:degree_day``)
+
+* ``a_snow`` / ``Kf``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [1, 12] mm/d/°C
+  - Description: Degree-day snow melt factor. ``Kf`` is the alias used in GR4J.
+  - Full name: ``snowpack:degree_day_factor``
+
+* ``melt_t_snow`` / ``Tmelt`` (optional)
+
+  - Unit: °C
+  - Default: 0 °C
+  - Range: [0, 5] °C
+  - Description: Temperature above which snow starts to melt. ``Tmelt`` is the alias used in
+    GR4J.
+  - Full name: ``snowpack:melting_temperature``
+
+* ``a_ice`` (single type), ``a_ice_<name>``, ``a_ice_<i>``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [5, 20] mm/d/°C
+  - Description: Degree-day ice melt factor. ``<name>`` is the land cover name (e.g.,
+    ``glacier_debris``); ``<i>`` is the index of similar land covers.
+  - Full name: ``<name>:degree_day_factor``
+
+* ``melt_t_ice`` (optional)
+
+  - Unit: °C
+  - Default: 0 °C
+  - Range: [0, 5] °C
+  - Description: Temperature above which ice starts to melt.
+  - Full name: ``<name>:melting_temperature``
+
 
 **Snow / Glacier** (``melt:degree_day_aspect``)
 
