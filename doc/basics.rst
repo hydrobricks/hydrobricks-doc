@@ -46,10 +46,11 @@ from a CSV file, or generated automatically from a DEM.
    :alt: Example of discretization of a catchment into hydro units.
    :width: 600px
    :align: center
+
 *Example of discretization of a catchment based on (a) elevation bands,
 (b) aspect, and (c) potential solar radiation. Aspect or potential 
 solar radiation is then combined with elevation bands to form hydro units. 
-Source: :cite:t:`Argentin2025`*
+Source:* :cite:t:`Argentin2025`
 
 
 Loading hydro units from a CSV file
@@ -365,7 +366,7 @@ Dimensions:
 * ``hydro_units``: one entry per hydro unit (e.g., per elevation band)
 * ``aggregated_values``: catchment-scale (lumped) quantities
 * ``distributed_values``: per-hydro-unit quantities
-* ``land_covers``: one entry per land cover type
+* ``land_covers``: one entry per land cover
 
 Global attributes that map variable indices to names:
 

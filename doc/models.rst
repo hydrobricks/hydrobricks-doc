@@ -3,9 +3,10 @@
 Models
 ======
 
-Two model structures are currently implemented:
-:ref:`GSM-Socont <gsm-socont>` (glacio-hydrological) and
-:ref:`GR4J <gr4j>` (daily rainfall-runoff).
+The following model structures are currently implemented:
+
+* :ref:`GSM-Socont <gsm-socont>`
+* :ref:`GR4J <gr4j>`.
 
 
 Common options
@@ -40,15 +41,8 @@ GSM-Socont
 
 GSM-Socont is a conceptual glacio-hydrological model described in :cite:t:`Schaefli2005`.
 
-.. list-table:: Properties of the GSM-Socont model
-   :widths: 50 50
-   :header-rows: 0
-   :stub-columns: 1
-
-   * - Spatial structure
-     - semi-lumped (elevation bands)
-   * - Time step
-     - daily
+* Spatial structure: semi-lumped (elevation bands)
+* Time step: daily
 
 
 Specific options
@@ -294,15 +288,8 @@ non-glacierized or weakly glacierized catchments. Snow can optionally be
 accounted for using either the CemaNeige model or a simple degree-day
 approach.
 
-.. list-table:: Properties of the GR4J model
-   :widths: 50 50
-   :header-rows: 0
-   :stub-columns: 1
-
-   * - Spatial structure
-     - lumped
-   * - Time step
-     - daily
+* Spatial structure: lumped
+* Time step: daily
 
 
 Specific options
