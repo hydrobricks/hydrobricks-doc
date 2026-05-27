@@ -34,6 +34,184 @@ Example:
     socont = models.Socont(solver="heun_explicit", record_all=False)
 
 
+.. _snow-melt-params:
+
+Snow / Glacier melt
+^^^^^^^^^^^^^^^^^^^
+
+The melt model is selected via the ``snow_melt_process`` option. The ``melt:degree_day``
+model uses model-specific parameter aliases (``a_snow``, ``a_ice``, etc.) documented in
+each model's own parameter section. The following options share a common parameter set
+applicable to all models.
+
+See :ref:`melt models <melt-models>` for the governing equations of each option.
+
+**Snow / Glacier** (``melt:degree_day_aspect``)
+
+Replaces ``a_snow`` and ``a_ice`` with aspect-specific factors:
+
+* ``<component>:degree_day_factor_n``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [0, 20] mm/d/°C
+  - Description: Degree-day factor for north-facing slopes.
+  - Full name: ``snowpack:degree_day_factor_n`` / ``<name>:degree_day_factor_n``
+
+* ``<component>:degree_day_factor_s``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [2, 20] mm/d/°C
+  - Description: Degree-day factor for south-facing slopes.
+
+* ``<component>:degree_day_factor_ew``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [2, 20] mm/d/°C
+  - Description: Degree-day factor for east/west-facing slopes.
+
+* ``<component>:melting_temperature`` (optional)
+
+  - Unit: °C
+  - Default: 0 °C
+  - Range: [0, 5] °C
+  - Description: Same meaning as ``melt_t_snow`` / ``melt_t_ice``.
+
+
+**Snow / Glacier** (``melt:temperature_index``)
+
+Replaces ``a_snow`` and ``a_ice`` with:
+
+* ``<component>:melt_factor``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [0, 12] mm/d/°C
+  - Description: Base melt factor :math:`m` (independent of radiation).
+  - Full name: ``snowpack:melt_factor`` / ``<name>:melt_factor``
+
+* ``<component>:radiation_coefficient``
+
+  - Unit: m² W⁻¹ mm d⁻¹ °C⁻¹
+  - Default: --
+  - Range: [0, 1]
+  - Description: Radiation scaling coefficient :math:`r_j` for snow or ice.
+  - Full name: ``snowpack:radiation_coefficient`` / ``<name>:radiation_coefficient``
+
+* ``<component>:melting_temperature`` (optional)
+
+  - Unit: °C
+  - Default: 0 °C
+  - Range: [0, 5] °C
+  - Description: Melt temperature threshold.
+
+
+**Snowpack** (``melt:cemaneige``)
+
+* ``Kf``
+
+  - Unit: mm/d/°C
+  - Default: --
+  - Range: [1, 10] mm/d/°C
+  - Description: Degree-day melt factor.
+  - Full name: ``ground_snowpack:degree_day_factor``
+
+* ``CTG``
+
+  - Unit: --
+  - Default: --
+  - Range: [0, 1]
+  - Description: Cold content weighting factor. Controls how quickly the thermal state of the
+    snowpack tracks air temperature. Values close to 1 give longer memory.
+  - Full name: ``ground_snowpack:cold_content_factor``
+
+* ``Tmelt`` (optional)
+
+  - Unit: °C
+  - Default: 0 °C
+  - Range: [0, 2] °C
+  - Description: Melt temperature threshold.
+  - Full name: ``ground_snowpack:melting_temperature``
+
+* ``Cn``
+
+  - Unit: mm
+  - Default: --
+  - Range: [50, 1000] mm
+  - Description: Mean annual solid precipitation. Used to scale the melt factor at low snow
+    accumulation.
+  - Full name: ``ground_snowpack:mean_annual_snow``
+
+
+.. _snow-redistribution:
+
+Snow redistribution
+^^^^^^^^^^^^^^^^^^^
+
+Snow redistribution via the SnowSlide method (:cite:t:`Bernhardt2010`) simulates
+gravitational downslope transport of snow between hydro units. It is activated by setting
+``snow_redistribution="transport:snow_slide"``. The slope of each hydro unit must be
+provided in the hydro unit CSV file (column ``slope``, in degrees).
+
+**Snow slide** (``transport:snow_slide``)
+
+* ``snow_slide_coeff`` (optional)
+
+  - Unit: --
+  - Default: 3178.4
+  - Range: [0, 10000]
+  - Description: Coefficient in the snow holding depth equation
+    :math:`h_\mathrm{hold} = \mathrm{coeff} \cdot \theta^{\mathrm{exp}}`,
+    where :math:`\theta` is the slope in degrees.
+  - Full name: ``<snowpack>:coeff``
+
+* ``snow_slide_exp`` (optional)
+
+  - Unit: --
+  - Default: -1.998
+  - Range: [-5, 0]
+  - Description: Exponent in the snow holding depth equation (see above).
+  - Full name: ``<snowpack>:exp``
+
+* ``snow_slide_min_slope`` (optional)
+
+  - Unit: °
+  - Default: 10 °
+  - Range: [0, 45] °
+  - Description: Minimum slope used in the holding depth calculation. Units with a slope below
+    this value are treated as having this minimum slope.
+  - Full name: ``<snowpack>:min_slope``
+
+* ``snow_slide_max_slope`` (optional)
+
+  - Unit: °
+  - Default: 75 °
+  - Range: [45, 90] °
+  - Description: Slope above which the minimum snow holding depth is applied directly,
+    regardless of the equation result.
+  - Full name: ``<snowpack>:max_slope``
+
+* ``snow_slide_min_snow_depth`` (optional)
+
+  - Unit: mm (snow depth)
+  - Default: 50 mm
+  - Range: [0, 1000] mm
+  - Description: Minimum snow holding depth applied when the slope exceeds
+    ``snow_slide_max_slope``.
+  - Full name: ``<snowpack>:min_snow_holding_depth``
+
+* ``snow_slide_max_snow_depth`` (optional)
+
+  - Unit: mm (snow depth)
+  - Default: 20000 mm
+  - Range: [-1, 50000] mm
+  - Description: Maximum snow depth allowed to accumulate in a receiving unit (extension to the
+    original method). Set to ``-1`` for no limit.
+  - Full name: ``<snowpack>:max_snow_depth``
+
+
 .. _gsm-socont:
 
 GSM-Socont
@@ -210,69 +388,8 @@ Parameters
   - Full name: ``slow_reservoir_2:response_factor``
 
 
-When ``snow_melt_process="melt:degree_day_aspect"``, replace ``a_snow`` and
-``a_ice`` with aspect-specific factors:
-
-**Snow / Glacier** (``melt:degree_day_aspect``)
-
-* ``<component>:degree_day_factor_n``
-
-  - Unit: mm/d/°C
-  - Default: --
-  - Range: [0, 20] mm/d/°C
-  - Description: Degree-day factor for north-facing slopes.
-  - Full name: ``snowpack:degree_day_factor_n`` / ``<name>:degree_day_factor_n``
-
-* ``<component>:degree_day_factor_s``
-
-  - Unit: mm/d/°C
-  - Default: --
-  - Range: [2, 20] mm/d/°C
-  - Description: Degree-day factor for south-facing slopes.
-
-* ``<component>:degree_day_factor_ew``
-
-  - Unit: mm/d/°C
-  - Default: --
-  - Range: [2, 20] mm/d/°C
-  - Description: Degree-day factor for east/west-facing slopes.
-
-* ``<component>:melting_temperature`` (optional)
-
-  - Unit: °C
-  - Default: 0 °C
-  - Range: [0, 5] °C
-  - Description: Same meaning as ``melt_t_snow`` / ``melt_t_ice``.
-
-When ``snow_melt_process="melt:temperature_index"``, replace ``a_snow`` and
-``a_ice`` with:
-
-**Snow / Glacier** (``melt:temperature_index``)
-
-* ``<component>:melt_factor``
-
-  - Unit: mm/d/°C
-  - Default: --
-  - Range: [0, 12] mm/d/°C
-  - Description: Base melt factor :math:`m` (independent of radiation).
-  - Full name: ``snowpack:melt_factor`` / ``<name>:melt_factor``
-
-* ``<component>:radiation_coefficient``
-
-  - Unit: m² W⁻¹ mm d⁻¹ °C⁻¹
-  - Default: --
-  - Range: [0, 1]
-  - Description: Radiation scaling coefficient :math:`r_j` for snow or ice.
-  - Full name: ``snowpack:radiation_coefficient`` / ``<name>:radiation_coefficient``
-
-* ``<component>:melting_temperature`` (optional)
-
-  - Unit: °C
-  - Default: 0 °C
-  - Range: [0, 5] °C
-  - Description: Melt temperature threshold.
-
-See :ref:`melt models <melt-models>` for the governing equations of each option.
+For the ``melt:degree_day_aspect`` and ``melt:temperature_index`` options, see
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Common options.
 
 
 Pre-defined parameter constraints:
@@ -365,45 +482,8 @@ Parameters
   - Description: Time base of the unit hydrograph. Must be > 0.5 d.
   - Full name: ``uh_input:uh_base_time``
 
-When ``snow_melt_process='melt:cemaneige'``, the following snow parameters are
-added:
-
-**Snowpack (CemaNeige)**
-
-* ``Kf``
-
-  - Unit: mm/d/°C
-  - Default: --
-  - Range: [1, 10] mm/d/°C
-  - Description: Degree-day melt factor.
-  - Full name: ``ground_snowpack:degree_day_factor``
-
-* ``CTG``
-
-  - Unit: --
-  - Default: --
-  - Range: [0, 1]
-  - Description: Cold content weighting factor. Controls how quickly the thermal state of the
-    snowpack tracks air temperature. Values close to 1 give longer memory.
-  - Full name: ``ground_snowpack:cold_content_factor``
-
-* ``Tmelt`` (optional)
-
-  - Unit: °C
-  - Default: 0 °C
-  - Range: [0, 2] °C
-  - Description: Melt temperature threshold.
-  - Full name: ``ground_snowpack:melting_temperature``
-
-* ``Cn``
-
-  - Unit: mm
-  - Default: --
-  - Range: [50, 1000] mm
-  - Description: Mean annual solid precipitation. Used to scale the melt factor at low snow
-    accumulation.
-  - Full name: ``ground_snowpack:mean_annual_snow``
-
+For CemaNeige parameters (``melt:cemaneige``), see
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Common options.
 When ``snow_melt_process='melt:degree_day'``, only ``a_snow`` (alias ``Kf``)
 and ``Tmelt`` are added.
 
