@@ -41,8 +41,8 @@ GSM-Socont
 
 GSM-Socont is a conceptual glacio-hydrological model described in :cite:t:`Schaefli2005`.
 
-* Spatial structure: semi-lumped (elevation bands)
-* Time step: daily
+* **Spatial structure**: semi-lumped (elevation bands)
+* **Time step**: daily
 
 
 Specific options
@@ -58,6 +58,24 @@ Specific options
 
 Parameters
 ^^^^^^^^^^^
+
+
+**Precipitation (snow/rain transition)**
+
+* ``prec_t_start`` (optional)
+  * Unit: °C
+  * Default: 0 °C
+  * Range: [-2, 2] °C
+  * Description: Temperature below which precipitation is 100% snow. The rain/snow transition is linear between ``prec_t_start`` and ``prec_t_end``.
+  * Full name: ``snow_rain_transition:transition_start``
+
+* ``prec_t_end`` (optional)
+  * Unit: °C
+  * Default: 2 °C
+  * Range: [0, 4] °C
+  * Description: Temperature above which precipitation is 100% liquid.
+  * Full name: ``snow_rain_transition:transition_end``
+
 
 .. list-table:: Parameters of the GSM-Socont model
    :widths: 10 10 5 5 70
@@ -288,8 +306,8 @@ non-glacierized or weakly glacierized catchments. Snow can optionally be
 accounted for using either the CemaNeige model or a simple degree-day
 approach.
 
-* Spatial structure: lumped
-* Time step: daily
+* **Spatial structure**: lumped
+* **Time step**: daily
 
 
 Specific options
