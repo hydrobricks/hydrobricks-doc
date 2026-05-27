@@ -79,7 +79,7 @@ Parameters
   - Full name: ``snow_rain_transition:transition_end``
 
 
-**Snow (``melt:degree_day``)**
+**Snow** (``melt:degree_day``)
 
 * ``a_snow``
 
@@ -98,7 +98,7 @@ Parameters
   - Full name: ``snowpack:melting_temperature``
 
 
-**Glacier (``melt:degree_day``)**
+**Glacier** (``melt:degree_day``)
 
 * ``a_ice`` (single type), ``a_ice_<name>``, ``a_ice_<i>``
 
@@ -213,7 +213,7 @@ Parameters
 When ``snow_melt_process="melt:degree_day_aspect"``, replace ``a_snow`` and
 ``a_ice`` with aspect-specific factors:
 
-**Snow / Glacier (``melt:degree_day_aspect``)**
+**Snow / Glacier** (``melt:degree_day_aspect``)
 
 * ``<component>:degree_day_factor_n``
 
@@ -247,7 +247,7 @@ When ``snow_melt_process="melt:degree_day_aspect"``, replace ``a_snow`` and
 When ``snow_melt_process="melt:temperature_index"``, replace ``a_snow`` and
 ``a_ice`` with:
 
-**Snow / Glacier (``melt:temperature_index``)**
+**Snow / Glacier** (``melt:temperature_index``)
 
 * ``<component>:melt_factor``
 
