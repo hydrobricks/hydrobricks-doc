@@ -63,6 +63,7 @@ Parameters
 **Precipitation (snow/rain transition)**
 
 * ``prec_t_start`` (optional)
+
   - Unit: °C
   - Default: 0 °C
   - Range: [-2, 2] °C
@@ -70,6 +71,7 @@ Parameters
   - Full name: ``snow_rain_transition:transition_start``
 
 * ``prec_t_end`` (optional)
+
   - Unit: °C
   - Default: 2 °C
   - Range: [0, 4] °C
