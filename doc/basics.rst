@@ -62,7 +62,10 @@ minimum, the file must contain the area and mean elevation of each unit:
 
    hydro_units = hb.HydroUnits()
    hydro_units.load_from_csv(
-      'path/to/file.csv', column_elevation='elevation', column_area='area')
+      'path/to/file.csv', 
+      column_elevation='elevation', 
+      column_area='area'
+   )
 
 The CSV must have two header rows: the first with column names, the second
 with units. A minimal example:
@@ -99,10 +102,14 @@ a catchment with bare-ice and debris-covered glacier areas uses three covers:
 
    hydro_units = hb.HydroUnits(land_cover_types, land_cover_names)
    hydro_units.load_from_csv(
-      'path/to/file.csv', column_elevation='Elevation',
-      columns_areas={'ground': 'Area Non Glacier',
-                     'glacier_ice': 'Area Ice',
-                     'glacier_debris': 'Area Debris'})
+      'path/to/file.csv', 
+      column_elevation='Elevation',
+      columns_areas={
+         'ground': 'Area Non Glacier',
+         'glacier_ice': 'Area Ice',
+         'glacier_debris': 'Area Debris'
+      }
+   )
 
 The CSV must list the area of each land cover per hydro unit
 (more information in :ref:`the Python API <api_hydrounits>`):
@@ -184,7 +191,9 @@ filename is ``'annual_potential_radiation.tif'``:
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    success = study_area.extract_dem('path/to/dem.tif')
    study_area.load_mean_annual_radiation_raster(
-       'path/to/file', filename='annual_potential_radiation.tif')
+      'path/to/file', 
+      filename='annual_potential_radiation.tif'
+   )
 
 With the radiation loaded, pass it as a discretization criterion:
 
@@ -216,8 +225,12 @@ run the model:
 
 .. code-block:: python
 
-   socont.setup(spatial_structure=hydro_units, output_path='/path/to/dir',
-                start_date='1981-01-01', end_date='2020-12-31')
+   socont.setup(
+      spatial_structure=hydro_units, 
+      output_path='/path/to/dir',
+      start_date='1981-01-01', 
+      end_date='2020-12-31'
+   )
 
    socont.run(parameters=parameters, forcing=forcing)
 
@@ -243,7 +256,10 @@ call ``initialize_state_variables()`` between ``setup()`` and ``run()``:
 
 .. code-block:: python
 
-   socont.initialize_state_variables(parameters=parameters, forcing=forcing)
+   socont.initialize_state_variables(
+      parameters=parameters, 
+      forcing=forcing
+   )
    socont.run(parameters=parameters, forcing=forcing)
 
 This runs the model once over the full simulation period, captures the final
@@ -278,8 +294,12 @@ mm/d):
 .. code-block:: python
 
    obs = hb.Observations()
-   obs.load_from_csv('/path/to/obs.csv', column_time='Date', time_format='%d/%m/%Y',
-                     content={'discharge': 'Discharge (mm/d)'})
+   obs.load_from_csv(
+      '/path/to/obs.csv', 
+      column_time='Date', 
+      time_format='%d/%m/%Y',
+      content={'discharge': 'Discharge (mm/d)'}
+   )
    obs_ts = obs.data[0]
 
    nse = socont.eval('nse', obs_ts)
