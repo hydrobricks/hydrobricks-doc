@@ -44,12 +44,13 @@ from a CSV file, or generated automatically from a DEM.
 
 .. image:: images/hydro_units.png
    :alt: Example of discretization of a catchment into hydro units.
-   :title: Example of discretization of a catchment based on (a) elevation bands,
-           (b) aspect, and (c) potential solar radiation. Aspect or potential 
-           solar radiation is then combined with elevation bands to form hydro units. 
-           Source: :cite:t:`Argentin2025`
    :width: 600px
    :align: center
+
+   Example of discretization of a catchment based on (a) elevation bands,
+   (b) aspect, and (c) potential solar radiation. Aspect or potential 
+   solar radiation is then combined with elevation bands to form hydro units. 
+   Source: :cite:t:`Argentin2025`
 
 
 Loading hydro units from a CSV file
