@@ -44,26 +44,15 @@ The melt model is selected via the ``snow_melt_process`` option. See
 
 **Snow / Glacier** (``melt:degree_day``)
 
-* ``a_snow`` / ``Kf`` *(mm/d/°C, no default, [1, 12])*
+* ``<component>:degree_day_factor`` *(mm/d/°C, no default, [2, 20])*
 
-  - Degree-day snow melt factor. ``Kf`` is the alias used in GR4J.
-  - Full name: ``snowpack:degree_day_factor``.
+  - Degree-day factor.
+  - Full name: ``snowpack:degree_day_factor`` / ``<name>:degree_day_factor``.
 
-* ``melt_t_snow`` / ``Tmelt`` *(optional, °C, default: 0, [0, 5])*
+* ``<component>:melting_temperature`` *(optional, °C, default: 0, [0, 5])*
 
-  - Temperature above which snow starts to melt. ``Tmelt`` is the alias used in GR4J.
-  - Full name: ``snowpack:melting_temperature``.
-
-* ``a_ice`` (single type), ``a_ice_<name>``, ``a_ice_<i>`` *(mm/d/°C, no default, [5, 20])*
-
-  - Degree-day ice melt factor. ``<name>`` is the land cover name (e.g., ``glacier_debris``);
-    ``<i>`` is the index of similar land covers.
-  - Full name: ``<name>:degree_day_factor``.
-
-* ``melt_t_ice`` *(optional, °C, default: 0, [0, 5])*
-
-  - Temperature above which ice starts to melt.
-  - Full name: ``<name>:melting_temperature``.
+  - Melt temperature threshold.
+  - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
 
 
 **Snow / Glacier** (``melt:degree_day_aspect``)
@@ -87,7 +76,8 @@ Replaces ``a_snow`` and ``a_ice`` with aspect-specific factors:
 
 * ``<component>:melting_temperature`` *(optional, °C, default: 0, [0, 5])*
 
-  - Same meaning as ``melt_t_snow`` / ``melt_t_ice``.
+  - Melt temperature threshold.
+  - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
 
 
 **Snow / Glacier** (``melt:temperature_index``)
@@ -409,52 +399,74 @@ Minimal run without snow:
 
 .. code-block:: python
 
-   import hydrobricks as hb
-   import hydrobricks.models as models
+  import hydrobricks as hb
+  import hydrobricks.models as models
 
-   gr4j = models.GR4J()
+  gr4j = models.GR4J()
 
-   parameters = gr4j.generate_parameters()
-   parameters.set_values({'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7})
+  parameters = gr4j.generate_parameters()
+  parameters.set_values({'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7})
 
-   hydro_units = hb.HydroUnits()
-   hydro_units.load_from_csv('path/to/hydro_units.csv',
-                              column_elevation='elevation', column_area='area')
+  hydro_units = hb.HydroUnits()
+  hydro_units.load_from_csv(
+    'path/to/hydro_units.csv',
+    column_elevation='elevation', 
+    column_area='area'
+  )
 
-   forcing = hb.Forcing(hydro_units)
-   forcing.load_station_data_from_csv(
-       'path/to/meteo.csv', column_time='Date', time_format='%d/%m/%Y',
-       content={'precipitation': 'precip(mm/day)', 'pet': 'pet(mm/day)'})
-   forcing.spatialize_from_station_data(variable='precipitation',
-                                        ref_elevation=1250, gradient=0.05)
-   forcing.spatialize_from_station_data(variable='pet')
+  forcing = hb.Forcing(hydro_units)
+  forcing.load_station_data_from_csv(
+    'path/to/meteo.csv', 
+    column_time='Date', 
+    time_format='%d/%m/%Y',
+    content={'precipitation': 'precip(mm/day)', 'pet': 'pet(mm/day)'}
+  )
+  forcing.spatialize_from_station_data(
+    variable='precipitation',
+    ref_elevation=1250, 
+    gradient=0.05
+  )
+  forcing.spatialize_from_station_data(variable='pet')
 
-   gr4j.setup(spatial_structure=hydro_units, output_path='path/to/outputs',
-              start_date='1981-01-01', end_date='2020-12-31')
-   gr4j.run(parameters=parameters, forcing=forcing)
+  gr4j.setup(
+    spatial_structure=hydro_units, 
+    output_path='path/to/outputs',
+    start_date='1981-01-01', 
+    end_date='2020-12-31'
+  )
+  gr4j.run(parameters=parameters, forcing=forcing)
 
 With CemaNeige snow:
 
 .. code-block:: python
 
-   gr4j = models.GR4J(snow_melt_process='melt:cemaneige')
+  gr4j = models.GR4J(snow_melt_process='melt:cemaneige')
 
-   parameters = gr4j.generate_parameters()
-   parameters.set_values({
-       'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7,
-       'Kf': 4, 'CTG': 0.5, 'Cn': 300,
-   })
+  parameters = gr4j.generate_parameters()
+  parameters.set_values({
+      'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7,
+      'Kf': 4, 'CTG': 0.5, 'Cn': 300,
+  })
 
-   forcing = hb.Forcing(hydro_units)
-   forcing.load_station_data_from_csv(
-       'path/to/meteo.csv', column_time='Date', time_format='%d/%m/%Y',
-       content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)'})
-   # temperature_min and temperature_max are only required for hydro units < 1500 m
-   forcing.spatialize_from_station_data(variable='temperature',
-                                        method='additive_elevation_gradient',
-                                        ref_elevation=1250, gradient=-0.6)
-   forcing.spatialize_from_station_data(variable='precipitation',
-                                        method='multiplicative_elevation_gradient',
-                                        ref_elevation=1250, gradient=0.05)
-   forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
+  forcing = hb.Forcing(hydro_units)
+  forcing.load_station_data_from_csv(
+    'path/to/meteo.csv', 
+    column_time='Date', 
+    time_format='%d/%m/%Y',
+    content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)'}
+  )
+  # temperature_min and temperature_max are only required for hydro units < 1500 m
+  forcing.spatialize_from_station_data(
+    variable='temperature',
+    method='additive_elevation_gradient',
+    ref_elevation=1250, 
+    gradient=-0.6
+  )
+  forcing.spatialize_from_station_data(
+    variable='precipitation',
+    method='multiplicative_elevation_gradient',
+    ref_elevation=1250, 
+    gradient=0.05
+  )
+  forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
 
