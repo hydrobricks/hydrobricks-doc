@@ -34,6 +34,9 @@ Example:
     socont = models.Socont(solver="heun_explicit", record_all=False)
 
 
+Shared processes
+----------------
+
 .. _snow-melt-params:
 
 Snow / Glacier melt
@@ -193,7 +196,7 @@ Specific options
 ^^^^^^^^^^^^^^^^^
 
 * ``soil_storage_nb``: ``1`` or ``2``. Number of soil reservoirs; the second
-  represents the baseflow component.
+  represents the baseflow component (not in the original model).
 * ``surface_runoff``: ``socont_runoff`` (the original non-linear quick reservoir)
   or ``linear_storage`` (a classic linear storage).
 * ``snow_melt_process``: melt model to use; see :ref:`melt models <melt-models>`.
@@ -269,11 +272,6 @@ Parameters
   - Runoff coefficient (to calibrate).
   - Full name: ``surface_runoff:runoff_coefficient``.
 
-* ``J`` *(°, no default, [0, 90])*
-
-  - Mean slope of the catchment. Should be based on terrain data.
-  - Full name: ``surface_runoff:slope``.
-
 
 **Quick runoff (linear version)**
 
@@ -311,7 +309,7 @@ Parameters
 
 
 For the ``melt:degree_day_aspect`` and ``melt:temperature_index`` options, see
-:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Common options.
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Shared processes.
 
 
 Pre-defined parameter constraints:
@@ -393,7 +391,7 @@ Parameters
   - Full name: ``uh_input:uh_base_time``.
 
 For CemaNeige parameters (``melt:cemaneige``), see
-:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Common options.
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Shared processes.
 When ``snow_melt_process='melt:degree_day'``, only ``a_snow`` (alias ``Kf``)
 and ``Tmelt`` are added.
 
@@ -441,38 +439,3 @@ Minimal run without snow:
     end_date='2020-12-31'
   )
   gr4j.run(parameters=parameters, forcing=forcing)
-
-With CemaNeige snow:
-
-.. code-block:: python
-
-  gr4j = models.GR4J(snow_melt_process='melt:cemaneige')
-
-  parameters = gr4j.generate_parameters()
-  parameters.set_values({
-      'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7,
-      'Kf': 4, 'CTG': 0.5, 'Cn': 300,
-  })
-
-  forcing = hb.Forcing(hydro_units)
-  forcing.load_station_data_from_csv(
-    'path/to/meteo.csv', 
-    column_time='Date', 
-    time_format='%d/%m/%Y',
-    content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)'}
-  )
-  # temperature_min and temperature_max are only required for hydro units < 1500 m
-  forcing.spatialize_from_station_data(
-    variable='temperature',
-    method='additive_elevation_gradient',
-    ref_elevation=1250, 
-    gradient=-0.6
-  )
-  forcing.spatialize_from_station_data(
-    variable='precipitation',
-    method='multiplicative_elevation_gradient',
-    ref_elevation=1250, 
-    gradient=0.05
-  )
-  forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
-
