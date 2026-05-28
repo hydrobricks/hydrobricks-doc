@@ -7,7 +7,7 @@ This page covers different features for more advanced simulations:
 
 * :ref:`Land cover evolution <land-cover-evolution>` — supply time-varying land cover
   (e.g., glacier) evolution from external data (CSV or shapefiles).
-* :ref:`Glacier evolution <glacier-evolution>` — derive changing glacier area
+* :ref:`Internal glacier evolution <internal_glacier_evolution>` — derive changing glacier area
   internally from modelled ice loss (delta-h or area scaling methods).
 * :ref:`Snow to ice transformation <snow-to-ice-transformation>` — convert accumulated
   snow on glaciers to ice at the end of each accumulation season.
@@ -88,12 +88,13 @@ Using shapefiles
 ^^^^^^^^^^^^^^^^^
 
 Hydrobricks can derive the land cover time series automatically from a sequence of
-extents provided as shapefiles (see also :ref:`API <api_action_land_cover_change>`):
+extents provided as shapefiles, specifically for glaciers 
+(see also :ref:`API <api_action_land_cover_change>`):
 
 .. code-block:: python
 
    times = ['2008-01-01', '2010-01-01', '2016-01-01']
-   ice_glaciers = [
+   full_glaciers = [
       '/path/to/glacier_ice_2008.shp',
       '/path/to/glacier_ice_2010.shp',
       '/path/to/glacier_ice_2016.shp'
@@ -104,9 +105,9 @@ extents provided as shapefiles (see also :ref:`API <api_action_land_cover_change
       '/path/to/glacier_debris_2016.shp'
    ]
    changes, changes_df = actions.ActionLandCoverChange.create_action_for_glaciers(
-      study_area,
+      catchment,
       times,
-      ice_glaciers,
+      full_glaciers,
       debris_glaciers,
       with_debris=True,
       method='raster',
@@ -146,28 +147,10 @@ The hydro units can also be initialized directly from the derived time series:
    hyd_units.initialize_from_land_cover_change('glacier_debris', changes_df[1])
 
 
-Handling missing early data
-""""""""""""""""""""""""""""
+.. _internal_glacier_evolution:
 
-If the earliest available glacier extent is dated after the simulation start, assume a
-constant initial state by duplicating the earliest entry and assigning it the simulation
-start date:
-
-.. code-block:: python
-
-   times = ['2005-01-01', '2008-01-01', '2010-01-01', '2016-01-01']
-   ice_glaciers = [
-      '/path/to/Glacier_ice_2008.shp',  # used as the 2005 initial state
-      '/path/to/Glacier_ice_2008.shp',
-      '/path/to/Glacier_ice_2010.shp',
-      '/path/to/Glacier_ice_2016.shp'
-   ]
-
-
-.. _glacier-evolution:
-
-Glacier evolution
------------------
+Internal glacier evolution
+--------------------------
 
 The two methods below drive glacier area changes from modelled ice loss rather than
 external observations. Both require an initial ice thickness raster and produce a
@@ -205,8 +188,8 @@ thickness raster:
    )
    glacier_evolution.compute_lookup_table(update_width=False)
 
-Then link the lookup table to the model. The glacier area is updated each October (the
-end of the hydrological year):
+Then link the lookup table to the model. The glacier area is updated at the provided month,
+for example each October 1st (the start of the hydrological year in Switzerland):
 
 .. code-block:: python
 
