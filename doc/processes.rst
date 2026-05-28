@@ -343,7 +343,7 @@ Parameters:
 GR4J percolation (``percolation:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Used internally by :ref:`GR4J <gr4j>`; not user-configurable. Drains water from
+Used internally by :ref:`GR4J <gr4j>`. Drains water from
 the production store to the routing component (:cite:t:`Perrin2003`):
 
 .. math::
@@ -391,8 +391,7 @@ Parameters:
 * ``J``: mean terrain slope [°], range [0, 90]. Derived from terrain data; not a
   calibration parameter. Full name: ``surface_runoff:slope``.
 
-Use this formulation when the non-linear response of overland flow to slope is
-important. It is the original Socont parameterisation.
+It is the original Socont parameterisation.
 
 
 Linear storage runoff (``outflow:linear``)
@@ -410,8 +409,7 @@ Parameters:
 * ``k_quick``: response factor [d\ :sup:`-1`], range [0.05, 1].
   Full name: ``surface_runoff:response_factor``.
 
-Use this formulation when slope data are unavailable or when a simpler quick-flow
-representation is preferred.
+Use this formulation when a simpler quick-flow representation is preferred.
 
 
 .. _outflow-processes:

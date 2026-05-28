@@ -40,10 +40,10 @@ dates. Hydrobricks interpolates between snapshots during the simulation.
 
    changes = actions.ActionLandCoverChange()
    changes.load_from_csv(
-       '/path/to/surface_changes_glacier_debris.csv',
-       hydro_units,
-       area_unit='km2',
-       match_with='elevation'
+      '/path/to/surface_changes_glacier_debris.csv',
+      hydro_units,
+      area_unit='km2',
+      match_with='elevation'
    )
    model.add_action(changes)
 
@@ -183,8 +183,11 @@ end of the hydrological year):
 .. code-block:: python
 
    changes = actions.ActionGlacierEvolutionDeltaH()
-   changes.load_from(glacier_evolution, land_cover='glacier',
-                     update_month='October')
+   changes.load_from(
+      glacier_evolution, 
+      land_cover='glacier',
+      update_month='October'
+   )
    model.add_action(changes)
 
 The lookup table and initial glacier dataframe can be saved for later reuse:
@@ -212,7 +215,9 @@ First, compute the lookup table from an ice thickness raster:
 
    glacier_evolution = hb.preprocessing.GlacierEvolutionAreaScaling()
    glacier_evolution.compute_lookup_table(
-       study_area, ice_thickness='path/to/ice_thickness.tif')
+      study_area, 
+      ice_thickness='path/to/ice_thickness.tif'
+   )
 
    # Save for later reuse
    glacier_evolution.save_as_csv('/path/to/results/')
@@ -222,7 +227,11 @@ Then link the lookup table to the model:
 .. code-block:: python
 
    changes = hb.actions.ActionGlacierEvolutionAreaScaling()
-   changes.load_from(glacier_evolution, land_cover='glacier', update_month='October')
+   changes.load_from(
+      glacier_evolution, 
+      land_cover='glacier',
+      update_month='October'
+   )
    model.add_action(changes)
 
 If the lookup table has been saved previously, skip recomputation and load it directly:
@@ -304,8 +313,10 @@ Enable snow redistribution at model creation:
 
 .. code-block:: python
 
-   socont = models.Socont(soil_storage_nb=2,
-                          snow_redistribution='transport:snow_slide')
+   socont = models.Socont(
+      soil_storage_nb=2,
+      snow_redistribution='transport:snow_slide'
+   )
 
 A connectivity CSV file describing the downslope pathways between hydro units is also
 required:
