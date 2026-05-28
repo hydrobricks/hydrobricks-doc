@@ -105,10 +105,11 @@ values and ranges can be specified:
 .. code-block:: python
 
    parameters.add_data_parameter(
-       'temp_gradients',
-       [-0.6, -0.6, -0.6, -0.6, -0.7, -0.7, -0.8, -0.8, -0.8, -0.7, -0.7, -0.6],
-       min_value=[-0.8]*12,
-       max_value=[-0.3]*12)
+      'temp_gradients',
+      [-0.6, -0.6, -0.6, -0.6, -0.7, -0.7, -0.8, -0.8, -0.8, -0.7, -0.7, -0.6],
+      min_value=[-0.8]*12,
+      max_value=[-0.3]*12
+   )
 
 
 .. _calibration:
@@ -137,8 +138,14 @@ each run from the objective function to avoid spin-up artefacts — see the
 
 .. code-block:: python
 
-   spot_setup = hb.SpotpySetup(socont, parameters, forcing, obs, warmup=365,
-                               obj_func='nse')
+   spot_setup = hb.SpotpySetup(
+      socont, 
+      parameters, 
+      forcing, 
+      obs, 
+      warmup=365,
+      obj_func='nse'
+   )
 
 .. note::
 
@@ -148,8 +155,15 @@ each run from the objective function to avoid spin-up artefacts — see the
 
    .. code-block:: python
 
-      spot_setup = hb.SpotpySetup(socont, parameters, forcing, obs, warmup=365,
-                                  obj_func='mse', invert_obj_func=True)
+      spot_setup = hb.SpotpySetup(
+         socont, 
+         parameters, 
+         forcing, 
+         obs, 
+         warmup=365,
+         obj_func='mse', 
+         invert_obj_func=True
+      )
 
    Metrics such as NSE and KGE are naturally maximized and do not need
    inversion.
@@ -161,7 +175,11 @@ multi-parameter hydrological calibration problems:
 
 .. code-block:: python
 
-   sampler = spotpy.algorithms.sceua(spot_setup, dbname='socont_SCEUA', dbformat='csv')
+   sampler = spotpy.algorithms.sceua(
+      spot_setup, 
+      dbname='socont_SCEUA', 
+      dbformat='csv'
+   )
    sampler.sample(10000)
 
 **Sensitivity analysis** (understanding which parameters matter): Monte Carlo sampling
@@ -169,8 +187,12 @@ covers the full parameter space without steering towards any optimum:
 
 .. code-block:: python
 
-   sampler = spotpy.algorithms.mc(spot_setup, dbname='socont_MC', dbformat='csv',
-                                  save_sim=False)
+   sampler = spotpy.algorithms.mc(
+      spot_setup, 
+      dbname='socont_MC', 
+      dbformat='csv',
+      save_sim=False
+   )
    sampler.sample(10000)
 
 After sampling, retrieve the results for analysis. SPOTPY provides built-in tools for
