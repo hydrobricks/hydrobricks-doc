@@ -223,9 +223,11 @@ directly from CSV, bypassing the ``GlacierEvolutionDeltaH`` object:
 Simple area-scaling method
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The area-scaling method derives glacier area from ice volume using a volume–area
-power-law relationship. It is simpler than delta-h and best suited for small glaciers
-where a detailed elevation-dependent melt profile is not warranted.
+The area-scaling method establishes a relationship between cumulative ice loss 
+and glacier area per hydro unit. It is computationally simpler than the delta-h 
+method but less accurate, as it does not account for the glacier dynamics.
+It is suitable for applications where the glacier is small and is not expected
+to advance during the simulation period.
 
 The lookup table must be precomputed before running the simulation — see
 :ref:`Area-scaling lookup table <glacier_lookup_area_scaling>` on the preprocessing

@@ -3,24 +3,35 @@
 Upgrade guide
 =============
 
+Only breaking changes that require attention are listed here. For a complete list of changes, see the
+`changelog <https://github.com/hydrobricks/hydrobricks/blob/main/CHANGELOG.md>`_.
+
 v0.7 to v0.8
 ------------
 
-No breaking changes.
+Breaking change2:
 
-New features:
-
-* GR4J daily rainfall-runoff model added (see :ref:`GR4J <gr4j>`).
-* CemaNeige snow model and rain/snow splitter added
-  (see :ref:`processes page <processes>`).
-* Simple area-scaling glacier evolution method added
-  (see :ref:`area-scaling <glacier_evolution_area_scaling>`).
+* The minimum Python version is now 3.10.
+* Behaviours were renamed as Actions.
+* Changing logging labels for content to type-specific labels 
+  (``content`` becomes ``water_content``, ``ice`` becomes 
+  ``ice_content``, ``snow`` becomes ``snow_content``).
+* The extraction of meteorological data from netCDF files (``spatialize_from_gridded_data``) 
+  has changed. The function now computes elevation gradients by default for temperature 
+  and precipitation. In order to access to the DEM, the class must be initialized with the 
+  catchment object (``forcing = hb.Forcing(catchment)``) instead of the hydro units object. 
+  This gradient-based interpolation can be disabled with ``apply_data_gradient=False``.
+* The functions ``model.is_ok()`` and ``parameters.is_ok()`` have been renamed to ``model.is_valid()`` 
+  and ``parameters.are_valid()`` or ``parameters.is_valid()`` respectively.
 
 
 v0.6 to v0.7
 ------------
 
-No breaking changes.
+Breaking change:
+
+* The ``isohypse`` option has been renamed to ``equal_intervals`` in the 
+  catchment discretization functions.
 
 
 v0.5 to v0.6
