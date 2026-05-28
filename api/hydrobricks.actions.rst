@@ -3,6 +3,8 @@ Actions
 
 .. automodule:: hydrobricks.actions
 
+.. _api_action_land_cover_change:
+
 Land cover change
 -----------------
 
@@ -10,6 +12,8 @@ Land cover change
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_action_glacier_delta_h:
 
 Glacier evolution — delta-h
 ----------------------------
@@ -19,6 +23,8 @@ Glacier evolution — delta-h
    :undoc-members:
    :show-inheritance:
 
+.. _api_action_glacier_area_scaling:
+
 Glacier evolution — area scaling
 ---------------------------------
 
@@ -26,6 +32,8 @@ Glacier evolution — area scaling
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_action_snow_to_ice:
 
 Snow-to-ice transformation
 ---------------------------

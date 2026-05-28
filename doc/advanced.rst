@@ -3,17 +3,16 @@
 Advanced features
 =================
 
-This page covers three features for multi-decade or physically complex simulations:
+This page covers different features for more advanced simulations:
 
-* :ref:`Land cover evolution <land-cover-evolution>` — supply time-varying glacier
-  extents from observations (CSV or shapefiles). Best for historical simulations with
-  a known extent time series.
+* :ref:`Land cover evolution <land-cover-evolution>` — supply time-varying land cover
+  (e.g., glacier) evolution from external data (CSV or shapefiles).
 * :ref:`Glacier evolution <glacier-evolution>` — derive changing glacier area
-  internally from modelled ice loss (delta-h or area scaling). Required when no
-  observed extent series exists, e.g. for future projections.
+  internally from modelled ice loss (delta-h or area scaling methods).
+* :ref:`Snow to ice transformation <snow-to-ice-transformation>` — convert accumulated
+  snow on glaciers to ice at the end of each accumulation season.
 * :ref:`Snow redistribution <snow-redistribution>` — prevent unrealistic snow
-  accumulation at high elevations using the SnowSlide gravitational transport
-  algorithm.
+  accumulation at high elevations using gravitational transport.
 
 
 .. _land-cover-evolution:
@@ -21,10 +20,8 @@ This page covers three features for multi-decade or physically complex simulatio
 Land cover evolution
 --------------------
 
-Land cover fractions can evolve over time within each hydro unit. For multi-decade
-simulations, glacier retreat can substantially alter the catchment response, and
-ignoring it produces unrealistic results.
-
+Land cover fractions can evolve over time within each hydro unit. 
+This allows you to simulate processes like glacier retreat, afforestation, or urbanization.
 This section covers externally driven evolution, where the area time series is
 supplied directly from remote sensing or an external model. Two input formats are
 supported: CSV files and shapefiles.
@@ -39,7 +36,8 @@ Using CSV files
 ^^^^^^^^^^^^^^^
 
 The most direct approach: supply a CSV file recording land cover areas at a series of
-dates. Hydrobricks interpolates between snapshots during the simulation.
+dates. Call ``load_from_csv()`` once per land cover type; multiple calls accumulate
+changes for different land covers into the same action object.
 
 .. code-block:: python
 
@@ -47,32 +45,36 @@ dates. Hydrobricks interpolates between snapshots during the simulation.
    changes.load_from_csv(
       '/path/to/surface_changes_glacier_debris.csv',
       hydro_units,
+      land_cover='glacier_debris',
       area_unit='km2',
       match_with='elevation'
    )
    model.add_action(changes)
 
-``load_from_csv()`` can be called multiple times for different files — for instance,
-one per land cover type.
+**Parameters** (see also :ref:`API <api_action_land_cover_change>`):
+
+* ``path`` — path to the CSV file.
+* ``hydro_units`` — the ``HydroUnits`` instance used for matching.
+* ``land_cover`` — name of the land cover to update (e.g., ``'glacier'``,
+  ``'glacier_debris'``).
+* ``area_unit`` — unit of the area values: ``'m2'`` or ``'km2'``.
+* ``match_with`` — how to identify hydro units in the first column:
+  ``'elevation'`` *(default)* or ``'id'``.
 
 The CSV format:
 
-* **First row**: land cover name (e.g., ``glacier_debris``), repeated for each date column.
-* **Second row**: the date of each snapshot.
-* **Remaining rows**: one row per hydro unit that changes, starting with the unit
-  identifier (elevation or ID), then the area at each snapshot date.
+* **Header row**: from the second column onward, the dates of the snapshots 
+  when land cover changes occur; format ``YYYY-MM-DD``.
+* **Remaining rows**: one row per hydro unit that changes, with the identifier value
+  followed by the area at each snapshot date.
 
 Hydro units not listed in the file are assumed unchanged. The ``ground`` fraction is
 adjusted automatically to preserve the total unit area.
 
-Hydro units can be identified either by elevation (``match_with='elevation'``) or by
-ID (``match_with='id'``).
-
 .. code-block:: text
    :caption: Example CSV file for land cover evolution (areas in km²).
 
-   bands,glacier_debris,glacier_debris,glacier_debris,...
-   ,01/08/2020,01/08/2025,01/08/2030,...
+   elevation,2020-08-01,2025-08-01,2030-08-01,...
    4274,0.013,0.003,0,...
    4310,0.019,0.009,0,...
    4346,0.052,0.042,0.032,...
@@ -85,9 +87,8 @@ ID (``match_with='id'``).
 Using shapefiles
 ^^^^^^^^^^^^^^^^^
 
-Glacier extents from field surveys or remote sensing are often available as shapefiles.
-Hydrobricks can derive the land cover time series automatically from a sequence of such
-extents:
+Hydrobricks can derive the land cover time series automatically from a sequence of
+extents provided as shapefiles (see also :ref:`API <api_action_land_cover_change>`):
 
 .. code-block:: python
 
@@ -111,6 +112,21 @@ extents:
       method='raster',
       interpolate_yearly=True)
    model.add_action(changes)
+
+**Parameters**:
+
+* ``catchment`` — the ``Catchment`` object (must be discretized into hydro units).
+* ``times`` — list of dates (``'YYYY-MM-DD'``) corresponding to each shapefile.
+* ``full_glaciers`` — list of paths to shapefiles covering all glacier ice (clean ice
+  and debris together), one per date.
+* ``debris_glaciers`` — list of paths to debris-only shapefiles, one per date;
+  required when ``with_debris=True``.
+* ``with_debris`` — if ``True``, splits glacier area into bare-ice and debris-covered
+  components; default ``False``.
+* ``method`` — area extraction method: ``'vector'`` *(default, more precise)* or
+  ``'raster'`` *(faster)*.
+* ``interpolate_yearly`` — if ``True`` *(default)*, linearly interpolates areas to
+  yearly time steps between the provided dates.
 
 The function also returns a dataframe that can be exported as CSV and reloaded later
 using the :ref:`CSV option <land_cover_evolution_csv>`, avoiding repeated raster
@@ -196,11 +212,20 @@ end of the hydrological year):
 
    changes = actions.ActionGlacierEvolutionDeltaH()
    changes.load_from(
-      glacier_evolution, 
+      glacier_evolution,
       land_cover='glacier',
       update_month='October'
    )
    model.add_action(changes)
+
+**Parameters for** ``load_from()``
+(see also :ref:`API <api_action_glacier_delta_h>`):
+
+* ``obj`` — a ``GlacierEvolutionDeltaH`` preprocessing instance carrying the lookup
+  tables.
+* ``land_cover`` — land cover name to update; default ``'glacier'``.
+* ``update_month`` — month when glacier areas are updated; full English name or integer
+  1–12; default ``'October'``.
 
 The lookup table and initial glacier dataframe can be saved for later reuse:
 
@@ -208,6 +233,25 @@ The lookup table and initial glacier dataframe can be saved for later reuse:
 
    glacier_df.to_csv('/path/to/surface_changes_glacier.csv', index=False)
    glacier_evolution.save_as_csv('/path/to/results/folder/')
+
+On subsequent runs the lookup table can be reloaded directly, skipping the
+preprocessing step:
+
+.. code-block:: python
+
+   changes = actions.ActionGlacierEvolutionDeltaH()
+   changes.load_from_csv('/path/to/results/folder/')
+   model.add_action(changes)
+
+**Parameters for** ``load_from_csv()``:
+
+* ``dir_path`` — path to the directory containing the lookup table files.
+* ``land_cover`` — land cover name to update; default ``'glacier'``.
+* ``filename_area`` — name of the area lookup table file; default
+  ``'glacier_evolution_lookup_table_area.csv'``.
+* ``filename_volume`` — name of the volume lookup table file; default
+  ``'glacier_evolution_lookup_table_volume.csv'``.
+* ``update_month`` — month when glacier areas are updated; default ``'October'``.
 
 
 .. _glacier_evolution_area_scaling:
@@ -240,11 +284,20 @@ Then link the lookup table to the model:
 
    changes = hb.actions.ActionGlacierEvolutionAreaScaling()
    changes.load_from(
-      glacier_evolution, 
+      glacier_evolution,
       land_cover='glacier',
       update_month='October'
    )
    model.add_action(changes)
+
+**Parameters for** ``load_from()``
+(see also :ref:`API <api_action_glacier_area_scaling>`):
+
+* ``obj`` — a ``GlacierEvolutionAreaScaling`` preprocessing instance carrying the
+  lookup tables.
+* ``land_cover`` — land cover name to update; default ``'glacier'``.
+* ``update_month`` — month when glacier areas are updated; full English name or integer
+  1–12; default ``'October'``.
 
 If the lookup table has been saved previously, skip recomputation and load it directly:
 
@@ -253,6 +306,16 @@ If the lookup table has been saved previously, skip recomputation and load it di
    changes = hb.actions.ActionGlacierEvolutionAreaScaling()
    changes.load_from_csv('/path/to/results/')
    model.add_action(changes)
+
+**Parameters for** ``load_from_csv()``:
+
+* ``dir_path`` — path to the directory containing the lookup table files.
+* ``land_cover`` — land cover name to update; default ``'glacier'``.
+* ``filename_area`` — name of the area lookup table file; default
+  ``'glacier_evolution_lookup_table_area.csv'``.
+* ``filename_volume`` — name of the volume lookup table file; default
+  ``'glacier_evolution_lookup_table_volume.csv'``.
+* ``update_month`` — month when glacier areas are updated; default ``'October'``.
 
 
 .. _glacier_options:
@@ -298,6 +361,42 @@ Pass these options at model initialization:
       glacier_infinite_storage=glacier_infinite_storage,
       snow_ice_transformation=snow_ice_transformation
    )
+
+
+.. _snow-to-ice-transformation:
+
+Snow to ice transformation
+--------------------------
+
+At the end of each accumulation season, snow that has accumulated on glacier land
+covers is converted to glacier ice. This process is important when using melt-driven
+glacier evolution methods (delta-h or area scaling) because these track ice volume to
+derive glacier area — snow that remains at season end should be reclassified as ice
+to avoid underestimating ice thickness.
+
+.. note::
+
+   This action is used together with the
+   :ref:`delta-h <glacier_evolution_delta_h>` or
+   :ref:`area-scaling <glacier_evolution_area_scaling>` evolution methods,
+   which track ice volume and thickness.
+   It is not needed for externally driven land cover changes via CSV or shapefile.
+
+.. code-block:: python
+
+   snow_to_ice = actions.ActionGlacierSnowToIceTransformation(
+      update_month='September',
+      update_day=30,
+      land_cover='glacier'
+   )
+   model.add_action(snow_to_ice)
+
+**Parameters** (see also :ref:`API <api_action_snow_to_ice>`):
+
+* ``update_month`` — month when the conversion is applied, at the end of the
+  accumulation season; full English name or integer 1–12; default ``'September'``.
+* ``update_day`` — day of the month when the conversion is applied; default ``30``.
+* ``land_cover`` — name of the glacier land cover to update; default ``'glacier'``.
 
 
 .. _snow-redistribution:
