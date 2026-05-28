@@ -42,7 +42,7 @@ Snow / Glacier melt
 The melt model is selected via the ``snow_melt_process`` option. See
 :ref:`melt models <melt-models>` for the governing equations of each option.
 
-**Snow / Glacier** (``melt:degree_day``)
+**Simple degree-day method** (``melt:degree_day``)
 
 * ``<component>:degree_day_factor`` *(mm/d/°C, no default, [2, 20])*
 
@@ -55,9 +55,10 @@ The melt model is selected via the ``snow_melt_process`` option. See
   - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
 
 
-**Snow / Glacier** (``melt:degree_day_aspect``)
+**Aspect-based degree-day method** (``melt:degree_day_aspect``)
 
-Replaces ``a_snow`` and ``a_ice`` with aspect-specific factors:
+The melt model uses aspect-specific factors to account for the influence of slope 
+orientation on melt rates. It includes the following parameters:
 
 * ``<component>:degree_day_factor_n`` *(mm/d/°C, no default, [0, 20])*
 
@@ -80,9 +81,12 @@ Replaces ``a_snow`` and ``a_ice`` with aspect-specific factors:
   - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
 
 
-**Snow / Glacier** (``melt:temperature_index``)
+**Melt based on potential solar radiation** (``melt:temperature_index``)
 
-Replaces ``a_snow`` and ``a_ice`` with:
+This melt model is based on the temperature-index method of :cite:t:`Hock1999`, which 
+accounts for the influence of solar radiation on melt rates. It requires potential 
+solar radiation as a model input (which can be computed by HydroBricks), 
+and includes the following parameters:
 
 * ``<component>:melt_factor`` *(mm/d/°C, no default, [0, 12])*
 
@@ -100,7 +104,10 @@ Replaces ``a_snow`` and ``a_ice`` with:
   - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
 
 
-**Snowpack** (``melt:cemaneige``)
+**CemaNeige model** (``melt:cemaneige``)
+
+The CemaNeige model is a thermal-state snow model described in :cite:t:`Valery2014`. 
+It is exclusively for snow and includes the following parameters:
 
 * ``Kf`` *(mm/d/°C, no default, [1, 10])*
 
@@ -131,8 +138,7 @@ Snow redistribution
 
 Snow redistribution via the SnowSlide method (:cite:t:`Bernhardt2010`) simulates
 gravitational downslope transport of snow between hydro units. It is activated by setting
-``snow_redistribution="transport:snow_slide"``. The slope of each hydro unit must be
-provided in the hydro unit CSV file (column ``slope``, in degrees).
+``snow_redistribution="transport:snow_slide"``.
 
 **Snow slide** (``transport:snow_slide``)
 
