@@ -57,12 +57,32 @@ resampled and slope/aspect are recalculated at the target resolution:
       output_path='path/to/output/dir/'
    )
 
+A hillshade can be generated for visualization purposes:
+
+.. code-block:: python
+
+   hillshade = catchment.topography.get_hillshade(
+      azimuth=315,
+      altitude=45,
+      z_factor=1
+   )
+
+``get_hillshade()`` returns a 2D NumPy array of values in the range 0–255. It
+requires that the DEM has been loaded (``catchment.extract_dem()``); slope and
+aspect do not need to be pre-computed.
+
 **Parameters** (see also :ref:`API <api_catchment_topography>`):
 
 * ``resolution`` — target pixel size in meters; if ``None`` or equal to the DEM
   resolution, the original DEM is used without resampling.
 * ``output_path`` — directory where the resampled DEM GeoTIFF is written; required
   when resampling.
+
+For ``get_hillshade()``:
+
+* ``azimuth`` — sun azimuth in degrees (0–360); default ``315`` (north-west).
+* ``altitude`` — sun elevation angle in degrees (0–90); default ``45``.
+* ``z_factor`` — vertical exaggeration factor to amplify relief; default ``1``.
 
 
 .. _catchment-discretization:
