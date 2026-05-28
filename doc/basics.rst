@@ -84,7 +84,7 @@ from a CSV file, or generated automatically from a DEM.
 
 .. image:: images/hydro_units.png
    :alt: Example of discretization of a catchment into hydro units.
-   :width: 600px
+   :width: 680px
    :align: center
 
 *Example of discretization of a catchment based on (a) elevation bands,
