@@ -3,6 +3,8 @@ Preprocessing
 
 .. automodule:: hydrobricks.preprocessing
 
+.. _api_catchment_topography:
+
 Catchment topography
 --------------------
 
@@ -10,6 +12,8 @@ Catchment topography
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_catchment_discretization:
 
 Catchment discretization
 ------------------------
@@ -48,6 +52,8 @@ Glacier evolution — area scaling
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_potential_solar_radiation:
 
 Potential solar radiation
 -------------------------
