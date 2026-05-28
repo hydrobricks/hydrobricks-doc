@@ -68,7 +68,7 @@ under-record precipitation during snowfall:
 
    forcing.correct_station_data(
       variable='precipitation', 
-      correction_factor=0.75
+      correction_factor=1.1
    )
 
 The default method is multiplicative (multiply the data by the factor). An

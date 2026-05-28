@@ -16,35 +16,37 @@ data and the catchment characteristics.
 
 Available melt models:
 
-* **degree_day**: classical temperature-index model (TI)
-* **degree_day_aspect**: aspect-based temperature-index model (ATI)
-* **temperature_index**: Hock's radiation-enhanced temperature-index model (HTI)
+* **degree_day**: classical degree-day model
+* **degree_day_aspect**: aspect-based degree-day model
+* **temperature_index**: Hock's radiation-enhanced temperature-index model
 * **cemaneige**: CemaNeige snowmelt model with thermal-state correction
 
 Specify the melt model when instantiating the hydrological model:
 
 .. code-block:: python
 
-   socont = Socont(soil_storage_nb=2,
-                   surface_runoff="linear_storage",
-                   snow_melt_process="melt:degree_day")
+   socont = Socont(
+      soil_storage_nb=2,
+      surface_runoff="linear_storage",
+      snow_melt_process="melt:degree_day"
+   )
 
 Valid values for ``snow_melt_process``: ``"melt:degree_day"``,
 ``"melt:degree_day_aspect"``, ``"melt:temperature_index"``,
 ``"melt:cemaneige"``.
 
 
-The temperature-index family
+Degree-day model (degree_day)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The first three models all belong to the temperature-index (TI) family. TI
-approaches are widely used in snow- and glacier-dominated catchments because
-they require only air temperature data, which is often the most readily
-available meteorological variable. The general form (:cite:t:`Rango1995`) is:
+Degree-day or temperature-index approaches are widely used in snow- and 
+glacier-dominated catchments because they require only air temperature data, 
+which is often the most readily available meteorological variable. 
+The general form (:cite:t:`Rango1995`) is:
 
 .. math::
 
-   M_{\mathrm{TI}}(t) =
+   M_{\mathrm{DD}}(t) =
     \begin{cases}
         a_j(T_a(t) - T_T) & : T_a(t) > T_T \quad j \in \{\mathrm{snow,\, ice}\}\\
         0 & : T_a(t) \leq T_T
@@ -52,23 +54,19 @@ available meteorological variable. The general form (:cite:t:`Rango1995`) is:
 
 where:
 
-- :math:`M_{\mathrm{TI}}(t)` is the melt rate at time step :math:`t` [mm d⁻¹],
+- :math:`M_{\mathrm{DD}}(t)` is the melt rate at time step :math:`t` [mm d⁻¹],
 - :math:`a_j` is the degree-day factor for snow or ice [mm d⁻¹ °C⁻¹],
 - :math:`T_a` is the air temperature [°C],
 - :math:`T_T` is the melt temperature threshold [°C].
 
-
-Degree-day model (degree_day)
-""""""""""""""""""""""""""""""
-
-The simplest option: melt is proportional to the temperature excess above the
-threshold, with a single degree-day factor per surface type (snow or ice).
+This is the simplest option: melt is proportional to the temperature excess above 
+the threshold, with a single degree-day factor per surface type (snow or ice).
 Requires only temperature and elevation band data. Use this model when
 computational simplicity or data availability is a priority.
 
 
 Aspect-based degree-day model (degree_day_aspect)
-""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Extends the standard degree-day model by assigning different degree-day factors
 to north-, south-, and east/west-facing slopes. Sun-exposed south-facing slopes
@@ -79,7 +77,7 @@ strongly differentiates melt rates across the catchment.
 
 
 Radiation-enhanced temperature-index model (temperature_index)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Based on :cite:t:`Hock1999`, this model replaces the fixed degree-day factor with one
 that scales with potential clear-sky solar radiation:
@@ -113,10 +111,10 @@ the surface normal and the solar beam. Radiation is computed at 15-minute
 intervals and aggregated to daily values to capture diurnal and shading effects.
 
 This model requires the catchment to be discretized by elevation and radiation.
-It is the most physically realistic of the three TI variants and is recommended
-when snow and glacier melt dominate runoff. The main trade-off is that computing
-the radiation field adds some preprocessing time. See :cite:t:`Argentin2025` for a
-comparative evaluation of all three models.
+It is the most physically realistic of the three temperature-based variants and 
+is recommended when snow and glacier melt dominate runoff. 
+The main trade-off is that computing the radiation field adds some preprocessing time. 
+See :cite:t:`Argentin2025` for a comparative evaluation of all three models.
 
 
 CemaNeige snowmelt model (cemaneige)

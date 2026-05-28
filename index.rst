@@ -21,9 +21,9 @@ Additional resources contributed by the community are listed on the
    doc/getting-started
    doc/basics
    doc/models
+   doc/processes
    doc/parameters
    doc/forcing
-   doc/processes
    doc/advanced
    doc/resources
    doc/upgrade
