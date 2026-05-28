@@ -4,6 +4,63 @@ Processes
 =========
 
 
+.. _snow-rain-splitters:
+
+Rain/snow partitioning
+-----------------------
+
+Precipitation is partitioned into rain and snow before entering the melt model.
+Three splitters are available, selected via the ``snow_rain_process`` option.
+If ``snow_rain_process`` is not set, the default is ``'snow_rain:linear'``, except
+when ``snow_melt_process='melt:cemaneige'``, which automatically selects
+``'snow_rain:cemaneige'``.
+
+
+Linear transition splitter (``snow_rain:linear``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The default splitter applies a linear transition between pure snow and pure rain
+over a user-defined temperature range:
+
+* Below ``prec_t_start`` *(optional, °C, default: 0, [-2, 2])*: all precipitation falls as snow.
+* Above ``prec_t_end`` *(optional, °C, default: 2, [0, 4])*: all precipitation falls as rain.
+* Between the two thresholds: the snow fraction decreases linearly.
+
+This splitter is used by default in GSM-Socont and in GR4J when
+``snow_melt_process`` is not ``'melt:cemaneige'``.
+
+
+Single-threshold splitter (``snow_rain:threshold``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A step-function splitter with no transition zone. All precipitation is snow at
+or below the threshold, and rain above it.
+
+* ``prec_t`` *(optional, °C, default: 0, [-5, 5])*: temperature threshold.
+  Full name: ``snow_rain_transition:threshold``.
+
+
+CemaNeige rain/snow splitter (``snow_rain:cemaneige``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The CemaNeige splitter (:cite:t:`Valery2014`) determines the solid fraction from the
+daily temperature range rather than a fixed threshold:
+
+.. math::
+
+   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; \frac{T_{\max} - T_{\mathrm{mean}}}{T_{\max} - T_{\min}}\right)\right)
+
+The temperature range :math:`[T_{\min},\, T_{\max}]` depends on elevation:
+
+* **At elevations ≥ 1500 m**: fixed values :math:`T_{\min} = -1\ °C` and
+  :math:`T_{\max} = 3\ °C` are used — no additional forcing variables are needed.
+* **At elevations < 1500 m**: :math:`T_{\min}` and :math:`T_{\max}` are read
+  from the daily ``temperature_min`` and ``temperature_max`` forcing variables.
+
+The splitter has no calibrated parameters. It is selected automatically when
+``snow_melt_process='melt:cemaneige'`` in GR4J.
+
+
 .. _melt-models:
 
 Melt models
@@ -118,7 +175,7 @@ See :cite:t:`Argentin2025` for a comparative evaluation of all three models.
 
 
 CemaNeige snowmelt model (cemaneige)
-"""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The CemaNeige model (:cite:t:`Valery2014`) addresses a known weakness of plain degree-day
 models: they tend to overestimate melt immediately after cold spells because they
@@ -165,50 +222,6 @@ CemaNeige is the recommended snow model for the :ref:`GR4J <gr4j>` model:
 .. code-block:: python
 
    gr4j = models.GR4J(snow_melt_process='melt:cemaneige')
-
-
-.. _snow-rain-splitters:
-
-Rain/snow partitioning
------------------------
-
-Precipitation is partitioned into rain and snow before entering the melt model.
-Two splitters are available, controlled by the ``snow_rain_process`` option.
-
-
-Temperature-threshold splitter
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The default splitter applies a linear transition between pure snow and pure rain
-over a user-defined temperature range:
-
-* Below ``prec_t_start`` (default 0 °C): all precipitation falls as snow.
-* Above ``prec_t_end`` (default 2 °C): all precipitation falls as rain.
-* Between the two thresholds: the snow fraction decreases linearly.
-
-Both thresholds are optional calibration parameters. This splitter is used by
-default in GSM-Socont and in GR4J with the ``'melt:degree_day'`` option.
-
-
-CemaNeige rain/snow splitter
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The CemaNeige splitter (:cite:t:`Valery2014`) determines the solid fraction from the
-daily temperature range rather than a fixed threshold:
-
-.. math::
-
-   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; \frac{T_{\max} - T_{\mathrm{mean}}}{T_{\max} - T_{\min}}\right)\right)
-
-The temperature range :math:`[T_{\min},\, T_{\max}]` depends on elevation:
-
-* **At elevations ≥ 1500 m**: fixed values :math:`T_{\min} = -1\ °C` and
-  :math:`T_{\max} = 3\ °C` are used — no additional forcing variables are needed.
-* **At elevations < 1500 m**: :math:`T_{\min}` and :math:`T_{\max}` are read
-  from the daily ``temperature_min`` and ``temperature_max`` forcing variables.
-
-The splitter has no calibrated parameters. It is selected automatically when
-``snow_melt_process='melt:cemaneige'`` in GR4J.
 
 
 .. _evapotranspiration:
