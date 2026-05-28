@@ -143,16 +143,27 @@ wildcard pattern in a given folder and aggregates them to the hydro units:
       raster_hydro_units='unit_ids.tif'
    )
 
-Key arguments:
+Arguments:
 
-* ``file_pattern``: filename glob pattern; ``*`` matches any sequence of characters
-  (e.g., year numbers). Remove files outside the simulation period to speed up loading.
-* ``data_crs``: EPSG code of the NetCDF coordinate reference system
-  (look up codes at https://epsg.io/).
+* ``variable``: name of the hydrobricks variable to spatialize
+  (e.g., ``'precipitation'``, ``'temperature'``).
+* ``path``: path to a single NetCDF file or to a folder containing multiple files.
 * ``var_name``: name of the variable inside the NetCDF file (e.g., ``'RhiresD'``).
 * ``dim_x``, ``dim_y``, ``dim_time``: names of the x, y, and time dimensions.
-* ``raster_hydro_units``: GeoTIFF raster of hydro unit IDs, used to assign
+* ``raster_hydro_units``: path to a GeoTIFF raster of hydro unit IDs, used to assign
   grid cells to units.
+* ``file_pattern`` *(optional)*: filename glob pattern when ``path`` is a folder;
+  ``*`` matches any sequence of characters (e.g., year numbers). If omitted,
+  ``path`` is treated as a single file. Remove files outside the simulation period
+  to speed up loading.
+* ``data_crs`` *(optional)*: EPSG code of the NetCDF coordinate reference system
+  (look up codes at https://epsg.io/). If omitted, the CRS is read from the file.
+* ``method`` *(optional)*: spatialization method; currently only
+  ``'regrid_from_netcdf'`` is supported (default).
+* ``apply_data_gradient`` *(optional)*: if ``True``, elevation-based gradients are
+  retrieved from the data and applied to each hydro unit (useful for temperature and
+  precipitation). Defaults to ``True`` for temperature and precipitation variables,
+  ``False`` for all others.
 
 
 Computing PET

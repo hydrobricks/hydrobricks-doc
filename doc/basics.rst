@@ -37,6 +37,46 @@ The available models and their options are described on the
 Spatial structure
 -----------------
 
+.. _catchment-class:
+
+The Catchment object
+^^^^^^^^^^^^^^^^^^^^^
+
+:class:`Catchment` is the central object for defining the study area. It is
+initialized with a catchment outline shapefile and then provides access to the
+DEM, hydro unit properties, and the preprocessing sub-modules:
+
+* ``catchment.topography`` — slope, aspect, hillshade
+  (see :ref:`catchment-topography`)
+* ``catchment.discretization`` — splitting the catchment into hydro units
+  (see :ref:`catchment-discretization`)
+* ``catchment.connectivity`` — lateral connectivity between units
+  (see :ref:`catchment-connectivity`)
+* ``catchment.solar_radiation`` — potential direct solar radiation
+  (see :ref:`potential-solar-radiation`)
+
+.. code-block:: python
+
+   import hydrobricks as hb
+
+   catchment = hb.Catchment(outline='path/to/watershed.shp')
+   catchment.extract_dem('path/to/dem.tif')
+
+``Catchment`` can also be used as a context manager to ensure file handles are
+released automatically when preprocessing is complete:
+
+.. code-block:: python
+
+   with hb.Catchment(outline='path/to/watershed.shp') as catchment:
+       catchment.extract_dem('path/to/dem.tif')
+       ...
+
+See the :ref:`API reference <api_catchment>` for the full method list.
+
+
+Hydro units
+^^^^^^^^^^^^
+
 The catchment is discretized into sub-units called **hydro units**, which can
 represent elevation bands, hydrological response units (HRUs), raster pixels,
 or any other spatial partition. Hydro units can be defined in two ways: loaded
@@ -54,7 +94,7 @@ Source:* :cite:t:`Argentin2025`
 
 
 Loading hydro units from a CSV file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""""""""""""""
 
 The simplest way to define hydro units is to load them from a CSV file. At
 minimum, the file must contain the area and mean elevation of each unit:
@@ -140,7 +180,7 @@ The CSV must list the area of each land cover per hydro unit
 
 
 Generating hydro units from a DEM
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""
 
 When spatial data are available, hydro units can be generated automatically
 from a DEM, with discretization criteria chosen to match the melt model in use:
