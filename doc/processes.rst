@@ -4,46 +4,46 @@ Processes
 =========
 
 
-.. _snow-rain-splitters:
+.. _snow-rain-partitioning:
 
 Rain/snow partitioning
 -----------------------
 
 Precipitation is partitioned into rain and snow before entering any store.
-Three splitters are available, selected via the ``snow_rain_process`` option.
+Three partitioning methods are available, selected via the ``snow_rain_process`` option.
 If ``snow_rain_process`` is not set, the default is ``'snow_rain:linear'``, except
 when ``snow_melt_process='melt:cemaneige'``, which automatically selects
 ``'snow_rain:cemaneige'``.
 
 
-Linear transition splitter (``snow_rain:linear``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Linear transition (``snow_rain:linear``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The default splitter applies a linear transition between pure snow and pure rain
+The default partitioning applies a linear transition between pure snow and pure rain
 over a user-defined temperature range:
 
 * Below ``prec_t_start`` *(optional, °C, default: 0, [-2, 2])*: all precipitation falls as snow.
 * Above ``prec_t_end`` *(optional, °C, default: 2, [0, 4])*: all precipitation falls as rain.
 * Between the two thresholds: the snow fraction decreases linearly.
 
-This splitter is used by default in GSM-Socont and in GR4J when
+This partitioning is used by default in GSM-Socont and in GR4J when
 ``snow_melt_process`` is not ``'melt:cemaneige'``.
 
 
-Single-threshold splitter (``snow_rain:threshold``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Single-threshold (``snow_rain:threshold``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A step-function splitter with no transition zone. All precipitation is snow at
+A step-function partitioning with no transition zone. All precipitation is snow at
 or below the threshold, and rain above it.
 
 * ``prec_t`` *(optional, °C, default: 0, [-5, 5])*: temperature threshold.
   Full name: ``snow_rain_transition:threshold``.
 
 
-CemaNeige rain/snow splitter (``snow_rain:cemaneige``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CemaNeige rain/snow partitioning (``snow_rain:cemaneige``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The CemaNeige splitter (:cite:t:`Valery2014`) has no calibrated parameters. It is
+The CemaNeige partitioning (:cite:t:`Valery2014`) has no calibrated parameters. It is
 selected automatically when ``snow_melt_process='melt:cemaneige'`` in GR4J. The
 equation used depends on elevation.
 
@@ -62,7 +62,7 @@ the daily minimum (:math:`T_\mathrm{min}`) and maximum (:math:`T_\mathrm{max}`):
 
 .. math::
 
-   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; \frac{-T_{\mathrm{min}}}{T_{\mathrm{max}} - T_{\mathrm{min}}}\right)\right)
+   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; 1 - \frac{T_{\mathrm{max}}}{T_{\mathrm{max}} - T_{\mathrm{min}}}\right)\right)
 
 The ``temperature_min`` and ``temperature_max`` forcing variables are required for
 hydro units below 1500 m.
