@@ -24,6 +24,7 @@ Additional resources contributed by the community are listed on the
    doc/processes
    doc/parameters
    doc/forcing
+   doc/preprocessing
    doc/advanced
    doc/resources
    doc/upgrade

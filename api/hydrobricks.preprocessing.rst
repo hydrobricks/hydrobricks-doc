@@ -19,6 +19,8 @@ Catchment discretization
    :undoc-members:
    :show-inheritance:
 
+.. _api_catchment_connectivity:
+
 Catchment connectivity
 ----------------------
 
@@ -27,6 +29,8 @@ Catchment connectivity
    :undoc-members:
    :show-inheritance:
 
+.. _api_preproc_glacier_delta_h:
+
 Glacier evolution — delta-h
 ----------------------------
 
@@ -34,6 +38,8 @@ Glacier evolution — delta-h
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_preproc_glacier_area_scaling:
 
 Glacier evolution — area scaling
 ---------------------------------

@@ -171,25 +171,13 @@ Delta-h method
 The delta-h method (:cite:t:`Huss2010`, as implemented by :cite:t:`Seibert2018`) redistributes ice loss
 according to a characteristic elevation-dependent melt profile, capturing the tendency
 of glaciers to thin faster at lower elevations. It is the preferred approach for medium
-and large glaciers. We recommend using 10 m elevation bands for the glacier, consistent
-with :cite:t:`Seibert2018`.
+and large glaciers.
 
-First, compute the initial ice thickness and build the lookup table from an ice
-thickness raster:
-
-.. code-block:: python
-
-   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
-   glacier_evolution = preprocessing.GlacierEvolutionDeltaH()
-   glacier_df = glacier_evolution.compute_initial_ice_thickness(
-      study_area,
-      ice_thickness=glacier_thickness,
-      elevation_bands_distance=10
-   )
-   glacier_evolution.compute_lookup_table(update_width=False)
-
-Then link the lookup table to the model. The glacier area is updated at the provided month,
-for example each October 1st (the start of the hydrological year in Switzerland):
+The lookup table must be precomputed before running the simulation — see
+:ref:`Delta-h lookup table <glacier_lookup_delta_h>` on the preprocessing page.
+Once computed (and optionally saved to CSV), link it to the model. The glacier area
+is updated at the beginning of the provided month, for example each October 1st
+(the start of the hydrological year in Switzerland):
 
 .. code-block:: python
 
@@ -210,15 +198,8 @@ for example each October 1st (the start of the hydrological year in Switzerland)
 * ``update_month`` — month when glacier areas are updated; full English name or integer
   1–12; default ``'October'``.
 
-The lookup table and initial glacier dataframe can be saved for later reuse:
-
-.. code-block:: python
-
-   glacier_df.to_csv('/path/to/surface_changes_glacier.csv', index=False)
-   glacier_evolution.save_as_csv('/path/to/results/folder/')
-
-On subsequent runs the lookup table can be reloaded directly, skipping the
-preprocessing step:
+If the lookup table was saved by the preprocessing step, it can also be loaded
+directly from CSV, bypassing the ``GlacierEvolutionDeltaH`` object:
 
 .. code-block:: python
 
@@ -246,22 +227,9 @@ The area-scaling method derives glacier area from ice volume using a volume–ar
 power-law relationship. It is simpler than delta-h and best suited for small glaciers
 where a detailed elevation-dependent melt profile is not warranted.
 
-First, compute the lookup table from an ice thickness raster:
-
-.. code-block:: python
-
-   study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
-
-   glacier_evolution = hb.preprocessing.GlacierEvolutionAreaScaling()
-   glacier_evolution.compute_lookup_table(
-      study_area, 
-      ice_thickness='path/to/ice_thickness.tif'
-   )
-
-   # Save for later reuse
-   glacier_evolution.save_as_csv('/path/to/results/')
-
-Then link the lookup table to the model:
+The lookup table must be precomputed before running the simulation — see
+:ref:`Area-scaling lookup table <glacier_lookup_area_scaling>` on the preprocessing
+page. Once computed (and optionally saved to CSV), link it to the model:
 
 .. code-block:: python
 
@@ -413,7 +381,8 @@ Enable snow redistribution at model creation:
    )
 
 A connectivity CSV file describing the downslope pathways between hydro units is also
-required:
+required (see :ref:`Catchment connectivity <catchment-connectivity>` for how to compute
+it):
 
 .. code-block:: python
 
@@ -422,4 +391,3 @@ required:
 Resources:
 
 * `Working example implementation <https://github.com/hydrobricks/hydrobricks/blob/main/python/examples/basics/snow_redistribution.py>`_
-* `Script to compute the connectivity CSV <https://github.com/hydrobricks/hydrobricks/blob/main/python/examples/preprocessing/compute_lateral_connectivity.py>`_
