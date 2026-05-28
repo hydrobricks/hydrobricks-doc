@@ -9,7 +9,7 @@ Processes
 Rain/snow partitioning
 -----------------------
 
-Precipitation is partitioned into rain and snow before entering the melt model.
+Precipitation is partitioned into rain and snow before entering any store.
 Three splitters are available, selected via the ``snow_rain_process`` option.
 If ``snow_rain_process`` is not set, the default is ``'snow_rain:linear'``, except
 when ``snow_melt_process='melt:cemaneige'``, which automatically selects
@@ -43,22 +43,29 @@ or below the threshold, and rain above it.
 CemaNeige rain/snow splitter (``snow_rain:cemaneige``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The CemaNeige splitter (:cite:t:`Valery2014`) determines the solid fraction from the
-daily temperature range rather than a fixed threshold:
+The CemaNeige splitter (:cite:t:`Valery2014`) has no calibrated parameters. It is
+selected automatically when ``snow_melt_process='melt:cemaneige'`` in GR4J. The
+equation used depends on elevation.
+
+**At elevations ≥ 1500 m**, the solid fraction is computed from the daily mean
+temperature :math:`T_\mathrm{mean}` with fixed bounds of −1 °C and 3 °C:
 
 .. math::
 
-   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; \frac{T_{\max} - T_{\mathrm{mean}}}{T_{\max} - T_{\min}}\right)\right)
+   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; \frac{3 - T_{\mathrm{mean}}}{4}\right)\right)
 
-The temperature range :math:`[T_{\min},\, T_{\max}]` depends on elevation:
+No additional forcing variables are needed beyond daily mean temperature.
 
-* **At elevations ≥ 1500 m**: fixed values :math:`T_{\min} = -1\ °C` and
-  :math:`T_{\max} = 3\ °C` are used — no additional forcing variables are needed.
-* **At elevations < 1500 m**: :math:`T_{\min}` and :math:`T_{\max}` are read
-  from the daily ``temperature_min`` and ``temperature_max`` forcing variables.
+**At elevations < 1500 m**, the solid fraction is approximated as the fraction of the
+day during which temperature is below 0 °C, assuming a linear diurnal cycle between
+the daily minimum (:math:`T_\mathrm{min}`) and maximum (:math:`T_\mathrm{max}`):
 
-The splitter has no calibrated parameters. It is selected automatically when
-``snow_melt_process='melt:cemaneige'`` in GR4J.
+.. math::
+
+   f_{\mathrm{solid}} = \max\!\left(0,\; \min\!\left(1,\; \frac{-T_{\mathrm{min}}}{T_{\mathrm{max}} - T_{\mathrm{min}}}\right)\right)
+
+The ``temperature_min`` and ``temperature_max`` forcing variables are required for
+hydro units below 1500 m.
 
 
 .. _melt-models:
@@ -93,8 +100,8 @@ Valid values for ``snow_melt_process``: ``"melt:degree_day"``,
 ``"melt:cemaneige"``.
 
 
-Degree-day model (degree_day)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Degree-day model (``degree_day``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Degree-day or temperature-index approaches are widely used in snow- and 
 glacier-dominated catchments because they require only air temperature data, 
@@ -122,8 +129,8 @@ Requires only temperature and elevation band data. Use this model when
 computational simplicity or data availability is a priority.
 
 
-Aspect-based degree-day model (degree_day_aspect)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Aspect-based degree-day model (``degree_day_aspect``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Extends the standard degree-day model by assigning different degree-day factors
 to north-, south-, and east/west-facing slopes. Sun-exposed south-facing slopes
@@ -133,8 +140,8 @@ catchment to be discretized by elevation and aspect. Use this model when aspect
 strongly differentiates melt rates across the catchment.
 
 
-Radiation-enhanced temperature-index model (temperature_index)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Radiation-enhanced temperature-index model (``temperature_index``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Based on :cite:t:`Hock1999`, this model replaces the fixed degree-day factor with one
 that scales with potential clear-sky solar radiation:
@@ -174,8 +181,8 @@ The main trade-off is that computing the radiation field adds some preprocessing
 See :cite:t:`Argentin2025` for a comparative evaluation of all three models.
 
 
-CemaNeige snowmelt model (cemaneige)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CemaNeige snowmelt model (``cemaneige``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The CemaNeige model (:cite:t:`Valery2014`) addresses a known weakness of plain degree-day
 models: they tend to overestimate melt immediately after cold spells because they
@@ -232,8 +239,8 @@ Evapotranspiration
 Two ET formulations are available. The one used depends on the model.
 
 
-Socont ET (et:socont)
-^^^^^^^^^^^^^^^^^^^^^^
+Socont ET (``et:socont``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Used in :ref:`GSM-Socont <gsm-socont>`. Actual ET is proportional to PET, scaled
 by the filling ratio of the reservoir with a square-root exponent (:cite:t:`Schaefli2005`):
@@ -252,8 +259,8 @@ ET decreases as the reservoir empties; it equals PET when the reservoir is full.
 No calibrated parameters. Requires the ``pet`` forcing.
 
 
-GR4J ET (et:gr4j)
-^^^^^^^^^^^^^^^^^^
+GR4J ET (``et:gr4j``)
+^^^^^^^^^^^^^^^^^^^^^
 
 Used internally by :ref:`GR4J <gr4j>`; not user-configurable. Follows the GR4J
 formulation of :cite:t:`Perrin2003`. Before computing ET, a zero-capacity interception
@@ -275,8 +282,8 @@ store content. No calibrated parameters beyond :math:`X_1`.
 Infiltration
 ------------
 
-Socont infiltration (infiltration:socont)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Socont infiltration (``infiltration:socont``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Used in :ref:`GSM-Socont <gsm-socont>` for the ground land cover. Water
 infiltrates into the slow reservoir at a rate that decreases quadratically as
@@ -300,8 +307,8 @@ user-configurable.
 Percolation
 -----------
 
-Constant percolation (percolation:constant)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Constant percolation (``percolation:constant``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Drains water from one reservoir to another at a fixed rate, independent of
 storage:
@@ -334,8 +341,8 @@ in :ref:`GSM-Socont <gsm-socont>`. The choice is made via the ``surface_runoff``
 option at model instantiation.
 
 
-Socont runoff (runoff:socont)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Socont runoff (``runoff:socont``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The default (``surface_runoff="socont_runoff"``). Models overland flow on an
 inclined plane with a linearly varying water depth, following Manning's equation
@@ -364,8 +371,8 @@ Use this formulation when the non-linear response of overland flow to slope is
 important. It is the original Socont parameterisation.
 
 
-Linear storage runoff (outflow:linear)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Linear storage runoff (``outflow:linear``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Alternative (``surface_runoff="linear_storage"``). Replaces the Manning-based
 formulation with a simple linear reservoir:
