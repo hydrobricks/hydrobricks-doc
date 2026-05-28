@@ -3,6 +3,21 @@
 Advanced features
 =================
 
+This page covers three features for multi-decade or physically complex simulations:
+
+* :ref:`Land cover evolution <land-cover-evolution>` — supply time-varying glacier
+  extents from observations (CSV or shapefiles). Best for historical simulations with
+  a known extent time series.
+* :ref:`Glacier evolution <glacier-evolution>` — derive changing glacier area
+  internally from modelled ice loss (delta-h or area scaling). Required when no
+  observed extent series exists, e.g. for future projections.
+* :ref:`Snow redistribution <snow-redistribution>` — prevent unrealistic snow
+  accumulation at high elevations using the SnowSlide gravitational transport
+  algorithm.
+
+
+.. _land-cover-evolution:
+
 Land cover evolution
 --------------------
 
@@ -10,22 +25,12 @@ Land cover fractions can evolve over time within each hydro unit. For multi-deca
 simulations, glacier retreat can substantially alter the catchment response, and
 ignoring it produces unrealistic results.
 
-Three approaches are available, depending on the available input data:
-
-* **External data** (CSV or shapefiles): the area time series is supplied directly,
-  derived from remote sensing or an external model. This is the most straightforward
-  approach when historical glacier extents are available.
-* **Melt-driven evolution** (delta-h or area scaling): glacier area is computed
-  internally from modelled ice loss, without requiring an observed area time series.
-  This is the only viable option for future projections.
+This section covers externally driven evolution, where the area time series is
+supplied directly from remote sensing or an external model. Two input formats are
+supported: CSV files and shapefiles.
 
 The initial hydro unit areas serve as the starting point; evolution data takes effect
 at the dates provided. Changes dated before the simulation start are applied immediately.
-
-.. note::
-
-   The melt-driven methods (delta-h and area scaling) apply only to bare-ice glacier
-   land covers and do not handle debris-covered glacier areas.
 
 
 .. _land_cover_evolution_csv:
@@ -143,6 +148,8 @@ start date:
    ]
 
 
+.. _glacier-evolution:
+
 Glacier evolution
 -----------------
 
@@ -150,6 +157,11 @@ The two methods below drive glacier area changes from modelled ice loss rather t
 external observations. Both require an initial ice thickness raster and produce a
 lookup table that maps cumulative mass loss to glacier area. This makes them suitable
 for future projections where no observed extent time series exist.
+
+.. note::
+
+   Both methods apply only to bare-ice glacier land covers and do not handle
+   debris-covered glacier areas.
 
 
 .. _glacier_evolution_delta_h:
