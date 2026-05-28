@@ -16,6 +16,11 @@ Two input types are supported:
 1. **Meteorological station data** spatially interpolated using elevation gradients
 2. **Gridded NetCDF data** aggregated to the hydro units
 
+All forcing operations — corrections, spatialization, and PET computation —
+are queued when defined and executed together, in a fixed order, just before
+the model run. This means you can define operations in any order in your script
+without worrying about execution sequence.
+
 
 Loading meteorological station data
 -------------------------------------
@@ -117,28 +122,6 @@ Available methods and their parameters are described in
 :ref:`the Python API <api_forcing>`.
 
 
-Computing PET
-""""""""""""""
-
-When PET observations are not available, hydrobricks can compute them
-internally from other meteorological variables using the
-`pyet <https://pypi.org/project/pyet/>`_ package:
-
-.. code-block:: python
-
-   forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
-
-The ``method`` argument accepts any method listed in the
-`pyet documentation <https://pypi.org/project/pyet/>`_. The ``use`` list names
-the input variables in pyet's notation. A catchment latitude (``lat``) can be
-given as a fixed value; if omitted, the latitude of each hydro unit is used.
-
-All forcing operations — corrections, spatialization, and PET computation —
-are queued when defined and executed together, in a fixed order, just before
-the model run. This means you can define operations in any order in your script
-without worrying about execution sequence.
-
-
 Loading gridded NetCDF data
 -----------------------------
 
@@ -170,3 +153,23 @@ Key arguments:
 * ``dim_x``, ``dim_y``, ``dim_time``: names of the x, y, and time dimensions.
 * ``raster_hydro_units``: GeoTIFF raster of hydro unit IDs, used to assign
   grid cells to units.
+
+
+Computing PET
+-------------
+
+When PET observations are not available, hydrobricks can compute them
+internally from other meteorological variables using the
+`pyet <https://pypi.org/project/pyet/>`_ package:
+
+.. code-block:: python
+
+   forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
+
+The ``method`` argument accepts any method listed in the
+`pyet documentation <https://pypi.org/project/pyet/>`_. The ``use`` list names
+the input variables in pyet's notation. The time series for these variables
+are retrieved from the forcing data after spatialization, so PET is computed
+per hydro unit, using the unit's temperature, for example. 
+A catchment latitude (``lat``) can be given as a fixed value; 
+if omitted, the latitude of each hydro unit is used.
