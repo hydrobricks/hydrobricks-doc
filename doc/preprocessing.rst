@@ -364,6 +364,48 @@ Ice thickness is then estimated per elevation band using the
   Eq. 7 of :cite:t:`Seibert2018`; default ``True``.
   Ignored when ``pixel_based_approach=True``.
 
+**Calibrating the delta-h profile from two surveys (optional)**
+
+By default ``compute_lookup_table()`` uses the generic polynomial delta-h
+parameterization of :cite:t:`Huss2010`. If two ice thickness surveys are available
+(e.g. from two different years), the observed elevation-dependent thinning profile
+can be derived from the data and used instead:
+
+.. code-block:: python
+
+   # Derive observed delta-h profile from two thickness rasters
+   observed_dh = glacier_evolution.compute_ice_thickness_change(
+      catchment,
+      ice_thickness_old='path/to/thickness_2000.tif',
+      ice_thickness_new='path/to/thickness_2020.tif',
+      elevation_bands_distance=10
+   )
+
+   # Use it when building the lookup table
+   glacier_evolution.compute_lookup_table(
+      catchment=catchment,
+      observed_dh=observed_dh
+   )
+
+**Parameters for** ``compute_ice_thickness_change()``:
+
+* ``catchment`` — the ``Catchment`` object with DEM loaded.
+* ``ice_thickness_old`` — path to the GeoTIFF of the earlier glacier thickness survey
+  (in meters).
+* ``ice_thickness_new`` — path to the GeoTIFF of the more recent glacier thickness
+  survey (in meters).
+* ``elevation_bands_distance`` — spacing between elevation bands in meters;
+  default ``10``.
+* ``smooth_window`` — window size for 1-D rolling smoothing applied to the
+  aggregated thinning curve before normalization; ``None`` disables smoothing;
+  default ``5``.
+* ``nodata`` — value to treat as no-data in the input rasters (replaced with NaN);
+  default ``None``.
+
+The method returns a ``DataFrame`` with the normalized thinning profile (columns
+``dh`` and ``normalized_elevation``) that is passed directly to
+``compute_lookup_table()`` via the ``observed_dh`` argument.
+
 The lookup table can be inspected via ``glacier_df`` and saved for reuse:
 
 .. code-block:: python
@@ -392,8 +434,11 @@ On subsequent runs, skip recomputation and load the saved files:
 Area-scaling lookup table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The area-scaling method derives glacier area from ice volume using a power-law
-relationship. It requires an ice thickness GeoTIFF.
+The area-scaling method establishes a relationship between cumulative ice loss 
+and glacier area per hydro unit. It is computationally simpler than the delta-h 
+method but less accurate, as it does not account for the glacier dynamics.
+It is suitable for applications where the glacier is small and is not expected
+to advance during the simulation period. It requires an ice thickness GeoTIFF.
 
 .. code-block:: python
 
