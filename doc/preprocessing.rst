@@ -171,54 +171,6 @@ To reload an existing unit-ID raster instead of rerunning discretization:
    catchment.load_unit_ids_from_raster('path/to/output/dir/', 'unit_ids.tif')
 
 
-.. _catchment-connectivity:
-
-Catchment connectivity
-----------------------
-
-Snow redistribution requires a connectivity table describing how water (or snow)
-flows between hydro units. Hydrobricks derives this from the DEM flow direction using
-the D8 algorithm (via the ``pysheds`` library).
-
-The catchment must already have a DEM and hydro units defined before this step
-(see :ref:`Generating hydro units from a DEM <spatial-structure>`).
-
-.. code-block:: python
-
-   catchment = hb.Catchment(outline='path/to/watershed.shp')
-   catchment.extract_dem('path/to/dem.tif')
-   catchment.discretize_by(['elevation', 'aspect'], ...)
-
-   connectivity = catchment.calculate_connectivity(mode='multiple')
-
-**Parameters** (see also :ref:`API <api_catchment_connectivity>`):
-
-* ``mode`` — ``'multiple'`` *(default)*: keeps all downslope connections weighted
-  by contributing flow; ``'single'``: keeps only the dominant connection.
-* ``force_connectivity`` — if ``True``, units with no downslope neighbor within the
-  catchment are connected to their neighbors proportionally to the shared border
-  length; default ``False``.
-* ``precision`` — number of decimal places for connectivity fractions; default ``3``.
-
-The result is a ``DataFrame``; save it to CSV for later use:
-
-.. code-block:: python
-
-   connectivity.to_csv('path/to/connectivity.csv', index=False)
-
-When setting up the model, load it into the ``HydroUnits`` object:
-
-.. code-block:: python
-
-   hydro_units.set_connectivity('path/to/connectivity.csv')
-
-Or pass the ``DataFrame`` directly if it is already in memory:
-
-.. code-block:: python
-
-   hydro_units.set_connectivity(connectivity)
-
-
 .. _potential-solar-radiation:
 
 Potential solar radiation
@@ -282,6 +234,54 @@ With the radiation loaded, include ``'radiation'`` in the discretization criteri
    )
 
 
+.. _catchment-connectivity:
+
+Catchment connectivity
+----------------------
+
+Snow redistribution requires a connectivity table describing how water (or snow)
+flows between hydro units. Hydrobricks derives this from the DEM flow direction using
+the D8 algorithm (via the ``pysheds`` library).
+
+The catchment must already have a DEM and hydro units defined before this step
+(see :ref:`Generating hydro units from a DEM <spatial-structure>`).
+
+.. code-block:: python
+
+   catchment = hb.Catchment(outline='path/to/watershed.shp')
+   catchment.extract_dem('path/to/dem.tif')
+   catchment.discretize_by(['elevation', 'aspect'], ...)
+
+   connectivity = catchment.calculate_connectivity(mode='multiple')
+
+**Parameters** (see also :ref:`API <api_catchment_connectivity>`):
+
+* ``mode`` — ``'multiple'`` *(default)*: keeps all downslope connections weighted
+  by contributing flow; ``'single'``: keeps only the dominant connection.
+* ``force_connectivity`` — if ``True``, units with no downslope neighbor within the
+  catchment are connected to their neighbors proportionally to the shared border
+  length; default ``False``.
+* ``precision`` — number of decimal places for connectivity fractions; default ``3``.
+
+The result is a ``DataFrame``; save it to CSV for later use:
+
+.. code-block:: python
+
+   connectivity.to_csv('path/to/connectivity.csv', index=False)
+
+When setting up the model, load it into the ``HydroUnits`` object:
+
+.. code-block:: python
+
+   hydro_units.set_connectivity('path/to/connectivity.csv')
+
+Or pass the ``DataFrame`` directly if it is already in memory:
+
+.. code-block:: python
+
+   hydro_units.set_connectivity(connectivity)
+
+
 .. _glacier-lookup-tables:
 
 Glacier evolution lookup tables
@@ -308,7 +308,7 @@ Two initialization paths are available depending on the available input data.
 
 **From an ice thickness raster**
 
-If an ice thickness GeoTIFF is available (e.g. from :cite:t:`Farinotti2019`),
+If an ice thickness GeoTIFF is available (e.g. from :cite:t:`Grab2021`),
 pass it to ``compute_initial_ice_thickness()``. The glacier extent is derived
 automatically from the non-zero thickness pixels.
 
