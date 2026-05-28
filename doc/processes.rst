@@ -236,7 +236,7 @@ CemaNeige is the recommended snow model for the :ref:`GR4J <gr4j>` model:
 Evapotranspiration
 ------------------
 
-Two ET formulations are available. The one used depends on the model.
+Two ET formulations are available.
 
 
 Socont ET (``et:socont``)
@@ -262,7 +262,7 @@ No calibrated parameters. Requires the ``pet`` forcing.
 GR4J ET (``et:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^
 
-Used internally by :ref:`GR4J <gr4j>`; not user-configurable. Follows the GR4J
+Used internally by :ref:`GR4J <gr4j>`. Follows the GR4J
 formulation of :cite:t:`Perrin2003`. Before computing ET, a zero-capacity interception
 step neutralises precipitation against PET: if P > E\ :sub:`P`, the excess
 precipitation P\ :sub:`n` = P − E\ :sub:`P` passes on and E\ :sub:`n` = 0; if
@@ -298,8 +298,22 @@ maximum capacity. When the reservoir is empty, all incoming water infiltrates;
 when full, infiltration is zero and the remainder becomes surface runoff. No
 calibrated parameters.
 
-GR4J uses a separate ``infiltration:gr4j`` formulation internally; it is not
-user-configurable.
+GR4J infiltration (``infiltration:gr4j``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used internally by :ref:`GR4J <gr4j>`; not user-configurable. Computes the portion
+:math:`P_s` of net precipitation :math:`P_n` that enters the production store
+(:cite:t:`Perrin2003`):
+
+.. math::
+
+   P_s = X_1 \left(1 - \left(\frac{S}{X_1}\right)^{\!2}\right)
+         \frac{\tanh\!\left(\dfrac{P_n}{X_1}\right)}
+              {1 + \dfrac{S}{X_1}\,\tanh\!\left(\dfrac{P_n}{X_1}\right)}
+
+where :math:`X_1` is the production store capacity and :math:`S` is its current
+water content. The rate increases with :math:`P_n` and decreases as the store
+fills, going to zero when :math:`S = X_1`. No calibrated parameters.
 
 
 .. _percolation-processes:
