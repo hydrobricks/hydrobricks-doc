@@ -1,18 +1,17 @@
-hydrobricks' documentation
+Hydrobricks documentation
 ==========================
 
-Hydrobricks is a flexible hydrological modelling framework.
-Its core is written in C++ and it has a Python interface.
-More specifically, the processes, fluxes and solver are coded in the C++ core,
-while data preparation is done with Python.
-The objective is to use Python wherever possible, and in particular for data processing,
-and C++ where necessary, for performance reasons.
+Hydrobricks is a flexible, modular hydrological modelling framework.
+Its computational core is written in C++ for performance, while data
+preparation, model configuration, and calibration are handled through a
+Python interface.
 
-Hydrobricks comes with pre-build model structures, but it aims at allowing structure
-definition from the user through the Python API.
-The existing model structures can be found under the :ref:`models page<models>`.
-The main components of the model are described under the :ref:`basics page<basics>`.
-Additional useful resources are provided under the :ref:`resources page<resources>`.
+Hydrobricks ships with pre-built model structures for common use cases.
+The available models are described on the :ref:`models page<models>`.
+The main building blocks of the framework are explained on the
+:ref:`basics page<basics>`.
+Additional resources contributed by the community are listed on the
+:ref:`resources page<resources>`.
 
 
 .. toctree::
@@ -23,9 +22,11 @@ Additional useful resources are provided under the :ref:`resources page<resource
    doc/basics
    doc/models
    doc/processes
-   doc/calibration
+   doc/parameters
+   doc/forcing
+   doc/preprocessing
    doc/advanced
    doc/resources
    doc/upgrade
+   doc/references
    api/modules
-

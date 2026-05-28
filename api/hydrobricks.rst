@@ -3,6 +3,16 @@ Components
 
 .. automodule:: hydrobricks
 
+.. _api_catchment:
+
+Catchment
+---------
+
+.. autoclass:: Catchment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. _api_hydrounits:
 
 HydroUnits
@@ -37,6 +47,32 @@ Observations
 ------------
 
 .. autoclass:: Observations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Results
+-------
+
+.. autoclass:: Results
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+TimeSeries
+----------
+
+.. autoclass:: TimeSeries
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Trainer
+-------
+
+.. automodule:: hydrobricks.trainer
+
+.. autoclass:: hydrobricks.trainer.SpotpySetup
    :members:
    :undoc-members:
    :show-inheritance:

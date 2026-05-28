@@ -1,4 +1,5 @@
 pip
 mock
+hydrobricks==0.8.7
 sphinx_rtd_theme
-hydrobricks==0.8.6
+sphinxcontrib-bibtex

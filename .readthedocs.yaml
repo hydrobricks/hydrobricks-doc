@@ -9,6 +9,10 @@ build:
   tools:
     python: "3.11"
 
+# Clone git submodules so _deps/hydrobricks source is available for autodoc
+submodules:
+  include: all
+
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
    configuration: conf.py

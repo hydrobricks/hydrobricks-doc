@@ -6,23 +6,30 @@ The basics
 Model structure
 ---------------
 
-A model is composed of three main elements: bricks, processes, and fluxes.
-The bricks are any component that can contain water, such as a snowpack, a glacier,
-or a ground reservoir. They can contain one or more water containers.
-For example, the snowpack has a snow and a liquid water container.
-These bricks are assigned with processes that can extract water.
-Processes are for example snowmelt, evapotranspiration (ET), or outflow according to the behaviour.
-The water extracted from the bricks by the processes are then transferred to fluxes,
-which deliver it to other bricks, the atmosphere, or the outlet.
+Hydrobricks models are built from three kinds of objects: **bricks**,
+**processes**, and **fluxes**.
 
-For now, only pre-built structures are available.
-One can create a pre-built instance of a model by using the provided class (to be
-considered as the blueprint) with some options.
-The options and the existing models are detailed in the :ref:`models page <models>`.
+A **brick** is any storage that holds water — a snowpack, a glacier, a soil
+reservoir, and so on. Each brick can contain multiple water containers: the
+snowpack, for instance, tracks snow and liquid water separately.
+
+A **process** extracts water from a brick. Snowmelt, evapotranspiration (ET),
+and reservoir outflow are all processes. Each brick can have one or more
+processes assigned to it.
+
+A **flux** carries extracted water somewhere: to another brick, to the
+atmosphere, or to the basin outlet. Together, bricks, processes, and fluxes
+form a directed water-transport graph that is solved at each time step.
+
+Currently, only pre-built model structures are available. An instance is
+created by calling the model class with the desired options:
 
 .. code-block:: python
 
    socont = models.Socont(soil_storage_nb=2)
+
+The available models and their options are described on the
+:ref:`models page <models>`.
 
 
 .. _spatial-structure:
@@ -30,40 +37,85 @@ The options and the existing models are detailed in the :ref:`models page <model
 Spatial structure
 -----------------
 
-The catchment is discretized into sub units named hydro units.
-These hydro units can represent HRUs (hydrological response units), pixels,
-elevation bands, etc. They can be either loaded from a file or generated from a DEM
-based on topography, aspect and radiation.
+.. _catchment-class:
+
+The Catchment object
+^^^^^^^^^^^^^^^^^^^^^
+
+:class:`Catchment` is the central object for defining the study area. It is
+initialized with a catchment outline shapefile and then provides access to the
+DEM, hydro unit properties, and the preprocessing sub-modules:
+
+* ``catchment.topography`` — slope, aspect, hillshade
+  (see :ref:`catchment-topography`)
+* ``catchment.discretization`` — splitting the catchment into hydro units
+  (see :ref:`catchment-discretization`)
+* ``catchment.connectivity`` — lateral connectivity between units
+  (see :ref:`catchment-connectivity`)
+* ``catchment.solar_radiation`` — potential direct solar radiation
+  (see :ref:`potential-solar-radiation`)
+
+.. code-block:: python
+
+   import hydrobricks as hb
+
+   catchment = hb.Catchment(outline='path/to/watershed.shp')
+   catchment.extract_dem('path/to/dem.tif')
+
+``Catchment`` can also be used as a context manager to ensure file handles are
+released automatically when preprocessing is complete:
+
+.. code-block:: python
+
+   with hb.Catchment(outline='path/to/watershed.shp') as catchment:
+       catchment.extract_dem('path/to/dem.tif')
+       ...
+
+See the :ref:`API reference <api_catchment>` for the full method list.
+
+
+Hydro units
+^^^^^^^^^^^^
+
+The catchment is discretized into sub-units called **hydro units**, which can
+represent elevation bands, hydrological response units (HRUs), raster pixels,
+or any other spatial partition. Hydro units can be defined in two ways: loaded
+from a CSV file, or generated automatically from a DEM.
 
 .. image:: images/hydro_units.png
-   :alt: Example of discretization of a catchment into (a) elevation bands, 
-   (b) aspect, and (c) radiation. Aspect and radiation discretizations are
-   then combined with elevation bands to form HRUs. Source: Argentin2025_
-   :width: 600px
+   :alt: Example of discretization of a catchment into hydro units.
+   :width: 680px
    :align: center
 
-Loading hydro units from a csv file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*Example of discretization of a catchment based on (a) elevation bands,
+(b) aspect, and (c) potential solar radiation. Aspect or potential 
+solar radiation is then combined with elevation bands to form hydro units. 
+Source:* :cite:t:`Argentin2025`
 
-The hydro units properties can be loaded from csv files containing at minimum data on each 
-unit area and elevation (mean elevation of each hydro unit).
-Loading such a file can be done as follows:
+
+Loading hydro units from a CSV file
+""""""""""""""""""""""""""""""""""""
+
+The simplest way to define hydro units is to load them from a CSV file. At
+minimum, the file must contain the area and mean elevation of each unit:
 
 .. code-block:: python
 
    hydro_units = hb.HydroUnits()
    hydro_units.load_from_csv(
-      'path/to/file.csv', column_elevation='elevation', column_area='area')
+      'path/to/file.csv', 
+      column_elevation='elevation', 
+      column_area='area'
+   )
 
-The csv file containing the hydro units data needs to have two header rows: 
-first row with the column name, second with the units.
-It can look like the following example.
+The CSV must have two header rows: the first with column names, the second
+with units. A minimal example:
 
 .. code-block:: text
-   :caption: Example of a simple csv file with the hydro units area.
+   :caption: Example of a CSV file with hydro unit areas.
 
    num, elevation, area
-   -,m,m^2
+   -, m, m^2
    0, 790, 2457500
    1, 840, 4481250
    2, 890, 5630625
@@ -78,12 +130,11 @@ It can look like the following example.
    11, 1340, 3496875
    12, 1390, 2361250
 
-The default land cover is named ``ground`` and it has no specific behaviour.
-When there is more than one land cover, these can be specified.
-Each hydro unit is then assigned a fraction of the provided land covers
-For example, for a catchment with a pure ice glacier and a debris-covered glacier, one
-then needs to provide the area for each land cover type and for each hydro unit
-(more information in :ref:`the Python API <api_hydrounits>`):
+By default, each hydro unit has a single ``ground`` land cover. Catchments
+with glaciers or other distinct surface types require multiple land covers.
+Each land cover has a type (which determines its physical behaviour) and a
+name (which distinguishes it from other land covers of the same type). For example,
+a catchment with bare-ice and debris-covered glacier areas uses three land covers:
 
 .. code-block:: python
 
@@ -92,17 +143,20 @@ then needs to provide the area for each land cover type and for each hydro unit
 
    hydro_units = hb.HydroUnits(land_cover_types, land_cover_names)
    hydro_units.load_from_csv(
-      'path/to/file.csv', column_elevation='Elevation',
-      columns_areas={'ground': 'Area Non Glacier',
-                     'glacier_ice': 'Area Ice',
-                     'glacier_debris': 'Area Debris'})
+      'path/to/file.csv', 
+      column_elevation='Elevation',
+      columns_areas={
+         'ground': 'Area Non Glacier',
+         'glacier_ice': 'Area Ice',
+         'glacier_debris': 'Area Debris'
+      }
+   )
 
-The csv file containing the hydro units data needs to have two header rows: 
-first row with the column name, second with the units.
-It can look like the following example.
+The CSV must list the area of each land cover per hydro unit
+(more information in :ref:`the Python API <api_hydrounits>`):
 
 .. code-block:: text
-   :caption: Example of a csv file with the hydro units area for different land cover types.
+   :caption: Example of a CSV file with areas for multiple land cover types.
 
    Elevation, Area Non Glacier, Area Ice, Area Debris
    m, km2, km2, km2
@@ -126,461 +180,248 @@ It can look like the following example.
 
 
 Generating hydro units from a DEM
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""
 
-The hydro units can also be generated automatically from the topography, the aspect
-and the radiation.
+When spatial data are available, hydro units can be generated automatically
+from a DEM, with discretization criteria chosen to match the melt model in use:
 
-Discretizing by elevation is sufficient for the melt model ``'degree_day'``, but a 
-discretization by elevation and aspect is required when using the melt model 
-``'degree_day_aspect'`` and a discretization by elevation and radiation is recommended
-for the melt model ``'temperature_index'``. See :ref:`melt models<melt-models>`.
+* **Elevation only** — sufficient for ``'degree_day'``
+* **Elevation + aspect** — required for ``'degree_day_aspect'``
+* **Elevation + radiation** — recommended for ``'temperature_index'``
 
-For example, to discretize a study area spanning an elevation range of 1912 m to
-2893 m, with a glacier ranging from 2480 m to 2890 m, we use a minimum band 
-elevation of 1900 m, a maximum band elevation of 2900 m and elevation bands of 
-50 m. If we also choose to discretize by aspect, it gives the following function call: 
+See :ref:`melt models<melt-models>` for a description of each.
+
+The following example discretizes a study area into 50 m elevation bands
+combined with aspect classes. The elevation range covers the entire catchment
+(1912–2893 m), with some margin added for the bands:
 
 .. code-block:: python
-   
+
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    success = study_area.extract_dem('path/to/dem.tif')
    study_area.discretize_by(
-      ['elevation', 'aspect'], 
-      elevation_method='equal_intervals', 
+      ['elevation', 'aspect'],
+      elevation_method='equal_intervals',
       elevation_distance=50,
-      min_elevation=1900, 
-      max_elevation=2900, 
+      min_elevation=1900,
+      max_elevation=2900,
    )
-                            
+
 
 Discretizing by potential solar radiation
-"""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""
 
-The daily mean potential clear-sky direct solar radiation is computed at the 
-DEM surface [W/m²] using Hock1999_'s equation. By default, the radiation
-resolution will be the DEM resolution. If you use a high resolution DEM, make sure
-to set a lower resolution for the radiation, as it will be computationnally expensive.
+The ``'temperature_index'`` melt model requires per-unit radiation values.
+Hydrobricks computes the daily mean potential clear-sky direct solar radiation
+at the DEM surface [W/m²] using the equation of :cite:t:`Hock1999`. The radiation
+resolution defaults to the DEM resolution; for high-resolution DEMs, specify
+a coarser resolution to keep computation times reasonable.
 
 .. code-block:: python
-   
+
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    success = study_area.extract_dem('path/to/dem.tif')
    study_area.calculate_daily_potential_radiation('path/to/file', resolution)
 
-Since the radiation computation takes a few minutes and is not year-specific, it can 
-also be saved and loaded back in memory. By default, the name of the radiation file
-will be ``'annual_potential_radiation.tif'`` and can be omitted.
+Because radiation depends only on topography, not on the simulation year, the
+result can be saved to a GeoTIFF and reloaded in future runs. The default
+filename is ``'annual_potential_radiation.tif'``:
 
 .. code-block:: python
 
    study_area = catchment.Catchment(outline='path/to/watershed/shapefile.shp')
    success = study_area.extract_dem('path/to/dem.tif')
-   study_area.load_mean_annual_radiation_raster('path/to/file', filename='annual_potential_radiation.tif')
+   study_area.load_mean_annual_radiation_raster(
+      'path/to/file', 
+      filename='annual_potential_radiation.tif'
+   )
 
-The radiation can then be used to discretize the catchment:
+With the radiation loaded, pass it as a discretization criterion:
 
 .. code-block:: python
 
    study_area.discretize_by(
       ['elevation', 'radiation'],
-      elevation_method='equal_intervals', 
+      elevation_method='equal_intervals',
       elevation_distance=50,
-      min_elevation=1900, 
-      max_elevation=2900, 
-      radiation_method='equal_intervals', 
-      radiation_distance=65, 
-      min_radiation=0, 
+      min_elevation=1900,
+      max_elevation=2900,
+      radiation_method='equal_intervals',
+      radiation_distance=65,
+      min_radiation=0,
       max_radiation=260
    )
 
 
-.. _parameters:
-
-Parameters
-----------
-
-The parameters are managed as parameter sets in an object that is an instance of the
-``ParameterSet`` class.
-It means that there is a single variable containing all the parameters for a model.
-Within it, different properties are defined for each parameter
-(more information in :ref:`the Python API <api_parameterset>`):
-
-* **component**: the component to which it refers to (e.g., glacier, slow_reservoir)
-* **name**: the detailed name of the parameter (e.g., degree_day_factor)
-* **unit**: the parameter unit (e.g., mm/d/°C)
-* **aliases**: aliases for the parameter name; this is the short version of the
-  parameter name (e.g., a_snow)
-* **value**: the value assigned to the parameter
-* **min**: the minimum value the parameter can accept
-* **max**: the maximum value the parameter can accept
-* **default_value**: the parameter default value; only few parameters have default
-  values, such as the melting temperature, and these are usually not necessary to
-  calibrate
-* **mandatory**: defines if the parameter value needs to be provided by the user
-  (i.e. it has no default value)
-* **prior**: prior distribution to use for the calibration.
-  See :ref:`the calibration page <calibration>`
-
-
-Creating a parameter set
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-When using a pre-build model structure, the parameters for this structure can be
-generated using the ``model.generate_parameters()`` function.
-For example, the following code creates a definition of the Socont model structure and
-generates the parameter set for the given structure, accounting for the options, such
-as the number of soil storages. Within this parameter set, the basic attributes are
-defined, such as the name, aliases, units, min/max values, etc.
-
-.. code-block:: python
-
-   socont = models.Socont(soil_storage_nb=2)
-   parameters = socont.generate_parameters()
-
-
-Assigning the parameter values
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To set parameter values, the ``set_values()`` function of the parameter set can be used
-with a dictionary as argument. The dictionary can use the full parameter names
-(e.g. ``snowpack:degree_day_factor`` with no space), or one of the aliases
-(e.g., ``a_snow``):
-
-.. code-block:: python
-
-   parameters.set_values({'A': 100, 'k_slow': 0.01, 'a_snow': 5})
-
-
-Parameter constraints
-^^^^^^^^^^^^^^^^^^^^^
-
-Some constraints can be added between parameters. Some of these are built-in when the
-parameter set is generated and are described in the respective model description.
-For example, in GSM-Socont, the degree day for the snow must be inferior to the one for
-the ice (``a_snow < a_ice``).
-
-Constraints between parameters can be added by the user as follows:
-
-.. code-block:: python
-
-   parameters.define_constraint('k_slow_2', '<', 'k_slow_1')
-
-The supported operators are: ``>`` (or ``gt``), ``>=`` (or ``ge``), ``<`` (or ``lt``),
-``<=`` (or ``le``).
-
-On the contrary, pre-defined constraints can be removed:
-
-.. code-block:: python
-
-   parameters.remove_constraint('a_snow', '<', 'a_ice')
-
-
-Parameter ranges
-^^^^^^^^^^^^^^^^
-
-The parameters are usually generated with a pre-defined range.
-This range is used to ensure that a provided value falls within the authorized range
-and to define the boundaries for the calibration algorithm.
-The pre-defined ranges can be changed as follows:
-
-.. code-block:: python
-
-   parameters.change_range('a_snow', 2, 5)
-
-
-Adding data-related parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Data-related parameters target for example the spatialisation of the forcing data.
-As these are not model-dependent, but data-dependent, they are not pre-defined by
-the model and need to be added ba the user:
-
-.. code-block:: python
-
-   parameters.add_data_parameter('precip_corr_factor', 1, min_value=0.7, max_value=1.3)
-   parameters.add_data_parameter('precip_gradient', 0.05, min_value=0, max_value=0.2)
-   parameters.add_data_parameter('temp_gradients', -0.6, min_value=-1, max_value=0)
-
-For the meaning of these parameters and the spatialisation procedures implemented in
-hydrobricks, refer to the section on :ref:`forcing data<forcing-data>`.
-
-It is also possible, for certain parameters, to define monthly values and ranges:
-
-.. code-block:: python
-
-   parameters.add_data_parameter(
-       'temp_gradients',
-       [-0.6, -0.6, -0.6, -0.6, -0.7, -0.7, -0.8, -0.8, -0.8, -0.7, -0.7, -0.6],
-       min_value=[-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8],
-       max_value=[-0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3, -0.3])
-
-.. _forcing-data:
-
-Forcing data
-------------
-
-The meteorological data is handled by the ``Forcing`` class.
-It handles the spatialization of the weather data to create per-unit time series.
-Therefore, when creating an instance of this class, the hydro units must be provided:
-
-.. code-block:: python
-
-   forcing = hb.Forcing(hydro_units)
-   
-Two types of input data can be used for forcing data:
-1. Loading of meteorological station data and spatialization through lapse rates
-2. Loading of gridded NetCDF data and spatialization
-
-Loading of meteorological station data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Loading forcing data from a csv file
-""""""""""""""""""""""""""""""""""""
-
-The data, for example station time series, can the be loaded from csv files.
-Multiple files can be loaded successively, or a single file can contain different
-variables (as different columns).
-One needs to specify which column contains the dates, their format, and which
-column header represent what kind of variable.
-For example (more information in :ref:`the Python API <api_forcing>`):
-
-.. code-block:: python
-
-    forcing.load_from_csv(
-        'path/to/forcing.csv', column_time='Date', time_format='%d/%m/%Y',
-        content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
-                 'pet': 'pet_sim(mm/day)'})
-
-A csv file containing forcing data can look like the following example:
-
-.. code-block:: text
-   :caption: Example of a csv file containing forcing data.
-
-   Date,precip(mm/day),temp(C),sunshine_dur(h),pet_sim(mm/day)
-   01/01/1981,8.24,-0.98,0.42,0.58
-   02/01/1981,4.02,-3.35,0.08,0
-   03/01/1981,22.27,0.96,0.44,0.95
-   04/01/1981,28.85,-2.11,0.08,0
-   05/01/1981,8.89,-5.62,0.07,0.06
-   06/01/1981,17.49,-4.72,0.09,0
-   07/01/1981,8.26,-8.58,0.14,0
-   08/01/1981,0.14,-11.47,81.73,0
-   09/01/1981,0.91,-7.37,0.1,0.05
-   10/01/1981,0.54,-3.23,0.09,0
-   11/01/1981,0.02,-4.57,1.94,0
-   12/01/1981,2.28,-4.01,69.95,0
-   13/01/1981,7.03,-6.39,0.04,0
-   14/01/1981,9.68,-7.54,73.98,0
-   15/01/1981,16.23,-3.95,0.23,0.01
-   16/01/1981,2.77,-7.28,0.18,0.19
-   17/01/1981,6.49,-1.57,1.29,0.19
-   18/01/1981,5.53,-3.7,0.07,0
-   ...
-
-
-Spatialization
-""""""""""""""
-
-The spatialization operation needs to be specified to generate per-unit timeseries.
-This definition needs information on the variable, the method to use and its parameters:
-
-.. code-block:: python
-
-   forcing.define_spatialization(
-       variable='temperature', method='additive_elevation_gradient',
-       ref_elevation=1250, gradient=-0.6)
-
-As we might also want to calibrate the parameters for such operations, these can
-also be specified as a reference to a parameter instead of a fixed value.
-In such case, one must add a data parameter as in the following example:
-
-.. code-block:: python
-
-   forcing.define_spatialization(
-       variable='temperature', method='additive_elevation_gradient',
-       ref_elevation=1250, gradient='param:temp_gradients')
-
-   parameters.add_data_parameter('temp_gradients', -0.6, min_value=-1, max_value=0)
-
-The variables supported so far are: ``temperature``, ``precipitation``, ``pet``.
-The methods and parameters are described in :ref:`the Python API <api_forcing>`.
-
-Loading of gridded netcdf file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Forcing data can also be loaded from NetCDF files, that are very common in
-the meteorological modeling field.
-
-The function will go take all files matching the pattern (e.g., ``"RhiresD_ch01r.swisscors_*.nc"``)
-in the netcdf folder. Here pattern means that the ``*`` can be replaced by any sequence
-of characters (e.g., 1995, 1996, etc.), and allows to select a set of netcdf files.
-All the files present in the folder will be loaded in the model. Remove non-necessary files 
-for a quicker loading.
-
-The CRS of the netcdf file is always indicated in EPSG code (https://epsg.io/).
-The name of the variable to extract (e.g., 'RhiresD') and the dimensions of the dataset
-in the x, y and time axis also need to be specified. We take here the example of the 
-MeteoSwiss grid-data product for daily precipitation (version before 2022).
-
-The hydro units are provided as tif file to be able to spatialize the netdf data.
-
-.. code-block:: python
-
-   forcing.spatialize_from_gridded_data(
-      variable='precipitation', 
-      path='path/to/netcdf/folder', 
-      file_pattern="RhiresD_ch01r.swisscors_*.nc",
-      data_crs=21781, 
-      var_name='RhiresD', 
-      dim_x='chx',
-      dim_y='chy', 
-      dim_time='time', 
-      raster_hydro_units='unit_ids.tif'
-   )
+.. _running:
 
 .. _model-instance:
 
 Running the model
------------------
+------------------
 
-Once the :ref:`hydro units <spatial-structure>`, :ref:`parameters <parameters>` and
-:ref:`forcing <forcing-data>` defined, the model can be set up and run:
+Once you have defined the :ref:`hydro units <spatial-structure>`,
+:ref:`parameters <parameters>`, and :ref:`forcing <forcing-data>`, set up and
+run the model:
 
 .. code-block:: python
 
-   socont.setup(spatial_structure=hydro_units, output_path='/path/to/dir',
-                start_date='1981-01-01', end_date='2020-12-31')
+   socont.setup(
+      spatial_structure=hydro_units, 
+      output_path='/path/to/dir',
+      start_date='1981-01-01', 
+      end_date='2020-12-31'
+   )
 
    socont.run(parameters=parameters, forcing=forcing)
 
-Then, the outlet discharge (in mm/d) can be retrieved:
+The outlet discharge (in mm/d) can then be retrieved:
 
 .. code-block:: python
 
    sim_ts = socont.get_outlet_discharge()
 
-
-More outputs can be extracted and saved to a netCDF file for further analysis:
+To export all internal fluxes and states to a NetCDF file for further analysis:
 
 .. code-block:: python
 
    socont.dump_outputs('/output/dir/')
 
-The state variables can be initialized using the ``initialize_state_variables()``
-function between the ``setup()`` and the ``run()`` functions.
-The initialization runs the model for the given period and saves the final state variables.
-These values are then used as initial state variables for the next run:
+
+Initializing state variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, all water storages (snowpack, soil reservoirs, etc.) start empty at
+the beginning of the simulation. To initialize them to more realistic values,
+call ``initialize_state_variables()`` between ``setup()`` and ``run()``:
 
 .. code-block:: python
 
-   socont.initialize_state_variables(parameters=parameters, forcing=forcing)
+   socont.initialize_state_variables(
+      parameters=parameters, 
+      forcing=forcing
+   )
    socont.run(parameters=parameters, forcing=forcing)
 
-When the model is executed multiple times successively, it clears its previous states.
-When the states initialization provided by ``initialize_state_variables()`` has been
-used, the model resets its state variables to these saved values.
+This runs the model once over the full simulation period, captures the final
+storage values, and uses them as the starting point for subsequent runs. When
+the model is run multiple times — as during calibration — it resets to these
+saved values at the start of each run rather than to empty reservoirs.
 
 
-Note on the warmup period
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Warmup period
+^^^^^^^^^^^^^^
 
-The warmup period, also called the spin-up period, is a period of 1 or 2 years 
-used to initialize the hydrological model (state variables). 
-The hydrological model can be seen as a connected set of water reservoirs 
-(the snow reservoir, the baseflow reservoir, etc.). 
-At the beginning of the simulation, all reservoirs are empty. The warmup
-period is used to fill those reservoirs (notably the snow reservoir) with water.
-As a consequence, the snow content and discharge simulated in these years are
-usually underestimated and should not be considered for analysis, calibration
-or evaluation. 
+Even with ``initialize_state_variables()``, the very first years of a
+simulation are typically unreliable because the storages have not yet settled
+into a realistic seasonal cycle. This initial period is called the **warmup**
+or **spin-up** period, and it is conventionally set to one or two years.
+
+During the warmup, snow accumulation and discharge are usually underestimated
+because the snowpack starts from the previous season's final state, which may
+not match the actual initial conditions. For this reason, the warmup years
+should be excluded from evaluation, calibration, and analysis. The calibration
+setup accepts a ``warmup`` argument for this purpose — see the
+:ref:`calibration page <calibration>`.
 
 
 Evaluation
-^^^^^^^^^^
+^^^^^^^^^^^
 
-Some metrics can be computed by providing the observation time series (in mm/d):
+After a run, performance metrics can be computed by comparing the simulated
+discharge to observations. Load observations from a CSV file (discharge in
+mm/d):
 
 .. code-block:: python
 
-   # Preparation of the obs data
    obs = hb.Observations()
-   obs.load_from_csv('/path/to/obs.csv', column_time='Date', time_format='%d/%m/%Y',
-                     content={'discharge': 'Discharge (mm/d)'})
-   obs_ts = obs.data_raw[0]
+   obs.load_from_csv(
+      '/path/to/obs.csv', 
+      column_time='Date', 
+      time_format='%d/%m/%Y',
+      content={'discharge': 'Discharge (mm/d)'}
+   )
+   obs_ts = obs.data[0]
 
    nse = socont.eval('nse', obs_ts)
    kge_2012 = socont.eval('kge_2012', obs_ts)
 
-The metrics are provided by the `HydroErr package <https://hydroerr.readthedocs.io>`_ .
-All the `metrics listed under their website <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
-can be used and are named according to their function names.
+Metrics are provided by the `HydroErr package <https://hydroerr.readthedocs.io>`_.
+Any metric from their
+`full list <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
+can be used by passing its function name as a string.
 
 
 Outputs
 -------
 
-The results can be accessed in different ways and with different levels of detail:
+Results are available at three levels of detail:
 
-1. The `direct outputs`_ from the model instance.
-2. A `dumped netCDF file`_ containing more details for each hydro unit.
-3. :ref:`Other <others>` outputs such as the spatialized forcing or the SPOTPY outputs.
+1. `Direct outputs`_ — scalar or time-series summaries available immediately
+   after a run.
+2. A `NetCDF output file`_ — per-hydro-unit fluxes and states, exported on
+   demand.
+3. :ref:`Auxiliary files <others>` — spatialized forcing, log files, and
+   calibration records.
 
 
 Direct outputs
 ^^^^^^^^^^^^^^
 
-Some outputs from the model instance are available after a model run as long as the
-Python session is still alive.
-The first one is the discharge time series at the outlet, provided
-by ``get_outlet_discharge()``:
+The following outputs are accessible on the model object after a run:
 
-.. code-block:: python
+**Time series:**
 
-   sim_ts = model.get_outlet_discharge()
+* ``get_outlet_discharge()``: daily discharge at the basin outlet (mm/d)
 
-Some outputs provide integrated values over the simulation period:
+**Integrated totals over the simulation period:**
 
-* ``get_total_outlet_discharge()``: Integrated discharge at the outlet
-* ``get_total_et()``: Integrated ET
-* ``get_total_water_storage_changes()``: Changes in all water reservoirs between the
-  beginning of the period and the end.
-* ``get_total_snow_storage_changes()``: Changes in snow storage between the
-  beginning of the period and the end.
+* ``get_total_outlet_discharge()``: total discharge at the outlet
+* ``get_total_et()``: total evapotranspiration
+* ``get_total_water_storage_changes()``: net change in total water storage
+  from the start to the end of the simulation
+* ``get_total_snow_storage_changes()``: net change in snow storage
 
 
-Dumped netCDF file
+.. _netcdf-output-file:
+
+NetCDF output file
 ^^^^^^^^^^^^^^^^^^
 
-A detailed netCDF file can be dumped with ``model.dump_outputs('some/path')``.
-The content of the file depends on the option ``record_all`` provided at model creation.
-When True, all fluxes and states are recorded, which slows down the model execution.
+A detailed NetCDF file is exported with ``model.dump_outputs('some/path')``.
+How much data it contains depends on the ``record_all`` option set at model
+creation:
 
-The file has the following dimensions:
+* ``record_all=False`` (default): only outlet discharge and a few selected
+  time series are stored. Use this during calibration.
+* ``record_all=True``: every flux and state variable is recorded at every
+  time step. This is useful for diagnosing model behaviour but slows execution
+  and produces large files.
 
-* ``time``: The temporal dimension
-* ``hydro_units``: The hydro units (e.g., elevation bands)
-* ``aggregated_values``: Elements recorded at the catchment scale (lumped)
-* ``distributed_values``: Elements recorded at each hydro unit ([semi-]distributed)
-* ``land_covers``: The different land covers
+**File structure**
 
-It contains three important global attributes:
+Dimensions:
 
-* ``labels_aggregated``: The labels of the lumped elements (fluxes and states)
-* ``labels_distributed``: The labels of the distributed elements (fluxes and states)
-* ``labels_land_covers``: The labels of the land covers
+* ``time``: the temporal axis
+* ``hydro_units``: one entry per hydro unit (e.g., per elevation band)
+* ``aggregated_values``: catchment-scale (lumped) quantities
+* ``distributed_values``: per-hydro-unit quantities
+* ``land_covers``: one entry per land cover
 
-The attributes stored in the file can be found using the following command:
+Global attributes that map variable indices to names:
+
+* ``labels_aggregated``: names of lumped elements (fluxes and states)
+* ``labels_distributed``: names of distributed elements
+* ``labels_land_covers``: names of land covers
+
+To inspect the available labels:
 
 .. code-block:: python
 
-    # Load the netcdf file
-    results = hb.Results(path/to/netcdf_results_file)
-    # Print the attributes
-    print(results.results.attrs)
+   results = hb.Results('path/to/netcdf_results_file')
+   print(results.results.attrs)
 
-For example, for the GSM-Socont model with two different glacier types provides
-the following attributes:
+Example output for GSM-Socont with two glacier types:
 
 .. code-block:: text
 
@@ -625,48 +466,43 @@ the following attributes:
       "glacier_ice",
       "glacier_debris";
 
-Then, it provides the following variables:
+**Variables in the file:**
 
-* ``time`` (1D): The dates as Modified Julian Dates (days since 1858-11-17 00:00).
-* ``hydro_units_ids`` (1D): The IDs of the hydro units.
-* ``hydro_units_areas`` (1D): The area of the hydro units.
-* ``sub_basin_values`` (2D): The time series of the aggregated elements
-  (c.f. labels_aggregated)
-* ``hydro_units_values`` (2D): the time series of the distributed elements
-  (c.f. labels_distributed). Please not here the differences between:
-   * the fluxes (mm), i.e. ``output`` elements are already weighted by the land cover
-     fraction and the relative hydro unit area. Thus, these elements can be directly
-     summed over all hydro units to obtain the total contribution of a given
-     component (e.g., ice melt), even when the hydro units have different areas.
-   * the state variables (mm) such as ``content`` or ``snow`` elements represent
-     the water stored in the respective reservoirs. In this case, this value is not
-     weighted and cannot be summed over the catchment, but must be weighted
-     by the land cover fraction and the relative hydro unit area. 
-* ``land_cover_fractions`` (2D, optional): the temporal evolution of the land cover
-  fractions.
+* ``time`` (1D): dates as Modified Julian Dates (days since 1858-11-17 00:00)
+* ``hydro_units_ids`` (1D): IDs of the hydro units
+* ``hydro_units_areas`` (1D): area of each hydro unit [m²]
+* ``sub_basin_values`` (2D): lumped time series, indexed by ``labels_aggregated``
+* ``hydro_units_values`` (2D): distributed time series, indexed by
+  ``labels_distributed``. Two important subtypes:
 
+  * **Flux variables** (names ending in ``:output``, unit: mm): already weighted
+    by land cover fraction and relative hydro unit area. You can sum them
+    directly over all hydro units to get the catchment-total contribution of a
+    component (e.g., total glacier melt).
+  * **State variables** (names ending in ``:content`` or ``:snow``, unit: mm):
+    the water depth stored in a reservoir. These are *not* area-weighted — to
+    aggregate over the catchment, multiply each value by its land cover fraction
+    and relative hydro unit area.
 
-Others
-^^^^^^
-
-Some other outputs are available:
-
-- Dumbed forcing (``forcing.nc``): the forcing object can also be saved as a netCDF file using the
-  ``forcing.create_file()``. It thus contains the spatialized forcing time series.
-  See: https://hydrobricks.readthedocs.io/en/latest/doc/basics.html#forcing-data
-- Log files (``hydrobricks_...log``): the model creates log files during the execution, 
-  that can be used to check the model execution and debug if necessary.
-- Geotiff file with the hydro units (``hydro_units.tif``): the hydro units can be 
-  saved as a geotiff file, with the unit IDs as values.
-- A csv file with the hydro units properties (``hydro_units.csv``): the properties of the
-  hydro units (e.g., elevation, area, land cover fractions) can be saved as a csv file.
-- Annual potential radiation raster (``annual_potential_radiation.tif``): the annual potential 
-  radiation can be saved as a geotiff file, with the radiation values as values.
-- During the calibration procedure, SPOTPY saves all assessments in csv or sql tables.
+* ``land_cover_fractions`` (2D, optional): time series of land cover fractions,
+  present when glacier or other land cover evolution is active.
 
 
-References
-----------
+.. _others:
 
-.. [Argentin2025] Argentin, A.-L., Horton, P., Schaefli, B., Shokory, J., Pitscheider, F., Repnik, L., Gianini, M., Bizzi, S., Lane, S. N., & Comiti, F. (2025). Scale dependency in modeling nivo-glacial hydrological systems: The case of the Arolla basin, Switzerland. Hydrology and Earth System Sciences, 29(6), 1725–1748. https://doi.org/10.5194/hess-29-1725-2025
-.. [Hock1999] Hock, R. (1999). A distributed temperature-index ice- and snowmelt model including potential direct solar radiation. Journal of Glaciology, 45(149), 101–111. https://doi.org/10.3189/s0022143000003087
+Auxiliary outputs
+^^^^^^^^^^^^^^^^^
+
+* **Spatialized forcing** (``forcing.nc``): the per-unit forcing time series,
+  saved with ``forcing.create_file()``. Useful for inspecting what the model
+  actually received as input.
+* **Log files** (``hydrobricks_...log``): execution logs that record warnings
+  and errors, useful for debugging.
+* **Hydro units raster** (``hydro_units.tif``): a GeoTIFF with unit IDs as
+  pixel values, useful for spatial visualization.
+* **Hydro units table** (``hydro_units.csv``): unit properties (elevation,
+  area, land cover fractions) in tabular form.
+* **Annual radiation raster** (``annual_potential_radiation.tif``): potential
+  clear-sky solar radiation, saved during preprocessing.
+* **Calibration records**: SPOTPY saves every model evaluation to CSV or SQL
+  during calibration.

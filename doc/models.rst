@@ -3,215 +3,439 @@
 Models
 ======
 
-The only model structure implemented so far is :ref:`GSM-Socont`.
+The following model structures are currently implemented:
+
+* :ref:`GSM-Socont <gsm-socont>`
+* :ref:`GR4J <gr4j>`
 
 
 Common options
 --------------
 
-All models have the following options that can be provided at model creation:
+All models accept the following options at instantiation:
 
-* ``solver``: choice of the solver to use; the options are: ``heun_explicit`` (default),
+* ``solver``: numerical solver to use; choices are ``heun_explicit`` (default),
   ``runge_kutta``, and ``euler_explicit``.
-* ``record_all`` (default False): when True, the model will record all fluxes and state
-  values for each time step. This slows down the computations and create large output
-  files. Therefore, it should not be enabled during the calibration phase, but only when
-  one needs to analyse the behaviour of the model in details. When False, the model
-  will output the catchment discharge and some selected timeseries.
-* ``land_cover_types``: a list of the land cover types to use (e.g., ``glacier``).
+* ``record_all`` (default ``False``): when ``True``, all fluxes and state
+  variables are recorded at every time step. This slows computation and
+  produces large output files. Enable only for diagnostic analysis, not
+  during calibration.
+* ``land_cover_types``: list of land cover types (e.g., ``['ground', 'glacier']``).
   See :ref:`the section on the spatial structure <spatial-structure>`.
-* ``land_cover_names``: a list of the land cover names to use.
-  Each element must match the land cover types explained above.
-  The names are used in the model to distinguish similar land cover types, for example
-  when using a bare-ice glacier and a debris-covered glacier.
+* ``land_cover_names``: list of land cover names. Each entry must correspond
+  to a type in ``land_cover_types``. Names distinguish similar types, for
+  example bare-ice and debris-covered glaciers.
   See :ref:`the section on the spatial structure <spatial-structure>`.
 
-For example:
+Example:
 
 .. code-block:: python
 
     socont = models.Socont(solver="heun_explicit", record_all=False)
 
 
+Shared processes
+----------------
+
+.. _snow-melt-params:
+
+Snow / Glacier melt
+^^^^^^^^^^^^^^^^^^^
+
+The melt model is selected via the ``snow_melt_process`` option. See
+:ref:`melt models <melt-models>` for the governing equations of each option.
+
+**Simple degree-day method** (``melt:degree_day``)
+
+* ``<component>:degree_day_factor`` *(mm/d/°C, no default, [2, 20])*
+
+  - Degree-day factor.
+  - Full name: ``snowpack:degree_day_factor`` / ``<name>:degree_day_factor``.
+
+* ``<component>:melting_temperature`` *(optional, °C, default: 0, [0, 5])*
+
+  - Melt temperature threshold.
+  - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
+
+
+**Aspect-based degree-day method** (``melt:degree_day_aspect``)
+
+The melt model uses aspect-specific factors to account for the influence of slope 
+orientation on melt rates. It includes the following parameters:
+
+* ``<component>:degree_day_factor_n`` *(mm/d/°C, no default, [0, 20])*
+
+  - Degree-day factor for north-facing slopes.
+  - Full name: ``snowpack:degree_day_factor_n`` / ``<name>:degree_day_factor_n``.
+
+* ``<component>:degree_day_factor_s`` *(mm/d/°C, no default, [2, 20])*
+
+  - Degree-day factor for south-facing slopes.
+  - Full name: ``snowpack:degree_day_factor_s`` / ``<name>:degree_day_factor_s``.
+
+* ``<component>:degree_day_factor_ew`` *(mm/d/°C, no default, [2, 20])*
+
+  - Degree-day factor for east/west-facing slopes.
+  - Full name: ``snowpack:degree_day_factor_ew`` / ``<name>:degree_day_factor_ew``.
+
+* ``<component>:melting_temperature`` *(optional, °C, default: 0, [0, 5])*
+
+  - Melt temperature threshold.
+  - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
+
+
+**Melt based on potential solar radiation** (``melt:temperature_index``)
+
+This melt model is based on the temperature-index method of :cite:t:`Hock1999`, which 
+accounts for the influence of solar radiation on melt rates. It requires potential 
+solar radiation as a model input (which can be computed by HydroBricks), 
+and includes the following parameters:
+
+* ``<component>:melt_factor`` *(mm/d/°C, no default, [0, 12])*
+
+  - Base melt factor :math:`m` (independent of radiation).
+  - Full name: ``snowpack:melt_factor`` / ``<name>:melt_factor``.
+
+* ``<component>:radiation_coefficient`` *(m² W⁻¹ mm d⁻¹ °C⁻¹, no default, [0, 1])*
+
+  - Radiation scaling coefficient :math:`r_j` for snow or ice.
+  - Full name: ``snowpack:radiation_coefficient`` / ``<name>:radiation_coefficient``.
+
+* ``<component>:melting_temperature`` *(optional, °C, default: 0, [0, 5])*
+
+  - Melt temperature threshold.
+  - Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
+
+
+**CemaNeige model** (``melt:cemaneige``)
+
+The CemaNeige model is a thermal-state snow model described in :cite:t:`Valery2014`. 
+It is exclusively for snow and includes the following parameters:
+
+* ``Kf`` *(mm/d/°C, no default, [1, 10])*
+
+  - Degree-day melt factor.
+  - Full name: ``ground_snowpack:degree_day_factor``.
+
+* ``CTG`` *(dimensionless, no default, [0, 1])*
+
+  - Cold content weighting factor. Controls how quickly the thermal state of the snowpack
+    tracks air temperature. Values close to 1 give longer memory.
+  - Full name: ``ground_snowpack:cold_content_factor``.
+
+* ``Tmelt`` *(optional, °C, default: 0, [0, 2])*
+
+  - Melt temperature threshold.
+  - Full name: ``ground_snowpack:melting_temperature``.
+
+* ``Cn`` *(mm, no default, [50, 1000])*
+
+  - Mean annual solid precipitation. Used to scale the melt factor at low snow accumulation.
+  - Full name: ``ground_snowpack:mean_annual_snow``.
+
+
+.. _snow-redistribution:
+
+Snow redistribution
+^^^^^^^^^^^^^^^^^^^
+
+Snow redistribution via the SnowSlide method (:cite:t:`Bernhardt2010`) simulates
+gravitational downslope transport of snow between hydro units. It is activated by setting
+``snow_redistribution="transport:snow_slide"``.
+
+**Snow slide** (``transport:snow_slide``)
+
+* ``snow_slide_coeff`` *(optional, dimensionless, default: 3178.4, [0, 10000])*
+
+  - Coefficient in the snow holding depth equation
+    :math:`h_\mathrm{hold} = \mathrm{coeff} \cdot \theta^{\mathrm{exp}}`,
+    where :math:`\theta` is the slope in degrees.
+  - Full name: ``<snowpack>:coeff``.
+
+* ``snow_slide_exp`` *(optional, dimensionless, default: -1.998, [-5, 0])*
+
+  - Exponent in the snow holding depth equation (see above).
+  - Full name: ``<snowpack>:exp``.
+
+* ``snow_slide_min_slope`` *(optional, °, default: 10, [0, 45])*
+
+  - Minimum slope used in the holding depth calculation. Units with a slope below 
+    this value are treated as having this minimum slope.
+  - Full name: ``<snowpack>:min_slope``.
+
+* ``snow_slide_max_slope`` *(optional, °, default: 75, [45, 90])*
+
+  - Slope above which the minimum snow holding depth is applied directly, regardless 
+    of the equation result.
+  - Full name: ``<snowpack>:max_slope``.
+
+* ``snow_slide_min_snow_depth`` *(optional, mm, default: 50, [0, 1000])*
+
+  - Minimum snow holding depth applied when the slope exceeds ``snow_slide_max_slope``.
+  - Full name: ``<snowpack>:min_snow_holding_depth``.
+
+* ``snow_slide_max_snow_depth`` *(optional, mm, default: 20000, [-1, 50000])*
+
+  - Maximum snow depth allowed to accumulate in a receiving unit (extension to the original
+    method). Set to ``-1`` for no limit.
+  - Full name: ``<snowpack>:max_snow_depth``.
+
+
+.. _gsm-socont:
+
 GSM-Socont
 ----------
 
-GSM-Socont is a conceptual glacio-hydrological model described in Schaefli2005_.
+GSM-Socont is a conceptual glacio-hydrological model described in :cite:t:`Schaefli2005`.
 
-Some basic properties are given in the following table.
-
-.. list-table:: Properties of the GSM-Socont model
-   :widths: 50 50
-   :header-rows: 0
-   :stub-columns: 1
-
-   * - Spatial structure
-     - semi-lumped (elevation bands)
-   * - Time step
-     - daily
+* **Spatial structure**: semi-lumped (elevation bands)
+* **Time step**: daily
 
 
 Specific options
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-The implemented GSM-Socont version comes with some options:
+* ``soil_storage_nb``: ``1`` or ``2``. Number of soil reservoirs; the second
+  represents the baseflow component (not in the original model).
+* ``surface_runoff``: ``socont_runoff`` (the original non-linear quick reservoir)
+  or ``linear_storage`` (a classic linear storage).
+* ``snow_melt_process``: melt model to use; see :ref:`melt models <melt-models>`.
+  Default: ``"melt:degree_day"``.
 
-* ``soil_storage_nb``: 1 or 2. This is the number of soil reservoirs to consider
-  (the second one represents the baseflow).
-* ``surface_runoff``: ``socont_runoff`` (the original non-linear quick reservoir) or
-  ``linear_storage`` (a classic linear storage).
 
 Parameters
-^^^^^^^^^^
-
-It has the parameters listed below.
-
-.. list-table:: Parameters of the GSM-Socont model
-   :widths: 10 10 5 5 70
-   :header-rows: 1
-
-   * - Component
-     - Name
-     - Def. value, range
-     - Unit
-     - Comments
-   * - Precipitation (snow/rain transition)
-     - ``prec_t_start``
-     - | 0
-       | [-2, 2]
-     - °C
-     - | Temperature below which precipitation is 100% snow.
-         The snow/rain transition is linear between transition_start and transition_end
-       | Optional parameter.
-       | Full name: snow_rain_transition: transition_start
-   * - ...
-     - ``prec_t_end``
-     - | 2
-       | [0, 4]
-     - °C
-     - | Temperature above which precipitation is 100% liquid.
-       | Optional parameter.
-       | Full name: snow_rain_transition: transition_end
-   * - Snow
-     - ``a_snow``
-     - | --
-       | [1, 12]
-     - mm/d/°C
-     - | Degree day snow melting factor. a\ :sub:`snow` in Schaefli2005_
-       | Full name: snowpack: degree_day_factor
-   * - ...
-     - ``melt_t_snow``
-     - | 0
-       | [0, 5]
-     - °C
-     - | Temperature above which the snow starts to melt.
-       | Optional parameter.
-       | Full name: snowpack: melting_temperature
-   * - Glacier
-     - ``a_ice`` (single type), ``a_ice_<name>``, ``a_ice_<i>``
-     - | --
-       | [5, 20]
-     - mm/d/°C
-     - | With <name> being the provided name of the land cover (e.g. glacier_debris)
-         and <i> the number of similar land cover provided.
-       | For example: a_ice_glacier_debris or a_ice_1.
-       | Degree day ice melting factor. a\ :sub:`ice` in Schaefli2005_
-       | Full name: <name>: degree_day_factor
-   * - ...
-     - ``melt_t_ice``
-     - | 0
-       | [0, 5]
-     - °C
-     - | Temperature above which the ice starts to melt.
-       | Optional parameter.
-       | Full name: <name>: melting_temperature, with <name> being the provided name of
-         the land cover (e.g. glacier_debris)
-   * - Glacier area lumped reservoir
-     - ``k_snow``
-     - | --
-       | [0.05, 0.25]
-     - 1/d
-     - | Response factor for the glacier area lumped reservoir receiving rain and
-         snowmelt water. Similar to k\ :sub:`snow` in Schaefli2005_, but different units.
-       | Full name: glacier_area_rain_snowmelt_storage: response_factor
-   * - ...
-     - ``k_ice``
-     - | --
-       | [0.05, 1]
-     - 1/d
-     - | Response factor for the glacier area lumped reservoir receiving ice melt water.
-         Similar to k\ :sub:`ice` in Schaefli2005_, but different units.
-       | Full name: glacier_area_icemelt_storage: response_factor
-   * - Quick runoff (non-linear version)
-     - ``beta``
-     - | --
-       | [100, 30000]
-     - m^(4/3)/s
-     - | Parameter to calibrate.
-       | Full name: surface_runoff: runoff_coefficient
-   * - ...
-     - ``J``
-     - | --
-       | [0, 90]
-     - °
-     - | Mean slope of the catchment. Should be based on data.
-       | Full name: surface_runoff: slope
-   * - Quick runoff (linear version)
-     - ``k_quick``
-     - | --
-       | [0.05, 1]
-     - 1/d
-     - | Response factor for the quick reservoir.
-       | Full name: surface_runoff: response_factor
-   * - Slow reservoir
-     - ``A``
-     - | --
-       | [10, 3000]
-     - mm
-     - | Maximum storage capacity of the reservoir.
-       | Full name: slow_reservoir: capacity
-   * - ...
-     - ``k_slow``, ``k_slow_1``
-     - | --
-       | [0.001, 1]
-     - 1/d
-     - | Response factor for the slow reservoir. Same as k in Schaefli2005_,
-         but different units.
-       | Full name: slow_reservoir: response_factor
-   * - Baseflow (optional)
-     - ``percol``
-     - | --
-       | [0, 10]
-     - mm/d
-     - | Percolation rate from the first slow reservoir to the baseflow reservoir
-       | Full name: slow_reservoir: percolation_rate
-   * - ...
-     - ``k_slow_2``
-     - | --
-       | [0.001, 1]
-     - 1/d
-     - | Response factor for the baseflow reservoir.
-       | Full name: slow_reservoir_2: response_factor
+^^^^^^^^^^^
 
 
-The pre-defined constraints on the parameters are defined below.
+**Precipitation (snow/rain transition)**
 
-.. list-table:: Pre-defined parameter constraints for the GSM-Socont model
-   :widths: 30 70
-   :header-rows: 1
+* ``prec_t_start`` *(optional, °C, default: 0, [-2, 2])*
 
-   * - Component
-     - Constraints
-   * - Glacier
-     - a_snow < a_ice
-     - k_snow < k_ice
-   * - Slow reservoir
-     - | k_slow_1 < k_quick
-       | k_slow_2 < k_quick
-       | k_slow_2 < k_slow_1
+  - Temperature below which precipitation is 100% snow. The rain/snow transition is linear
+    between ``prec_t_start`` and ``prec_t_end``.
+  - Full name: ``snow_rain_transition:transition_start``.
+
+* ``prec_t_end`` *(optional, °C, default: 2, [0, 4])*
+
+  - Temperature above which precipitation is 100% liquid.
+  - Full name: ``snow_rain_transition:transition_end``.
 
 
-References
-----------
+**Snow** (``melt:degree_day``)
 
-.. [Schaefli2005] Schaefli, B., Hingray, B., Niggli, M., & Musy, A. (2005). A conceptual glacio-hydrological model for high mountainous catchments. Hydrology and Earth System Sciences Discussions, 9(1), 95–109. https://doi.org/10.5194/hessd-2-73-2005
+* ``a_snow`` *(mm/d/°C, no default, [1, 12])*
+
+  - Degree-day snow melt factor. :math:`a_\mathrm{snow}` in :cite:t:`Schaefli2005`.
+  - Full name: ``snowpack:degree_day_factor``.
+
+* ``melt_t_snow`` *(optional, °C, default: 0, [0, 5])*
+
+  - Temperature above which snow starts to melt.
+  - Full name: ``snowpack:melting_temperature``.
+
+
+**Glacier** (``melt:degree_day``)
+
+* ``a_ice`` (single type), ``a_ice_<name>``, ``a_ice_<i>`` *(mm/d/°C, no default, [5, 20])*
+
+  - Degree-day ice melt factor. :math:`a_\mathrm{ice}` in :cite:t:`Schaefli2005`.
+    ``<name>`` is the land cover name (e.g., ``glacier_debris``); ``<i>`` is the index of
+    similar land covers (e.g., ``a_ice_glacier_debris``, ``a_ice_1``).
+  - Full name: ``<name>:degree_day_factor``.
+
+* ``melt_t_ice`` *(optional, °C, default: 0, [0, 5])*
+
+  - Temperature above which ice starts to melt.
+  - Full name: ``<name>:melting_temperature``.
+
+
+**Glacier area lumped reservoir**
+
+* ``k_snow`` *(1/d, no default, [0.05, 0.25])*
+
+  - Response factor for the lumped reservoir receiving rain and snowmelt water from the
+    glacier area. Similar to :math:`k_\mathrm{snow}` in :cite:t:`Schaefli2005`, but in
+    different units.
+  - Full name: ``glacier_area_rain_snowmelt_storage:response_factor``.
+
+* ``k_ice`` *(1/d, no default, [0.05, 1])*
+
+  - Response factor for the lumped reservoir receiving ice melt water. Similar to
+    :math:`k_\mathrm{ice}` in :cite:t:`Schaefli2005`, but in different units.
+  - Full name: ``glacier_area_icemelt_storage:response_factor``.
+
+
+**Quick runoff (non-linear version)**
+
+* ``beta`` *(m^(4/3)/s, no default, [100, 30000])*
+
+  - Runoff coefficient (to calibrate).
+  - Full name: ``surface_runoff:runoff_coefficient``.
+
+
+**Quick runoff (linear version)**
+
+* ``k_quick`` *(1/d, no default, [0.05, 1])*
+
+  - Response factor for the quick reservoir.
+  - Full name: ``surface_runoff:response_factor``.
+
+
+**Slow reservoir**
+
+* ``A`` *(mm, no default, [10, 3000])*
+
+  - Maximum storage capacity of the slow reservoir.
+  - Full name: ``slow_reservoir:capacity``.
+
+* ``k_slow``, ``k_slow_1`` *(1/d, no default, [0.001, 1])*
+
+  - Response factor for the slow reservoir. Same as :math:`k` in :cite:t:`Schaefli2005`,
+    but in different units.
+  - Full name: ``slow_reservoir:response_factor``.
+
+
+**Baseflow (optional)**
+
+* ``percol`` *(mm/d, no default, [0, 10])*
+
+  - Percolation rate from the first slow reservoir to the baseflow reservoir.
+  - Full name: ``slow_reservoir:percolation_rate``.
+
+* ``k_slow_2`` *(1/d, no default, [0.001, 1])*
+
+  - Response factor for the baseflow reservoir.
+  - Full name: ``slow_reservoir_2:response_factor``.
+
+
+For the ``melt:degree_day_aspect`` and ``melt:temperature_index`` options, see
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Shared processes.
+
+
+Pre-defined parameter constraints:
+
+* **Glacier**
+
+  - ``a_snow < a_ice``
+
+* **Slow reservoir**
+
+  - ``k_slow_1 < k_quick``
+  - ``k_slow_2 < k_quick``
+  - ``k_slow_2 < k_slow_1``
+
+
+.. _gr4j:
+
+GR4J
+----
+
+GR4J (Génie Rural à 4 paramètres Journalier) is a parsimonious daily
+rainfall-runoff model described in :cite:t:`Perrin2003`. It is well suited for
+non-glacierized or weakly glacierized catchments. Snow can optionally be
+accounted for using either the CemaNeige model or a simple degree-day
+approach.
+
+* **Spatial structure**: lumped
+* **Time step**: daily
+
+
+Specific options
+^^^^^^^^^^^^^^^^^
+
+* ``snow_melt_process``: snow model to use. Options:
+
+  * ``None`` (default): no snow accounting.
+  * ``"melt:cemaneige"``: CemaNeige thermal-state model (recommended for
+    catchments with significant seasonal snow). See :ref:`processes page <processes>`.
+  * ``"melt:degree_day"``: simple degree-day model.
+
+* ``snow_redistribution``: optional snow redistribution process
+  (e.g., ``'transport:snow_slide'``).
+  See the :ref:`snow redistribution section <snow-redistribution>`.
+
+
+Parameters
+^^^^^^^^^^^
+
+**Production store**
+
+* ``X1`` *(mm, default: 350, [100, 1200])*
+
+  - Maximum capacity of the production store.
+  - Full name: ``production_store:capacity``.
+
+
+**Groundwater exchange**
+
+* ``X2`` *(mm/d, default: 0, [-10, 5])*
+
+  - Groundwater exchange coefficient. Negative values indicate a net loss (deep percolation);
+    positive values indicate recharge from outside the catchment.
+  - Full name: ``uh_input:exchange_factor``.
+
+
+**Routing store**
+
+* ``X3`` *(mm, default: 90, [1, 500])*
+
+  - Maximum capacity of the routing store.
+  - Full name: ``uh_input:routing_capacity``.
+
+
+**Unit hydrograph**
+
+* ``X4`` *(d, default: 1.7, [0.5, 4])*
+
+  - Time base of the unit hydrograph. Must be > 0.5 d.
+  - Full name: ``uh_input:uh_base_time``.
+
+For CemaNeige parameters (``melt:cemaneige``), see
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Shared processes.
+When ``snow_melt_process='melt:degree_day'``, only ``a_snow`` (alias ``Kf``)
+and ``Tmelt`` are added.
+
+
+Usage examples
+^^^^^^^^^^^^^^^
+
+Minimal run without snow:
+
+.. code-block:: python
+
+  import hydrobricks as hb
+  import hydrobricks.models as models
+
+  gr4j = models.GR4J()
+
+  parameters = gr4j.generate_parameters()
+  parameters.set_values({'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7})
+
+  hydro_units = hb.HydroUnits()
+  hydro_units.load_from_csv(
+    'path/to/hydro_units.csv',
+    column_elevation='elevation', 
+    column_area='area'
+  )
+
+  forcing = hb.Forcing(hydro_units)
+  forcing.load_station_data_from_csv(
+    'path/to/meteo.csv', 
+    column_time='Date', 
+    time_format='%d/%m/%Y',
+    content={'precipitation': 'precip(mm/day)', 'pet': 'pet(mm/day)'}
+  )
+  forcing.spatialize_from_station_data(
+    variable='precipitation',
+    ref_elevation=1250, 
+    gradient=0.05
+  )
+  forcing.spatialize_from_station_data(variable='pet')
+
+  gr4j.setup(
+    spatial_structure=hydro_units, 
+    output_path='path/to/outputs',
+    start_date='1981-01-01', 
+    end_date='2020-12-31'
+  )
+  gr4j.run(parameters=parameters, forcing=forcing)
