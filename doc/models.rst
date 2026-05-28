@@ -44,18 +44,6 @@ The melt model is selected via the ``snow_melt_process`` option. See
 
 **Simple degree-day method** (``melt:degree_day``)
 
-``<component>:degree_day_factor`` *(mm/d/°C, no default, [2, 20])*
-: Degree-day factor.
-: Full name: ``snowpack:degree_day_factor`` / ``<name>:degree_day_factor``.
-
-``<component>:melting_temperature`` *(optional, °C, default: 0, [0, 5])*
-~ Melt temperature threshold.
-~ Full name: ``snowpack:melting_temperature`` / ``<name>:melting_temperature``.
-
-
-
-**Simple degree-day method** (``melt:degree_day``)
-
 * ``<component>:degree_day_factor`` *(mm/d/°C, no default, [2, 20])*
 
   - Degree-day factor.

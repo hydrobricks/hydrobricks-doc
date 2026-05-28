@@ -63,15 +63,6 @@ autodoc_mock_imports = [
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-myst_enable_extensions = [
-    "deflist",
-    "amsmath",
-    "dollarmath",
-    "alert"
-]
-
-myst_heading_anchors = 3
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
