@@ -340,9 +340,19 @@ Parameters:
 * ``percol`` (alias for ``percolation_rate``): constant drainage rate [mm d⁻¹],
   range [0, 10]. Full name: ``slow_reservoir:percolation_rate``.
 
-:ref:`GR4J <gr4j>` uses an internal non-linear percolation
-(``percolation:gr4j``) that increases with production-store filling and is not
-user-configurable.
+GR4J percolation (``percolation:gr4j``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used internally by :ref:`GR4J <gr4j>`; not user-configurable. Drains water from
+the production store to the routing component (:cite:t:`Perrin2003`):
+
+.. math::
+
+   \mathrm{Perc} = S \left[1 - \left(1 + \left(\frac{4S}{9\,X_1}\right)^{\!4}\right)^{\!-1/4}\right]
+
+where :math:`S` is the current production-store water content and :math:`X_1` is
+its capacity. Percolation increases non-linearly with the filling ratio and goes
+to zero when the store is empty. No calibrated parameters.
 
 
 .. _runoff-processes:
