@@ -308,7 +308,7 @@ Two initialization paths are available depending on the available input data.
 
 **From an ice thickness raster**
 
-If an ice thickness GeoTIFF is available (e.g. from :cite:t:`Grab2021`),
+If an ice thickness GeoTIFF is available (e.g. from :cite:t:`Grab2021` or :cite:t:`Farinotti2019`),
 pass it to ``compute_initial_ice_thickness()``. The glacier extent is derived
 automatically from the non-zero thickness pixels.
 
@@ -330,8 +330,8 @@ automatically from the non-zero thickness pixels.
 **From a glacier outline only**
 
 When no thickness data is available, supply a glacier outline shapefile instead.
-Ice thickness is then estimated per elevation band using the Bahr et al. (1997)
-volume–area formula.
+Ice thickness is then estimated per elevation band using the
+:cite:t:`Bahr1997` volume–area formula.
 
 .. code-block:: python
 
@@ -354,7 +354,7 @@ volume–area formula.
 * ``elevation_bands_distance`` — spacing between elevation bands in meters;
   default ``10``.
 * ``pixel_based_approach`` — if ``True`` *(default)*, glacier area evolution uses
-  the topography; otherwise uses the Bahr et al. formula at each step.
+  the topography; otherwise uses the :cite:t:`Bahr1997` formula at each step.
 
 **Parameters for** ``compute_lookup_table()``:
 
