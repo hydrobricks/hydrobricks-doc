@@ -28,9 +28,15 @@ names (more information in :ref:`the Python API <api_forcing>`):
 .. code-block:: python
 
    forcing.load_station_data_from_csv(
-       'path/to/forcing.csv', column_time='Date', time_format='%d/%m/%Y',
-       content={'precipitation': 'precip(mm/day)', 'temperature': 'temp(C)',
-                'pet': 'pet_sim(mm/day)'})
+      'path/to/forcing.csv', 
+      column_time='Date', 
+      time_format='%d/%m/%Y',
+      content={
+         'precipitation': 'precip(mm/day)', 
+         'temperature': 'temp(C)',
+         'pet': 'pet_sim(mm/day)'
+      }
+   )
 
 A typical forcing CSV:
 
@@ -56,7 +62,9 @@ under-record precipitation during snowfall:
 .. code-block:: python
 
    forcing.correct_station_data(
-       variable='precipitation', correction_factor=0.75)
+      variable='precipitation', 
+      correction_factor=0.75
+   )
 
 The default method is multiplicative (multiply the data by the factor). An
 additive correction is also available, for example to apply a temperature bias
@@ -65,7 +73,10 @@ correction:
 .. code-block:: python
 
    forcing.correct_station_data(
-       variable='temperature', method='additive', correction_factor=0.5)
+      variable='temperature', 
+      method='additive', 
+      correction_factor=0.5
+   )
 
 
 .. _spatialization:
@@ -80,8 +91,11 @@ method. Specify the variable, the method, and the method's parameters:
 .. code-block:: python
 
    forcing.spatialize_from_station_data(
-       variable='temperature', method='additive_elevation_gradient',
-       ref_elevation=1250, gradient=-0.6)
+      variable='temperature', 
+      method='additive_elevation_gradient',
+      ref_elevation=1250,
+      gradient=-0.6
+   )
 
 This example applies a −0.6 °C/100 m lapse rate relative to a reference
 elevation of 1250 m. To make the gradient a calibrated parameter rather than
@@ -90,8 +104,11 @@ a fixed value, reference a ``ParameterSet`` entry by name:
 .. code-block:: python
 
    forcing.spatialize_from_station_data(
-       variable='temperature', method='additive_elevation_gradient',
-       ref_elevation=1250, gradient='param:temp_gradients')
+      variable='temperature',
+      method='additive_elevation_gradient',
+      ref_elevation=1250,
+      gradient='param:temp_gradients'
+   )
 
    parameters.add_data_parameter('temp_gradients', -0.6, min_value=-1, max_value=0)
 
