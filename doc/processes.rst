@@ -231,6 +231,31 @@ CemaNeige is the recommended snow model for the :ref:`GR4J <gr4j>` model:
    gr4j = models.GR4J(snow_melt_process='melt:cemaneige')
 
 
+.. _interception:
+
+Interception
+------------
+
+GR4J interception (``interception:gr4j``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements the GR4J zero-capacity interception store (:cite:t:`Perrin2003`), 
+which neutralises precipitation against PET before either reaches a store. 
+With total precipitation :math:`P` (rain plus snowmelt) and potential 
+evapotranspiration :math:`E_P`:
+
+* if :math:`P > E_P`, the amount :math:`E_P` is sent to the atmosphere, the net
+  precipitation :math:`P_n = P - E_P` is passed on, and the net evaporative
+  demand is :math:`E_n = 0`;
+* if :math:`P \le E_P`, the amount :math:`P` is sent to the atmosphere and the
+  net evaporative demand :math:`E_n = E_P - P` is published for the downstream
+  production-store ET.
+
+The remaining net precipitation :math:`P_n` is then routed to the production
+store by an :ref:`outflow:rest <outflow-processes>` (throughfall) process.
+Requires the ``pet`` forcing; no calibrated parameters.
+
+
 .. _evapotranspiration:
 
 Evapotranspiration
@@ -262,19 +287,17 @@ No calibrated parameters. Requires the ``pet`` forcing.
 GR4J ET (``et:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^
 
-Used internally by :ref:`GR4J <gr4j>`. Follows the GR4J
-formulation of :cite:t:`Perrin2003`. Before computing ET, a zero-capacity interception
-step neutralises precipitation against PET: if P > E\ :sub:`P`, the excess
-precipitation P\ :sub:`n` = P − E\ :sub:`P` passes on and E\ :sub:`n` = 0; if
-P ≤ E\ :sub:`P`, the net evaporative demand is E\ :sub:`n` = E\ :sub:`P` − P.
-Actual ET is then withdrawn from the production store:
+Used internally by :ref:`GR4J <gr4j>`. Withdraws actual evapotranspiration from
+the production store to the atmosphere, using the net evaporative demand
+:math:`E_n` published by the interception step (:cite:t:`Perrin2003`):
 
 .. math::
 
    E_s = S \cdot \frac{2 - S/X_1}{1 + (1 - S/X_1) \tanh(E_n/X_1)} \tanh(E_n/X_1)
 
-where :math:`X_1` is the production store capacity and :math:`S` is the current
-store content. No calibrated parameters beyond :math:`X_1`.
+where :math:`X_1` is the production store capacity and :math:`S` is the store
+content after this step's infiltration. No calibrated parameters beyond
+:math:`X_1`.
 
 
 .. _infiltration-processes:
@@ -301,9 +324,10 @@ calibrated parameters.
 GR4J infiltration (``infiltration:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Used internally by :ref:`GR4J <gr4j>`; not user-configurable. Computes the portion
-:math:`P_s` of net precipitation :math:`P_n` that enters the production store
-(:cite:t:`Perrin2003`):
+Computes the portion :math:`P_s` of net precipitation :math:`P_n` that enters the
+GR4J production store (:cite:t:`Perrin2003`). In the GR4J model this infiltration
+term is not applied on its own but as part of the combined
+:ref:`production:gr4j <gr4j-production>` step:
 
 .. math::
 
@@ -343,8 +367,7 @@ Parameters:
 GR4J percolation (``percolation:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Used internally by :ref:`GR4J <gr4j>`. Drains water from
-the production store to the routing component (:cite:t:`Perrin2003`):
+Drains water from the GR4J production store (:cite:t:`Perrin2003`):
 
 .. math::
 
@@ -352,7 +375,42 @@ the production store to the routing component (:cite:t:`Perrin2003`):
 
 where :math:`S` is the current production-store water content and :math:`X_1` is
 its capacity. Percolation increases non-linearly with the filling ratio and goes
-to zero when the store is empty. No calibrated parameters.
+to zero when the store is empty. In the GR4J model it is applied as part of the
+combined :ref:`production:gr4j <gr4j-production>` step. No calibrated parameters.
+
+
+.. _production:
+
+Production
+----------
+
+.. _gr4j-production:
+   
+GR4J production (``production:gr4j``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used internally by :ref:`GR4J <gr4j>`. Applies the complete production-store
+update in a single discrete step and routes its output to the unit-hydrograph
+input (:cite:t:`Perrin2003`). For a start-of-step store level :math:`S` and net
+precipitation :math:`P_n`:
+
+#. **Infiltration** :math:`P_s` fills the store (see :ref:`infiltration:gr4j
+   <infiltration-processes>`), raising the level to :math:`S + P_s`.
+#. **Evapotranspiration** :math:`E_s` is withdrawn separately by the
+   :ref:`et:gr4j <evapotranspiration>` process and sent to the atmosphere.
+#. **Percolation** :math:`\mathrm{Perc}` drains the store (see
+   :ref:`percolation:gr4j <percolation-processes>`).
+
+The water routed to the unit-hydrograph input is
+
+.. math::
+
+   P_R = (P_n - P_s) + \mathrm{Perc}
+
+i.e. the net precipitation that did not infiltrate plus the percolation leaving
+the store. Because GR4J is solved as a discrete model, the production store is
+computed directly (no ODE solver), so the per-step update is exact and
+solver-independent. No calibrated parameters beyond :math:`X_1`.
 
 
 .. _runoff-processes:
@@ -412,6 +470,69 @@ Parameters:
 Use this formulation when a simpler quick-flow representation is preferred.
 
 
+.. _transfer-processes:
+
+Transfer
+--------
+
+GR4J routing (``routing:gr4j``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used internally by :ref:`GR4J <gr4j>`. Transforms the production-store output
+:math:`P_R` into discharge through two unit hydrographs, a non-linear routing
+store, and a groundwater-exchange term (:cite:t:`Perrin2003`).
+
+The inflow is split 90 % / 10 % between two unit hydrographs:
+
+* **UH1** (S-curve :math:`S\!H_1`, time base :math:`X_4`) feeds the routing store
+  and carries :math:`0.9\,P_R`;
+* **UH2** (S-curve :math:`S\!H_2`, time base :math:`2X_4`) feeds the direct branch
+  and carries :math:`0.1\,P_R`.
+
+The S-curves are
+
+.. math::
+
+   S\!H_1(t) = \left(\frac{t}{X_4}\right)^{5/2}, \quad 0 \le t \le X_4
+
+.. math::
+
+   S\!H_2(t) =
+   \begin{cases}
+       \tfrac{1}{2}\left(\dfrac{t}{X_4}\right)^{5/2} & 0 \le t \le X_4 \\[2ex]
+       1 - \tfrac{1}{2}\left(2 - \dfrac{t}{X_4}\right)^{5/2} & X_4 < t \le 2X_4
+   \end{cases}
+
+with :math:`S\!H = 0` below the range and :math:`S\!H = 1` above it; the
+unit-hydrograph ordinates are the successive differences of the S-curve.
+
+The groundwater exchange depends on the routing-store filling ratio:
+
+.. math::
+
+   F = X_2 \left(\frac{R}{X_3}\right)^{7/2}
+
+where :math:`R` is the routing-store content. A positive :math:`X_2` imports water
+into the catchment; a negative one exports it (a loss). The routing store is
+updated with the UH1 output and :math:`F`, then releases
+
+.. math::
+
+   Q_R = R \left[1 - \left(1 + \left(\frac{R}{X_3}\right)^{\!4}\right)^{\!-1/4}\right]
+
+The direct branch yields :math:`Q_D = \max(0,\; \text{UH2 output} + F)`, and the
+total discharge is :math:`Q = Q_R + Q_D`.
+
+Parameters:
+
+* ``X2`` (``exchange_factor``): groundwater exchange coefficient [mm d⁻¹],
+  default 0. Full name: ``uh_input:exchange_factor``.
+* ``X3`` (``routing_capacity``): routing-store capacity [mm], default 90.
+  Full name: ``uh_input:routing_capacity``.
+* ``X4`` (``uh_base_time``): unit-hydrograph time base [d], default 1.7, must be
+  > 0.5. Full name: ``uh_input:uh_base_time``.
+
+
 .. _outflow-processes:
 
 Reservoir outflow
@@ -436,11 +557,21 @@ The following outflow mechanisms are used by storage bricks across all models.
 **Direct outflow** (``outflow:direct``)
    Routes the entire storage content to the target in a single time step.
    No parameters. Used internally in :ref:`GSM-Socont <gsm-socont>` to pass
-   glacier meltwater directly to the basin-level lumped storages.
+   glacier meltwater directly to the basin-level lumped storages. Because it
+   withdraws the full content, it cannot run in parallel with any other process
+   drawing from the same storage; configuration validation rejects such a
+   combination (use ``outflow:rest`` instead when several outflows must share a
+   store).
 
-**Rest-direct outflow** (``outflow:rest_direct``)
-   Routes whatever water remains after all other processes have been applied.
-   No parameters. Used for surface runoff in the Socont ground land cover
-   (water not infiltrated becomes runoff) and in GR4J (net precipitation not
-   captured by the production store passes directly to routing).
+**Rest outflow** (``outflow:rest``)
+   Routes whatever water remains in the store after all the other (sibling)
+   processes have taken their share. It works on both directly-computed and
+   solver-handled bricks: on a direct brick the siblings have already withdrawn
+   their share, so the remaining content is exactly "the rest"; on a solver
+   brick the siblings' current outflow rates are subtracted so the demands sum
+   to the available content. It must therefore be declared *after* the other
+   withdrawing processes. No parameters. Used for surface runoff in the Socont
+   ground land cover (water not infiltrated becomes runoff) and in GR4J for
+   throughfall (the net precipitation :math:`P_n` passed on to the production
+   store).
 
