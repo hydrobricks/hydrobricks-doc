@@ -533,6 +533,60 @@ Parameters:
   > 0.5. Full name: ``uh_input:uh_base_time``.
 
 
+GR6J routing (``routing:gr6j``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used internally by :ref:`GR6J <gr6j>`. Extends GR4J routing
+(:cite:t:`Pushpalatha2011`) with two changes that improve low-flow simulation:
+
+* a **threshold-based groundwater exchange** (the GR5J form):
+
+  .. math::
+
+     F = X_2 \left(\frac{R}{X_3} - X_5\right)
+
+  where :math:`R` is the routing-store content and :math:`X_5` is a dimensionless
+  threshold setting the filling ratio at which the exchange changes sign;
+
+* an additional **exponential routing store** (coefficient :math:`X_6`) in
+  parallel to the power routing store.
+
+The UH1 output :math:`Q_9` is split 60 % to the power store and 40 % to the
+exponential store; the exchange :math:`F` is added to both stores and to the
+direct branch. The power routing store and the direct branch behave as in
+:ref:`GR4J routing <routing-processes>`, releasing :math:`Q_R` and :math:`Q_D`.
+The exponential store updates as
+
+.. math::
+
+   R_{\mathrm{exp}} \leftarrow R_{\mathrm{exp}} + 0.4\,Q_9 + F
+
+and releases (:cite:t:`Michel2003`; airGR formulation), with
+:math:`a = R_{\mathrm{exp}}/X_6` clamped to :math:`[-33, 33]`:
+
+.. math::
+
+   Q_{\mathrm{exp}} =
+   \begin{cases}
+       R_{\mathrm{exp}} + X_6\,e^{-a} & a > 7 \\[1ex]
+       X_6\,e^{a} & a < -7 \\[1ex]
+       X_6 \ln\!\left(e^{a} + 1\right) & \text{otherwise}
+   \end{cases}
+
+The exponential store may take negative values, which lets it reproduce long,
+smooth recessions. The total discharge is
+:math:`Q = \max(0,\; Q_R + Q_{\mathrm{exp}} + Q_D)`.
+
+Parameters: ``X2``, ``X3`` and ``X4`` as for :ref:`routing:gr4j
+<routing-processes>` (with the threshold exchange replacing the power-law one),
+plus
+
+* ``X5`` (``exchange_threshold``): groundwater exchange threshold [−], default 0.
+  Full name: ``uh_input:exchange_threshold``.
+* ``X6`` (``exp_store_coeff``): exponential store coefficient [mm], default 4,
+  must be > 0. Full name: ``uh_input:exp_store_coeff``.
+
+
 .. _outflow-processes:
 
 Reservoir outflow
