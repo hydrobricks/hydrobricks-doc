@@ -7,6 +7,7 @@ The following model structures are currently implemented:
 
 * :ref:`GSM-Socont <gsm-socont>`
 * :ref:`GR4J <gr4j>`
+* :ref:`GR6J <gr6j>`
 
 
 Common options
@@ -439,3 +440,83 @@ Minimal run without snow:
     end_date='2020-12-31'
   )
   gr4j.run(parameters=parameters, forcing=forcing)
+
+
+.. _gr6j:
+
+GR6J
+----
+
+GR6J (:cite:t:`Pushpalatha2011`) is a six-parameter daily rainfall-runoff model
+that extends :ref:`GR4J <gr4j>` to improve low-flow simulation while preserving
+high-flow performance. It keeps the GR4J production store, interception,
+throughfall and ET unchanged, and modifies only the routing (see
+:ref:`GR6J routing <routing-processes>`):
+
+* the groundwater exchange becomes threshold-based, ``F = X2 (R/X3 - X5)`` (the
+  GR5J form), where the dimensionless threshold ``X5`` lets the exchange change
+  sign within the year;
+* an additional exponential routing store (coefficient ``X6``) is added in
+  parallel to the power routing store, which is effective at reproducing long
+  recessions.
+
+* **Spatial structure**: lumped
+* **Time step**: daily
+
+
+Specific options
+^^^^^^^^^^^^^^^^^
+
+Identical to :ref:`GR4J <gr4j>` (``discrete``, ``snow_melt_process``,
+``snow_redistribution``).
+
+
+Parameters
+^^^^^^^^^^^
+
+X1-X4 are identical to :ref:`GR4J <gr4j>`. GR6J adds two parameters:
+
+**Groundwater exchange threshold**
+
+* ``X5`` *(-, default: 0, [-2, 2])*
+
+  - Threshold on the routing-store filling ratio ``R/X3`` at which the
+    groundwater exchange changes sign (commonly negative; range follows airGR).
+  - Full name: ``uh_input:exchange_threshold``.
+
+
+**Exponential store**
+
+* ``X6`` *(mm, default: 4, [0.05, 20])*
+
+  - Coefficient of the exponential routing store. Must be > 0.
+  - Full name: ``uh_input:exp_store_coeff``.
+
+For CemaNeige parameters (``melt:cemaneige``), see
+:ref:`Snow / Glacier melt parameters <snow-melt-params>` under Shared processes.
+
+
+Usage example
+^^^^^^^^^^^^^
+
+GR6J is used exactly like :ref:`GR4J <gr4j>`, with two extra parameters:
+
+.. code-block:: python
+
+  import hydrobricks as hb
+  import hydrobricks.models as models
+
+  gr6j = models.GR6J()
+
+  parameters = gr6j.generate_parameters()
+  parameters.set_values({'X1': 350, 'X2': 0, 'X3': 90, 'X4': 1.7, 'X5': 0, 'X6': 4})
+
+  # ... load hydro_units and forcing as for GR4J ...
+
+  gr6j.setup(
+    spatial_structure=hydro_units,
+    output_path='path/to/outputs',
+    start_date='1981-01-01',
+    end_date='2020-12-31'
+  )
+  gr6j.run(parameters=parameters, forcing=forcing)

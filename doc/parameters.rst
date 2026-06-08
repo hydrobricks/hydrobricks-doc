@@ -19,6 +19,9 @@ Each parameter has the following attributes
 * **mandatory**: whether the user must supply a value (i.e., the parameter has no default)
 * **prior**: prior distribution for Bayesian or Monte Carlo calibration —
   see :ref:`the calibration page <calibration>`
+* **transform**: an optional monotonic mapping between the parameter's real value
+  and a transformed value used during calibration —
+  see :ref:`Parameter transforms <parameter-transforms>`
 
 
 Creating a parameter set
@@ -79,6 +82,82 @@ range for a parameter:
 .. code-block:: python
 
    parameters.change_range('a_snow', 2, 5)
+
+
+.. _parameter-transforms:
+
+Parameter transforms
+---------------------
+
+A parameter can carry a **transform**: a monotonic mapping between its *real*
+value (the one passed to the C++ engine and stored in the parameter set) and a
+*transformed* value used during calibration. Searching in transformed space makes
+the optimisation better behaved — a storage capacity that spans orders of
+magnitude is calibrated in log space, while an exchange coefficient that may be
+negative or positive is calibrated through an inverse hyperbolic sine.
+
+Pre-built models attach the appropriate transforms automatically. GR4J and GR6J
+follow the airGR ``TransfoParam`` conventions:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 26 52
+
+   * - Parameter
+     - Transform (real → transformed)
+     - Rationale
+   * - X1 (production store capacity)
+     - ``log``
+     - spans orders of magnitude, > 0
+   * - X2 (groundwater exchange)
+     - ``asinh``
+     - signed (import or export)
+   * - X3 (routing store capacity)
+     - ``log``
+     - spans orders of magnitude, > 0
+   * - X4 (unit-hydrograph base time)
+     - ``log(X4 - 0.5)``
+     - log-like, enforces X4 > 0.5
+   * - X5 (exchange threshold, GR6J)
+     - ``asinh``
+     - signed
+   * - X6 (exponential store, GR6J)
+     - ``log``
+     - > 0
+
+How it works:
+
+* The model always keeps and runs the **real** value; the transform is used only
+  to map to and from the optimiser's search space.
+* ``get_for_spotpy()`` maps each parameter's real ``min``/``max`` through its
+  transform, so the optimiser searches the transformed bounds.
+* During calibration, the sampled (transformed) values are mapped back to real
+  values automatically before each model run.
+* A ``log`` transform is undefined at zero, so where the default lower bound would
+  fall there it is raised slightly for calibration (e.g. GR4J/GR6J X1 to 1 mm and
+  X4 to 0.51 d).
+
+Inspect or set transformed values directly:
+
+.. code-block:: python
+
+   import math
+
+   parameters.set_values({'X1': 350})                 # real value
+   parameters.get_transformed('X1')                   # -> log(350)
+
+   # Set a value given in transformed space (mapped back to the real value):
+   parameters.set_values({'X1': math.log(500)}, transformed=True)
+   parameters.get('X1')                               # -> 500.0
+
+Attach a custom transform to any parameter with a ``(real → transformed,
+transformed → real)`` pair of monotonic functions:
+
+.. code-block:: python
+
+   parameters.set_transform('k_slow', math.log, math.exp)
+
+Transforms are not supported on list-valued parameters.
 
 
 Calibratable forcing parameters
