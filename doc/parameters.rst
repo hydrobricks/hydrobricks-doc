@@ -42,7 +42,9 @@ Assigning parameter values
 ---------------------------
 
 Use ``set_values()`` with a dictionary. Keys can be either the full parameter
-name (e.g., ``snowpack:degree_day_factor``) or any alias (e.g., ``a_snow``):
+name (e.g., ``snowpack:degree_day_factor``) or any alias (e.g., ``a_snow``).
+The matching is case-insensitive, so the literature capitalisation can be used
+as is (e.g., ``PERC`` and ``perc`` are equivalent):
 
 .. code-block:: python
 

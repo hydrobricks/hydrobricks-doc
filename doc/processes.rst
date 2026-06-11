@@ -803,9 +803,9 @@ The following outflow mechanisms are used by storage bricks across all models.
 
    where :math:`UZ` is the upper zone content [mm]. With :math:`\alpha = 0` it
    reduces to a linear reservoir. Parameters: ``k_uz`` (``response_factor``)
-   [mm\ :sup:`-α` d\ :sup:`-1`], range [0.0001, 1], and ``alpha`` [−],
-   default 1, range [0, 3]. Full names: ``upper_zone:response_factor``,
-   ``upper_zone:alpha``.
+   [mm\ :sup:`-α` d\ :sup:`-1`], range [0.0001, 1], and ``alpha`` (alias
+   ``alfa``) [−], default 1, range [0, 3]. Full names:
+   ``upper_zone:response_factor``, ``upper_zone:alpha``.
 
 **Overflow** (``outflow:overflow``)
    Releases water instantaneously when storage exceeds its maximum capacity.

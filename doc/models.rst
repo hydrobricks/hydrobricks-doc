@@ -136,7 +136,7 @@ It is exclusively for snow and includes the following parameters:
   - Full name: ``ground_snowpack:mean_annual_snow``.
 
 
-.. _snow-redistribution:
+.. _snow-redistribution-params:
 
 Snow redistribution
 ^^^^^^^^^^^^^^^^^^^
@@ -354,7 +354,7 @@ Specific options
 
 * ``snow_redistribution``: optional snow redistribution process
   (e.g., ``'transport:snow_slide'``).
-  See the :ref:`snow redistribution section <snow-redistribution>`.
+  See the :ref:`snow redistribution section <snow-redistribution-params>`.
 
 
 Parameters
@@ -584,7 +584,7 @@ Specific options
   TT ± TTI/2 (see :ref:`rain/snow partitioning <snow-rain-partitioning>`).
 * ``snow_redistribution``: optional snow redistribution process
   (e.g., ``'transport:snow_slide'``).
-  See the :ref:`snow redistribution section <snow-redistribution>`.
+  See the :ref:`snow redistribution section <snow-redistribution-params>`.
 
 
 Parameters
@@ -648,9 +648,10 @@ the HBV-96 transition interval TT ± TTI/2.
   - Response factor of the non-linear upper zone.
   - Full name: ``upper_zone:response_factor``.
 
-* ``alpha`` *(dimensionless, default: 1, [0, 3])*
+* ``alpha``, ``alfa`` *(dimensionless, default: 1, [0, 3])*
 
-  - Non-linearity coefficient of the upper zone runoff.
+  - Non-linearity coefficient of the upper zone runoff (``alfa`` is the SMHI
+    spelling).
   - Full name: ``upper_zone:alpha``.
 
 * ``perc`` *(mm/d, no default, [0, 10])*
