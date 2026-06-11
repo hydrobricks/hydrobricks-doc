@@ -8,6 +8,7 @@ The following model structures are currently implemented:
 * :ref:`GSM-Socont <gsm-socont>`
 * :ref:`GR4J <gr4j>`
 * :ref:`GR6J <gr6j>`
+* :ref:`HBV-96 <hbv96>`
 
 
 Common options
@@ -520,3 +521,192 @@ GR6J is used exactly like :ref:`GR4J <gr4j>`, with two extra parameters:
     end_date='2020-12-31'
   )
   gr6j.run(parameters=parameters, forcing=forcing)
+
+
+.. _hbv96:
+
+HBV-96
+------
+
+HBV-96 (:cite:t:`Lindstrom1997`) is the revised version of the HBV model
+(:cite:t:`Bergstrom1976`), a widely used conceptual rainfall-runoff model.
+The hydrobricks implementation consists of an abstract ``HBV`` base class,
+which holds the routines shared by the HBV versions, and the ``HBV96`` model
+class, which adds the HBV-96 response routine. Future HBV variants only need 
+to provide their own response routine.
+
+The structure chains four routines:
+
+* **Snow routine**: degree-day melt (CFMAX, TT) with liquid water retention in
+  the snowpack (holding capacity CWH) and refreezing of the retained water
+  (refreezing coefficient CFR). As in the original model, rain falls onto the
+  snowpack: it is added to the liquid water storage, where it can be retained
+  and refrozen; without snow it passes through to the ground within the same
+  time step. See :ref:`snowpack water retention <snow-water-retention>`.
+* **Soil moisture routine**: the incoming water (rain and snowpack outflow) is
+  split between the soil moisture storage (capacity FC) and the response
+  routine using the beta function; evapotranspiration is limited by the LP
+  fraction (see :ref:`infiltration:hbv <infiltration-processes>` and
+  :ref:`et:hbv <evapotranspiration>`).
+* **Response routine** (HBV-96 specific): a non-linear upper zone
+  (:math:`Q_0 = k_{uz} \cdot UZ^{1+\alpha}`), a constant-rate percolation
+  (PERC) to a linear lower zone (:math:`Q_1 = k_{lz} \cdot LZ`), and an
+  optional capillary transport (CFLUX) returning water from the upper zone to
+  the soil moisture storage.
+* **Transformation function**: the total runoff is smoothed by the MAXBAS
+  triangular unit hydrograph (see :ref:`routing:hbv <routing-processes>`).
+
+The model is integrated by the ODE solver, so the results are
+a continuous approximation of the original discrete HBV-96 formulation.
+
+* **Spatial structure**: lumped or semi-lumped (elevation bands)
+* **Time step**: daily
+
+
+Specific options
+^^^^^^^^^^^^^^^^^
+
+* ``snow_melt_process``: melt model to use; see :ref:`melt models <melt-models>`.
+  Default: ``"melt:degree_day"``. Must be ``"melt:degree_day"`` when snow
+  refreezing is enabled.
+* ``snow_water_retention_process``: outflow process of the snowpack liquid
+  water storage. Default: ``"outflow:snow_holding"`` (the HBV holding capacity
+  CWH). ``None`` disables the liquid water retention (melt water then leaves
+  the snowpack directly).
+* ``snow_refreezing_process``: refreezing process of the retained liquid
+  water. Default: ``"refreeze:degree_day"`` (the HBV refreezing coefficient
+  CFR). ``None`` disables refreezing. Requires a snow water retention process.
+* ``rain_to_snowpack`` (default ``True``): route the rain to the snowpack
+  liquid water storage instead of the ground, as in the original HBV snow
+  routine. Requires a snow water retention process.
+* ``snow_rain_process``: rain/snow partitioning method. Default: ``None``,
+  i.e. ``"snow_rain:linear"``, which matches the HBV-96 linear transition over
+  TT ± TTI/2 (see :ref:`rain/snow partitioning <snow-rain-partitioning>`).
+* ``snow_redistribution``: optional snow redistribution process
+  (e.g., ``'transport:snow_slide'``).
+  See the :ref:`snow redistribution section <snow-redistribution>`.
+
+
+Parameters
+^^^^^^^^^^^
+
+The parameters are exposed under their literature names (as aliases).
+
+**Precipitation (snow/rain transition)**
+
+The linear rain/snow transition parameters ``prec_t_start`` and ``prec_t_end``
+are the same as in :ref:`GSM-Socont <gsm-socont>`; together they correspond to
+the HBV-96 transition interval TT ± TTI/2.
+
+**Snow routine**
+
+* ``cfmax`` *(mm/d/°C, no default, [2, 20])*
+
+  - Degree-day snow melt factor.
+  - Full name: ``snowpack:degree_day_factor``.
+
+* ``tt`` *(optional, °C, default: 0, [0, 5])*
+
+  - Threshold/melting temperature.
+  - Full name: ``snowpack:melting_temperature``.
+
+* ``cwh`` *(optional, dimensionless, default: 0.1, [0, 0.2])*
+
+  - Liquid water holding capacity of the snowpack, as a fraction of the snow
+    water equivalent.
+  - Full name: ``snowpack:water_holding_capacity``.
+
+* ``cfr`` *(optional, dimensionless, default: 0.05, [0, 0.1])*
+
+  - Refreezing coefficient of the retained liquid water.
+  - Full name: ``snowpack:refreezing_factor``.
+
+
+**Soil moisture routine**
+
+* ``fc`` *(mm, no default, [0, 3000])*
+
+  - Maximum soil moisture storage capacity.
+  - Full name: ``soil_moisture:capacity``.
+
+* ``lp`` *(dimensionless, default: 0.9, [0.3, 1])*
+
+  - Fraction of ``fc`` above which the actual evapotranspiration reaches the
+    potential rate.
+  - Full name: ``soil_moisture:lp``.
+
+* ``beta`` *(dimensionless, default: 2, [1, 6])*
+
+  - Shape coefficient of the recharge (beta) function.
+  - Full name: ``ground:beta``.
+
+
+**Response routine**
+
+* ``k_uz`` *(mm^(-alpha)/d, no default, [0.0001, 1])*
+
+  - Response factor of the non-linear upper zone.
+  - Full name: ``upper_zone:response_factor``.
+
+* ``alpha`` *(dimensionless, default: 1, [0, 3])*
+
+  - Non-linearity coefficient of the upper zone runoff.
+  - Full name: ``upper_zone:alpha``.
+
+* ``perc`` *(mm/d, no default, [0, 10])*
+
+  - Constant percolation rate from the upper to the lower zone.
+  - Full name: ``upper_zone:percolation_rate``.
+
+* ``cflux`` *(optional, mm/d, default: 0, [0, 3])*
+
+  - Maximum capillary flux from the upper zone back to the soil moisture
+    storage.
+  - Full name: ``upper_zone:max_capillary_flux``.
+
+* ``k_lz``, ``k4`` *(1/d, no default, [0.0001, 1])*
+
+  - Response factor of the linear lower zone.
+  - Full name: ``lower_zone:response_factor``.
+
+
+**Transformation function**
+
+* ``maxbas`` *(d, default: 1, [1, 10])*
+
+  - Base length of the triangular unit hydrograph.
+  - Full name: ``routing:maxbas``.
+
+
+Pre-defined parameter constraints:
+
+* ``k_lz < k_uz``
+
+
+Usage example
+^^^^^^^^^^^^^
+
+.. code-block:: python
+
+  import hydrobricks as hb
+  import hydrobricks.models as models
+
+  hbv = models.HBV96()
+
+  parameters = hbv.generate_parameters()
+  parameters.set_values({
+    'cfmax': 3, 'tt': 0, 'cwh': 0.1, 'cfr': 0.05,
+    'fc': 250, 'lp': 0.9, 'beta': 2,
+    'k_uz': 0.2, 'alpha': 1, 'perc': 0.7, 'cflux': 0.5, 'k_lz': 0.05,
+    'maxbas': 2.5
+  })
+
+  # ... load hydro_units and forcing as for the other models ...
+
+  hbv.setup(
+    spatial_structure=hydro_units,
+    output_path='path/to/outputs',
+    start_date='1981-01-01',
+    end_date='2020-12-31'
+  )
+  hbv.run(parameters=parameters, forcing=forcing)
