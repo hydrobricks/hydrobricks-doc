@@ -68,8 +68,9 @@ The CSV format:
 * **Remaining rows**: one row per hydro unit that changes, with the identifier value
   followed by the area at each snapshot date.
 
-Hydro units not listed in the file are assumed unchanged. The ``ground`` fraction is
-adjusted automatically to preserve the total unit area.
+Hydro units not listed in the file are assumed unchanged. The generic soil cover
+fraction (``open``, or its ``ground`` alias) is adjusted automatically to preserve the
+total unit area.
 
 .. code-block:: text
    :caption: Example CSV file for land cover evolution (areas in km²).
@@ -137,7 +138,7 @@ processing on subsequent runs:
 
    changes_df[0].to_csv('/path/to/surface_changes_glacier_ice.csv', index=False)
    changes_df[1].to_csv('/path/to/surface_changes_glacier_debris.csv', index=False)
-   changes_df[2].to_csv('/path/to/surface_changes_ground.csv', index=False)
+   changes_df[2].to_csv('/path/to/surface_changes_open.csv', index=False)
 
 The hydro units can also be initialized directly from the derived time series:
 

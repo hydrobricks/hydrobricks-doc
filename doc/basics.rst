@@ -130,23 +130,39 @@ with units. A minimal example:
    11, 1340, 3496875
    12, 1390, 2361250
 
-By default, each hydro unit has a single ``ground`` land cover. Catchments
+By default, each hydro unit has a single ``open`` land cover. Catchments
 with glaciers or other distinct surface types require multiple land covers.
 Each land cover has a type (which determines its physical behaviour) and a
-name (which distinguishes it from other land covers of the same type). For example,
-a catchment with bare-ice and debris-covered glacier areas uses three land covers:
+name (which distinguishes it from other land covers of the same type).
+
+The available land cover types are:
+
+* ``open`` (aliases ``ground``, ``generic``, ``generic_land_cover``): the default
+  soil-bearing surface — the HBV "open areas" class; its behaviour comes entirely from
+  the processes the model attaches to it. (``ground`` was the former default and is kept
+  as an alias for backward compatibility.)
+* ``glacier``: a glacierized surface with ice melt, handled by the model's
+  :ref:`glacier module <glacier-modules>` (e.g. draining to dedicated reservoirs).
+* ``forest``: a soil-bearing surface that additionally intercepts rain in a canopy
+  store (HBV only, see :ref:`HBV land covers <hbv-land-covers>`).
+* ``lake``: an exclusive open-water surface — all precipitation enters the open water,
+  which evaporates at the potential rate and drains through a linear outflow (HBV only).
+
+Which types a given model accepts depends on the model (see :ref:`Models <models>`);
+all models support ``open`` and ``glacier``. For example, a catchment with bare-ice
+and debris-covered glacier areas uses three land covers:
 
 .. code-block:: python
 
-   land_cover_names = ['ground', 'glacier_ice', 'glacier_debris']
-   land_cover_types = ['ground', 'glacier', 'glacier']
+   land_cover_names = ['open', 'glacier_ice', 'glacier_debris']
+   land_cover_types = ['open', 'glacier', 'glacier']
 
    hydro_units = hb.HydroUnits(land_cover_types, land_cover_names)
    hydro_units.load_from_csv(
       'path/to/file.csv', 
       column_elevation='Elevation',
       columns_areas={
-         'ground': 'Area Non Glacier',
+         'open': 'Area Non Glacier',
          'glacier_ice': 'Area Ice',
          'glacier_debris': 'Area Debris'
       }
@@ -433,18 +449,18 @@ Example output for GSM-Socont with two glacier types:
       "outlet";
 
    labels_distributed =
-      "ground:content",
-      "ground:infiltration:output",
-      "ground:runoff:output",
+      "open:content",
+      "open:infiltration:output",
+      "open:runoff:output",
       "glacier_ice:content",
       "glacier_ice:outflow_rain_snowmelt:output",
       "glacier_ice:melt:output",
       "glacier_debris:content",
       "glacier_debris:outflow_rain_snowmelt:output",
       "glacier_debris:melt:output",
-      "ground_snowpack:content",
-      "ground_snowpack:snow",
-      "ground_snowpack:melt:output",
+      "open_snowpack:content",
+      "open_snowpack:snow",
+      "open_snowpack:melt:output",
       "glacier_ice_snowpack:content",
       "glacier_ice_snowpack:snow",
       "glacier_ice_snowpack:melt:output",
@@ -462,7 +478,7 @@ Example output for GSM-Socont with two glacier types:
       "surface_runoff:outflow:output";
 
    labels_land_covers =
-      "ground",
+      "open",
       "glacier_ice",
       "glacier_debris";
 

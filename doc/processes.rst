@@ -377,16 +377,17 @@ HBV ET (``et:hbv``)
 ^^^^^^^^^^^^^^^^^^^
 
 Used in :ref:`HBV-96 <hbv96>`. Actual ET is withdrawn from the soil moisture
-storage at the potential rate when the soil moisture exceeds a threshold, and
-decreases linearly below it (:cite:t:`Lindstrom1997`):
+storage at the (corrected) potential rate when the soil moisture exceeds a
+threshold, and decreases linearly below it (:cite:t:`Lindstrom1997`):
 
 .. math::
 
-   E(t) = E_P(t) \cdot \min\!\left(1,\; \frac{SM(t)}{LP \cdot FC}\right)
+   E(t) = \mathrm{cevpf} \cdot E_P(t) \cdot \min\!\left(1,\; \frac{SM(t)}{LP \cdot FC}\right)
 
 where:
 
 - :math:`E_P(t)` is the potential evapotranspiration [mm d⁻¹],
+- :math:`\mathrm{cevpf}` is the evapotranspiration correction factor [−],
 - :math:`SM(t)` is the current soil moisture [mm],
 - :math:`FC` is the soil moisture storage capacity [mm],
 - :math:`LP` is the fraction of :math:`FC` above which ET reaches the
@@ -401,6 +402,12 @@ Parameters:
   - ET reduction threshold, as a fraction of :math:`FC`.
   - Full name: ``soil_moisture:lp``.
 
+* ``cevpf`` *(optional, dimensionless, default: 1, [0.5, 2])*
+
+  - Evapotranspiration correction factor, scaling the potential evaporation. Set it
+    per cover (e.g. higher for forests) to vary the evaporation by land cover.
+  - Full name: ``soil_moisture:et_correction_factor``.
+
 
 .. _infiltration-processes:
 
@@ -410,7 +417,7 @@ Infiltration
 Socont infiltration (``infiltration:socont``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Used in :ref:`GSM-Socont <gsm-socont>` for the ground land cover. Water
+Used in :ref:`GSM-Socont <gsm-socont>` for the open (soil) land cover. Water
 infiltrates into the slow reservoir at a rate that decreases quadratically as
 the reservoir fills (:cite:t:`Schaefli2005`):
 
@@ -445,8 +452,9 @@ fills, going to zero when :math:`S = X_1`. No calibrated parameters.
 HBV infiltration / beta function (``infiltration:hbv``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Used in :ref:`HBV-96 <hbv96>` for the ground land cover. The incoming water
-:math:`P` (rain and snowpack outflow) is split between the soil moisture
+Used in :ref:`HBV-96 <hbv96>` on each soil-bearing land cover (e.g. open, forest).
+The incoming water :math:`P` (rain and snowpack outflow) is split between the soil
+moisture
 storage and the response routine using the HBV beta function
 (:cite:t:`Lindstrom1997`). The infiltrating part is
 
@@ -464,7 +472,7 @@ Parameters:
 * ``beta`` *(dimensionless, default: 2, [1, 6])*
 
   - Shape coefficient of the beta function.
-  - Full name: ``ground:beta``.
+  - Full name: ``open:beta`` (``<cover>:beta`` in general).
 
 
 .. _percolation-processes:
@@ -828,7 +836,7 @@ The following outflow mechanisms are used by storage bricks across all models.
    brick the siblings' current outflow rates are subtracted so the demands sum
    to the available content. It must therefore be declared *after* the other
    withdrawing processes. No parameters. Used for surface runoff in the Socont
-   ground land cover (water not infiltrated becomes runoff), in GR4J for
+   open (soil) land cover (water not infiltrated becomes runoff), in GR4J for
    throughfall (the net precipitation :math:`P_n` passed on to the production
    store), and in HBV-96 for the recharge (the complement of the beta-function
    infiltration, routed to the upper zone).
