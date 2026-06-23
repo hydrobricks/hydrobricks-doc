@@ -67,6 +67,14 @@ TimeSeries
    :undoc-members:
    :show-inheritance:
 
+StructureGraph
+--------------
+
+.. autoclass:: hydrobricks.structure.StructureGraph
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Trainer
 -------
 

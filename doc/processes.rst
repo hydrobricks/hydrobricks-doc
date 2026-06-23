@@ -334,7 +334,12 @@ Requires the ``pet`` forcing; no calibrated parameters.
 Evapotranspiration
 ------------------
 
-Three ET formulations are available.
+Several ET formulations are available. They all convert the potential
+evapotranspiration (``pet`` forcing) into actual ET by reducing it as a function
+of the storage filling ratio :math:`S(t)/S_{\max}`; they differ only in the shape
+of that reduction. The generic ``et:linear``, ``et:power_law`` and
+``et:exponential`` reductions can be attached to any storage brick that has a
+maximum capacity.
 
 
 Socont ET (``et:socont``)
@@ -407,6 +412,67 @@ Parameters:
   - Evapotranspiration correction factor, scaling the potential evaporation. Set it
     per cover (e.g. higher for forests) to vary the evaporation by land cover.
   - Full name: ``soil_moisture:et_correction_factor``.
+
+
+Linear ET (``et:linear``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Generic parameter-free reduction. Actual ET increases linearly with the filling
+ratio and reaches PET when the reservoir is full:
+
+.. math::
+
+   E(t) = E_P(t) \cdot \min\!\left(1,\; \frac{S(t)}{S_{\max}}\right)
+
+where:
+
+- :math:`E_P(t)` is the potential evapotranspiration [mm d⁻¹],
+- :math:`S(t)` is the current water content of the reservoir [mm],
+- :math:`S_{\max}` is the maximum storage capacity [mm].
+
+No calibrated parameters. Requires the ``pet`` forcing.
+
+
+Power-law ET (``et:power_law``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Generalization of the Socont ET with a calibratable exponent. Actual ET scales
+with the filling ratio raised to the ``exponent`` power:
+
+.. math::
+
+   E(t) = E_P(t) \left(\frac{S(t)}{S_{\max}}\right)^{\beta}
+
+where :math:`\beta` is the exponent. It recovers the linear reduction at
+:math:`\beta = 1`, the Socont ET at :math:`\beta = 0.5`, and gives convex
+(:math:`\beta > 1`) or concave (:math:`\beta < 1`) reductions otherwise.
+Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``exponent`` *(dimensionless, default: 0.5, [0.2, 3])*
+
+  - Exponent applied to the filling ratio. Alias: ``et_beta``.
+
+
+Exponential ET (``et:exponential``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Concave, asymptotic reduction. Actual ET rises steeply when the store is wet and
+saturates toward PET as it fills:
+
+.. math::
+
+   E(t) = E_P(t) \left(1 - \exp\!\left(-\alpha \, \frac{S(t)}{S_{\max}}\right)\right)
+
+where :math:`\alpha` controls the curvature: a larger :math:`\alpha` makes ET
+approach PET faster as the reservoir fills. Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``alpha`` *(dimensionless, default: 2, [0.5, 10])*
+
+  - Curvature of the reduction curve. Alias: ``et_alpha``.
 
 
 .. _infiltration-processes:

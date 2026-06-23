@@ -624,6 +624,9 @@ Specific options
 * ``share_soil`` (default ``False``): share a single soil moisture store across all
   land covers instead of one store per cover (see
   :ref:`HBV land covers <hbv-land-covers>`).
+* ``forest_interception`` (default ``False``): add a canopy interception store on each
+  ``forest`` cover (only relevant with a ``forest`` cover; see
+  :ref:`HBV land covers <hbv-land-covers>`).
 * ``glacier_infinite_storage`` (default ``True``): treat the glacier ice as an
   infinite store (only relevant with a ``glacier`` cover).
 * ``glacier_module`` (default ``"gsm"``): glacier formulation; see
@@ -770,14 +773,17 @@ by default, its own soil moisture store feeding the shared response routine;
 ``share_soil=True`` collapses them into one. The soil/recharge parameters are then
 exposed per cover (``fc_<cover>``, ``lp_<cover>``, ``beta_<cover>``).
 
-* **forest** — a soil-bearing cover that intercepts rain in a canopy store on the rain
-  path (upstream of the snowpack): the canopy holds up to the interception capacity,
-  evaporates at the potential rate, and passes the excess as throughfall. Snowmelt
-  bypasses the canopy.
+* **forest** — a soil-bearing cover that, when ``forest_interception=True``, intercepts
+  rain in a canopy store on the rain path (upstream of the snowpack): the canopy holds
+  up to the interception capacity, evaporates at the potential rate, and passes the
+  excess as throughfall (snowmelt bypasses the canopy). Interception is **off by
+  default**, in which case a ``forest`` cover behaves like a generic soil cover (it can
+  still differ from ``open`` through its own per-class soil parameters and ``cevpf``).
 
   * ``ic`` (or ``ic_<cover>`` with several forests) *(mm, optional, default: 2, [0, 10])*
 
-    - Canopy interception capacity. Full name: ``<cover>_canopy:capacity``.
+    - Canopy interception capacity (only with ``forest_interception=True``).
+      Full name: ``<cover>_canopy:capacity``.
 
 * **lake** — an exclusive open-water cover (a lake unit is entirely lake). All
   precipitation enters the lake directly (no snowpack), the open water evaporates at

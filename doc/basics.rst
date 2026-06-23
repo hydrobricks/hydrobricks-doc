@@ -32,6 +32,38 @@ The available models and their options are described on the
 :ref:`models page <models>`.
 
 
+.. _inspecting-structure:
+
+Inspecting the structure
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The structure of a model can be inspected right after construction (no ``setup()`` or
+``run()`` needed). It reflects the complete structure, including the auto-generated parts
+(snow routine, precipitation splitters, forest canopy, glacier reservoirs), and each flux
+is labelled with the **process** that withdraws the water.
+
+.. code-block:: python
+
+   model = models.HBV96()
+
+   # Textual summary (à la model.summary() in deep-learning frameworks)
+   model.print_structure()
+
+   # A serializable graph object
+   graph = model.get_structure_graph()
+   graph.to_dict()      # nested dict (nodes + edges)
+   graph.to_json()      # JSON string
+   graph.to_yaml()      # YAML string
+   graph.to_dot()       # Graphviz DOT string (no extra dependency)
+
+   # A rendered diagram, with a legend (requires the optional `graphviz` package)
+   model.plot_structure('model_structure', fmt='png')  # legend=False to omit it
+
+Models with glacier or lake covers define several structure *variants* (e.g. a
+glacier-free base and a with-glacier variant); pass ``structure_id=`` to inspect a
+specific one.
+
+
 .. _spatial-structure:
 
 Spatial structure
@@ -143,8 +175,9 @@ The available land cover types are:
   as an alias for backward compatibility.)
 * ``glacier``: a glacierized surface with ice melt, handled by the model's
   :ref:`glacier module <glacier-modules>` (e.g. draining to dedicated reservoirs).
-* ``forest``: a soil-bearing surface that additionally intercepts rain in a canopy
-  store (HBV only, see :ref:`HBV land covers <hbv-land-covers>`).
+* ``forest``: a soil-bearing surface that can optionally intercept rain in a canopy
+  store (HBV only, enabled with ``forest_interception=True``; see
+  :ref:`HBV land covers <hbv-land-covers>`).
 * ``lake``: an exclusive open-water surface — all precipitation enters the open water,
   which evaporates at the potential rate and drains through a linear outflow (HBV only).
 
