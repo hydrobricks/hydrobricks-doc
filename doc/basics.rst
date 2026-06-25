@@ -56,12 +56,28 @@ is labelled with the **process** that withdraws the water.
    graph.to_yaml()      # YAML string
    graph.to_dot()       # Graphviz DOT string (no extra dependency)
 
-   # A rendered diagram, with a legend (requires the optional `graphviz` package)
-   model.plot_structure('model_structure', fmt='png')  # legend=False to omit it
+   # A rendered diagram (requires the optional `graphviz` package)
+   model.plot_structure('model_structure', fmt='png')
+
+The diagram can be tuned with several options (also available on
+``graph.plot()`` / ``graph.to_dot()``):
+
+.. code-block:: python
+
+   model.plot_structure(
+       'model_structure',
+       fmt='pdf',           # 'png', 'pdf' or 'svg' ('pdf'/'svg' are vector = sharpest)
+       dpi=200,             # raster resolution for PNG (default 150); ignored for vector
+       with_forcing=False,  # drop the meteo forcing inputs for a cleaner diagram
+       legend=False,        # omit the legend
+       nodesep=0.8,         # spacing between nodes in a rank
+       ranksep=1.0,         # spacing between ranks
+       structure_id=2,      # which structure variant to draw
+   )
 
 Models with glacier or lake covers define several structure *variants* (e.g. a
 glacier-free base and a with-glacier variant); pass ``structure_id=`` to inspect a
-specific one.
+specific one. ``with_forcing`` is also available on ``get_structure_graph()``.
 
 
 .. _spatial-structure:

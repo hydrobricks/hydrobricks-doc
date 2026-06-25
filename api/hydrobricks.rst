@@ -84,3 +84,19 @@ Trainer
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. autofunction:: hydrobricks.trainer.calibrate
+
+.. autofunction:: hydrobricks.trainer.calibrate_from_factory
+
+Glacier mass balance
+--------------------
+
+.. automodule:: hydrobricks.glacier_mass_balance
+
+.. autoclass:: hydrobricks.glacier_mass_balance.GlacierMassBalanceObservations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autofunction:: hydrobricks.glacier_mass_balance.compute_simulated_mass_balance

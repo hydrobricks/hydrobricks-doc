@@ -213,17 +213,20 @@ names of the parameters that should vary:
                                 'k_slow_2', 'precip_corr_factor']
 
 Create a SPOTPY setup object that bundles the model, parameters, forcing, observations,
-and objective function. The ``warmup`` argument (in days) excludes the opening period of
-each run from the objective function to avoid spin-up artefacts — see the
+and objective function. The calibration helpers live in the ``hydrobricks.trainer``
+module. The ``warmup`` argument (in days) excludes the opening period of each run from
+the objective function to avoid spin-up artefacts — see the
 :ref:`warmup section <running>` for background:
 
 .. code-block:: python
 
-   spot_setup = hb.SpotpySetup(
-      socont, 
-      parameters, 
-      forcing, 
-      obs, 
+   import hydrobricks.trainer as trainer
+
+   spot_setup = trainer.SpotpySetup(
+      socont,
+      parameters,
+      forcing,
+      obs,
       warmup=365,
       obj_func='nse'
    )
@@ -236,13 +239,13 @@ each run from the objective function to avoid spin-up artefacts — see the
 
    .. code-block:: python
 
-      spot_setup = hb.SpotpySetup(
-         socont, 
-         parameters, 
-         forcing, 
-         obs, 
+      spot_setup = trainer.SpotpySetup(
+         socont,
+         parameters,
+         forcing,
+         obs,
          warmup=365,
-         obj_func='mse', 
+         obj_func='mse',
          invert_obj_func=True
       )
 
@@ -294,6 +297,193 @@ visualizing parameter interactions and isolating high-performing samples:
    plt.tight_layout()
    plt.show()
 
+
+.. _parallel_calibration:
+
+Parallel calibration
+^^^^^^^^^^^^^^^^^^^^^
+
+Calibration runs the model many times with independent parameter sets, so it can be
+spread across CPU cores. SPOTPY ships parallel backends (``parallel='mpc'`` for
+multiprocessing, ``parallel='mpi'`` for MPI), but to use them the setup has to be sent to
+worker processes. The model, forcing, and observations are backed by the C++ core and
+cannot be pickled, so they must be **rebuilt inside each worker** rather than shipped.
+
+The simplest way to do this is
+:func:`calibrate_from_factory <hydrobricks.trainer.calibrate_from_factory>`. You write a
+single *factory* — a module-level function that builds everything and returns a
+``(model, parameters, forcing, obs)`` tuple — and one call does the rest. The same code
+runs sequentially or in parallel; only ``parallel`` changes.
+
+.. code-block:: python
+
+   import hydrobricks.trainer as trainer
+
+   def build():
+       # Build the model, parameters, forcing and observations here, then:
+       return socont, parameters, forcing, obs
+
+   if __name__ == '__main__':
+       sampler = trainer.calibrate_from_factory(
+           build,
+           'mc',
+           10000,
+           warmup=365,
+           obj_func='nse',
+           dbname='socont_MC',
+           dbformat='csv',
+           parallel='mpc',     # 'seq' for a single process
+           n_workers=4,        # optional; default is all logical CPUs
+       )
+       results = sampler.getdata()
+
+.. note::
+
+   - The ``'mpc'`` backend requires the optional `pathos <https://pypi.org/project/pathos/>`_
+     package (``pip install pathos``).
+   - The factory must be a top-level (module-level) function so it can be pickled; lambdas
+     and closures will not work.
+   - On Windows (and any platform that spawns workers) the call must run under an
+     ``if __name__ == '__main__':`` guard.
+   - Not every algorithm benefits equally: independent samplers such as ``mc``, ``lhs``,
+     ``rope`` and the ``dream`` chains scale close to linearly with the number of cores,
+     whereas SCE-UA is largely sequential and sees only a modest speedup.
+
+For finer control you can assemble the pieces yourself:
+:meth:`SpotpySetup.from_factory <hydrobricks.trainer.SpotpySetup.from_factory>` (whose
+factory returns just ``(model, forcing, obs)``, with ``parameters`` passed separately)
+builds the picklable setup, and
+:func:`calibrate <hydrobricks.trainer.calibrate>` runs a given setup with the chosen
+backend and ``n_workers``. The single-process path is unchanged: a ``SpotpySetup`` built
+directly from objects (no factory) still works with ``parallel='seq'`` (the default).
+
+.. _glacier_mass_balance_calibration:
+
+Calibrating on glacier mass balance
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+On glacierized catchments, the observed glacier **mass balance** (e.g. from
+`GLAMOS <https://www.glamos.ch>`_) is a strong, independent constraint on the snow and
+ice melt parameters and on the partitioning between melt and evapotranspiration.
+Hydrobricks can use it alongside discharge during calibration. Everything happens on the
+Python side; the simulation itself is unchanged (there is no data assimilation).
+
+Observed mass balance is loaded from a CSV file with
+:class:`GlacierMassBalanceObservations
+<hydrobricks.glacier_mass_balance.GlacierMassBalanceObservations>`. The GLAMOS "fixdate"
+products are supported directly (whole-glacier or per elevation band; annual, winter and
+summer balances). The observation periods are taken from the per-row dates in the file,
+so calendar and hydrological years are both handled:
+
+.. code-block:: python
+
+   glacier_mb = hb.GlacierMassBalanceObservations.from_glamos(
+       '/path/to/massbalance_fixdate.csv',
+       kind='whole',                 # or 'elevationbins'
+       glacier_id='B43-03',
+       balance_types=('annual', 'winter', 'summer'),
+   )
+
+What is compared (glaciological vs. geodetic)
+"""""""""""""""""""""""""""""""""""""""""""""
+
+Hydrobricks computes the **glaciological (surface) mass balance** — accumulation minus
+ablation at the glacier surface, which is exactly what the glaciological method (stakes,
+as used by GLAMOS) measures. Per glacier hydro unit and observation period:
+
+.. math::
+
+   B = \Delta S - \sum_t M_\text{ice}
+
+where :math:`S` is the glacier snowpack water equivalent (a stock) and
+:math:`M_\text{ice}` the glacier ice-melt flux. This follows from
+:math:`B = (P_\text{snow} + \text{refreeze}) - (M_\text{snow} + M_\text{ice})` together
+with :math:`\mathrm{d}S/\mathrm{d}t = P_\text{snow} + \text{refreeze} - M_\text{snow}`, so
+the snowfall, snowmelt and refreezing terms collapse into :math:`\Delta S` and only the
+snowpack stock and the ice melt are needed.
+
+This **flux-based surface** balance is preferred over a state difference
+:math:`\Delta(\text{snow} + \text{ice})`. With a delta-h evolution, the state difference
+per elevation band is contaminated by the dynamic ice redistribution and becomes a
+*geodetic* per-band balance, whereas GLAMOS reports the *glaciological* (surface) balance
+per band. The flux formula excludes dynamics and stays a clean surface balance whether or
+not the geometry evolves, and works with both the default infinite ice storage and a
+finite ice storage. Per-band values are normalized by the model's own (time-varying)
+glacier area, for self-consistency with the simulated geometry.
+
+.. note::
+
+   The model must be created with ``record_all=True`` so the glacier snowpack and ice
+   melt are recorded and read from memory each iteration (no file dump). For calibrating
+   melt parameters, a **static glacier** (the default ``glacier_infinite_storage=True``,
+   no evolution action) is recommended: the geometry stays fixed and the model re-runs
+   cleanly across the many calibration iterations.
+
+Three ways to use the mass balance
+""""""""""""""""""""""""""""""""""
+
+The observations are passed to :class:`SpotpySetup
+<hydrobricks.trainer.SpotpySetup>` (or :func:`calibrate_from_factory
+<hydrobricks.trainer.calibrate_from_factory>`) via ``glacier_mb_obs``, and
+``glacier_mb_mode`` selects how they are used:
+
+* ``'weighted'`` — a single score combining the discharge and mass-balance goodness of
+  fit, ``discharge_weight * f(Q) + glacier_mb_weight * f(MB)``. Works with every SPOTPY
+  algorithm (including SCE-UA).
+* ``'pareto'`` — returns a ``[discharge, mass_balance]`` objective vector for a
+  multi-objective sampler (SPOTPY's ``NSGAII``), yielding a Pareto front rather than a
+  single best run.
+* ``'constraint'`` — a behavioural pass/fail filter: runs whose mean absolute
+  mass-balance error exceeds ``glacier_mb_tolerance`` (mm w.e.) are rejected, while the
+  discharge metric remains the objective.
+
+.. code-block:: python
+
+   # Weighted multi-objective (discharge KGE + mass-balance NSE)
+   spot_setup = trainer.SpotpySetup(
+       socont, parameters, forcing, obs,
+       warmup=365,
+       obj_func='kge_2012',
+       invert_obj_func=True,
+       glacier_mb_obs=glacier_mb,
+       glacier_mb_mode='weighted',
+       glacier_mb_metric='nse',
+       discharge_weight=1.0,
+       glacier_mb_weight=1.0,
+   )
+   sampler = trainer.calibrate(spot_setup, 'sceua', 5000, dbformat='ram')
+
+   # Pareto front (NSGAII needs n_obj via sample_kwargs)
+   spot_setup = trainer.SpotpySetup(
+       socont, parameters, forcing, obs, warmup=365,
+       obj_func='kge_2012', invert_obj_func=True,
+       glacier_mb_obs=glacier_mb, glacier_mb_mode='pareto',
+   )
+   sampler = trainer.calibrate(
+       spot_setup, 'NSGAII', 5000, dbformat='ram',
+       sample_kwargs={'n_obj': 2, 'n_pop': 50},
+   )
+
+   # Behavioural filter (reject runs whose mass balance is off by > 500 mm w.e.)
+   spot_setup = trainer.SpotpySetup(
+       socont, parameters, forcing, obs, warmup=365,
+       obj_func='kge_2012', invert_obj_func=True,
+       glacier_mb_obs=glacier_mb, glacier_mb_mode='constraint',
+       glacier_mb_tolerance=500.0,
+   )
+
+The simulated mass balance can also be computed on its own (for plotting or evaluation)
+with :func:`compute_simulated_mass_balance
+<hydrobricks.glacier_mass_balance.compute_simulated_mass_balance>` after a run:
+
+.. code-block:: python
+
+   socont.run(parameters=parameters, forcing=forcing)
+   sim_mb = hb.compute_simulated_mass_balance(socont, glacier_mb)
+
+A complete example is available in
+`calibrate_with_glacier_mass_balance.py
+<https://github.com/hydrobricks/hydrobricks/blob/main/examples/advanced/calibrate_with_glacier_mass_balance.py>`_.
 
 Prior distributions
 ^^^^^^^^^^^^^^^^^^^
