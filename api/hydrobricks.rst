@@ -43,10 +43,10 @@ Forcing
    :undoc-members:
    :show-inheritance:
 
-Observations
-------------
+Discharge observations
+----------------------
 
-.. autoclass:: Observations
+.. autoclass:: DischargeObservations
    :members:
    :undoc-members:
    :show-inheritance:
@@ -89,14 +89,17 @@ Trainer
 
 .. autofunction:: hydrobricks.trainer.calibrate_from_factory
 
-Glacier mass balance
---------------------
+Evaluation (auxiliary observations)
+-----------------------------------
 
-.. automodule:: hydrobricks.glacier_mass_balance
+.. automodule:: hydrobricks.evaluation
 
-.. autoclass:: hydrobricks.glacier_mass_balance.GlacierMassBalanceObservations
+.. autoclass:: hydrobricks.evaluation.AuxiliaryObservation
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. autofunction:: hydrobricks.glacier_mass_balance.compute_simulated_mass_balance
+.. autoclass:: hydrobricks.evaluation.GlacierMassBalanceObservations
+   :members:
+   :undoc-members:
+   :show-inheritance:

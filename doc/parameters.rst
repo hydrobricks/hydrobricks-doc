@@ -303,9 +303,9 @@ visualizing parameter interactions and isolating high-performing samples:
 Parallel calibration
 ^^^^^^^^^^^^^^^^^^^^^
 
-Calibration runs the model many times with independent parameter sets, so it can be
-spread across CPU cores. SPOTPY ships parallel backends (``parallel='mpc'`` for
-multiprocessing, ``parallel='mpi'`` for MPI), but to use them the setup has to be sent to
+Depending on the calibration approach, the model can be run many times with independent 
+parameter sets, so it can be spread across CPU cores. SPOTPY ships parallel backends 
+(``parallel='mpc'`` for multiprocessing), but to use them the setup has to be sent to
 worker processes. The model, forcing, and observations are backed by the C++ core and
 cannot be pickled, so they must be **rebuilt inside each worker** rather than shipped.
 
@@ -364,16 +364,17 @@ Calibrating on glacier mass balance
 
 On glacierized catchments, the observed glacier **mass balance** (e.g. from
 `GLAMOS <https://www.glamos.ch>`_) is a strong, independent constraint on the snow and
-ice melt parameters and on the partitioning between melt and evapotranspiration.
+ice melt parameters.
 Hydrobricks can use it alongside discharge during calibration. Everything happens on the
 Python side; the simulation itself is unchanged (there is no data assimilation).
 
 Observed mass balance is loaded from a CSV file with
 :class:`GlacierMassBalanceObservations
-<hydrobricks.glacier_mass_balance.GlacierMassBalanceObservations>`. The GLAMOS "fixdate"
-products are supported directly (whole-glacier or per elevation band; annual, winter and
-summer balances). The observation periods are taken from the per-row dates in the file,
-so calendar and hydrological years are both handled:
+<hydrobricks.evaluation.glacier_mass_balance.GlacierMassBalanceObservations>`, one of the
+auxiliary observation classes in the :mod:`hydrobricks.evaluation` subpackage. The GLAMOS
+"fixdate" products have a dedicated preset (whole-glacier or per elevation band; annual,
+winter and summer balances), with the observation periods taken from the per-row dates in
+the file, so calendar and hydrological years are both handled:
 
 .. code-block:: python
 
@@ -382,6 +383,19 @@ so calendar and hydrological years are both handled:
        kind='whole',                 # or 'elevationbins'
        glacier_id='B43-03',
        balance_types=('annual', 'winter', 'summer'),
+   )
+
+For non-GLAMOS data, ``from_csv`` reads any tabular CSV: map the value and period
+columns (explicit ``date_start_col`` / ``date_end_col``, or a ``year_col`` with a
+``hydro_year_start`` month), optionally add elevation-band columns, and set the units:
+
+.. code-block:: python
+
+   glacier_mb = hb.GlacierMassBalanceObservations.from_csv(
+       '/path/to/mass_balance.csv',
+       value_col='Ba', balance_type='annual',
+       year_col='year', hydro_year_start='October',   # or date_start_col/date_end_col
+       value_unit='mm_we',
    )
 
 What is compared (glaciological vs. geodetic)
@@ -422,42 +436,43 @@ glacier area, for self-consistency with the simulated geometry.
 Three ways to use the mass balance
 """"""""""""""""""""""""""""""""""
 
-The observations are passed to :class:`SpotpySetup
-<hydrobricks.trainer.SpotpySetup>` (or :func:`calibrate_from_factory
-<hydrobricks.trainer.calibrate_from_factory>`) via ``glacier_mb_obs``, and
-``glacier_mb_mode`` selects how they are used:
+Discharge stays the **primary** signal (the ``discharge`` argument of
+:class:`SpotpySetup <hydrobricks.trainer.SpotpySetup>`); auxiliary signals such as
+glacier mass balance are passed as a list to ``extra_observations``. Each auxiliary
+signal carries its own ``metric``, ``weight``, ``mode`` and ``tolerance`` (set on the
+object), and the setup-level ``combine`` argument selects how the objective terms are
+aggregated:
 
-* ``'weighted'`` — a single score combining the discharge and mass-balance goodness of
-  fit, ``discharge_weight * f(Q) + glacier_mb_weight * f(MB)``. Works with every SPOTPY
-  algorithm (including SCE-UA).
-* ``'pareto'`` — returns a ``[discharge, mass_balance]`` objective vector for a
-  multi-objective sampler (SPOTPY's ``NSGAII``), yielding a Pareto front rather than a
-  single best run.
-* ``'constraint'`` — a behavioural pass/fail filter: runs whose mean absolute
-  mass-balance error exceeds ``glacier_mb_tolerance`` (mm w.e.) are rejected, while the
-  discharge metric remains the objective.
+* ``mode='objective'`` with ``combine='weighted'`` — a single score combining the
+  discharge and mass-balance goodness of fit, ``discharge_weight * f(Q) + weight *
+  f(MB)``. Works with every SPOTPY algorithm (including SCE-UA).
+* ``mode='objective'`` with ``combine='pareto'`` — returns a ``[discharge, mass
+  balance]`` objective vector for a multi-objective sampler (SPOTPY's ``NSGAII``),
+  yielding a Pareto front rather than a single best run.
+* ``mode='constraint'`` — a behavioural pass/fail filter: runs whose mean absolute
+  mass-balance error exceeds the signal's ``tolerance`` (mm w.e.) are rejected, while
+  the discharge metric remains the objective.
 
 .. code-block:: python
 
    # Weighted multi-objective (discharge KGE + mass-balance NSE)
+   glacier_mb.metric, glacier_mb.weight, glacier_mb.mode = 'nse', 1.0, 'objective'
    spot_setup = trainer.SpotpySetup(
-       socont, parameters, forcing, obs,
+       socont, parameters, forcing, discharge,
        warmup=365,
        obj_func='kge_2012',
        invert_obj_func=True,
-       glacier_mb_obs=glacier_mb,
-       glacier_mb_mode='weighted',
-       glacier_mb_metric='nse',
+       extra_observations=[glacier_mb],
+       combine='weighted',
        discharge_weight=1.0,
-       glacier_mb_weight=1.0,
    )
    sampler = trainer.calibrate(spot_setup, 'sceua', 5000, dbformat='ram')
 
    # Pareto front (NSGAII needs n_obj via sample_kwargs)
    spot_setup = trainer.SpotpySetup(
-       socont, parameters, forcing, obs, warmup=365,
+       socont, parameters, forcing, discharge, warmup=365,
        obj_func='kge_2012', invert_obj_func=True,
-       glacier_mb_obs=glacier_mb, glacier_mb_mode='pareto',
+       extra_observations=[glacier_mb], combine='pareto',
    )
    sampler = trainer.calibrate(
        spot_setup, 'NSGAII', 5000, dbformat='ram',
@@ -465,21 +480,23 @@ The observations are passed to :class:`SpotpySetup
    )
 
    # Behavioural filter (reject runs whose mass balance is off by > 500 mm w.e.)
+   glacier_mb_constraint = hb.GlacierMassBalanceObservations.from_glamos(
+       '/path/to/massbalance_fixdate.csv', kind='whole', glacier_id='B43-03',
+       mode='constraint', tolerance=500.0,
+   )
    spot_setup = trainer.SpotpySetup(
-       socont, parameters, forcing, obs, warmup=365,
+       socont, parameters, forcing, discharge, warmup=365,
        obj_func='kge_2012', invert_obj_func=True,
-       glacier_mb_obs=glacier_mb, glacier_mb_mode='constraint',
-       glacier_mb_tolerance=500.0,
+       extra_observations=[glacier_mb_constraint],
    )
 
 The simulated mass balance can also be computed on its own (for plotting or evaluation)
-with :func:`compute_simulated_mass_balance
-<hydrobricks.glacier_mass_balance.compute_simulated_mass_balance>` after a run:
+with the observation's ``simulated`` method after a run:
 
 .. code-block:: python
 
    socont.run(parameters=parameters, forcing=forcing)
-   sim_mb = hb.compute_simulated_mass_balance(socont, glacier_mb)
+   sim_mb = glacier_mb.simulated(socont)
 
 A complete example is available in
 `calibrate_with_glacier_mass_balance.py
