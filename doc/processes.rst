@@ -304,6 +304,84 @@ Parameters:
   - Full name: ``snowpack:refreezing_factor``.
 
 
+.. _snow-sublimation:
+
+Snow sublimation
+----------------
+
+By default, snow leaves a snowpack only as melt water or through lateral
+redistribution. In cold, dry, high-radiation or windy environments, however, a
+sizeable share of the snow water equivalent is lost directly to the atmosphere by
+sublimation — from 0.1 % up to 90 % of snowfall depending on site and weather,
+and of the order of 30 % of the annual snow water equivalent in some semiarid
+mountains (:cite:t:`Strasser2008`, :cite:t:`Herrero2016`). The optional
+``snow_sublimation_process`` model option adds a process on each snowpack that
+removes snow water equivalent straight to the atmosphere (the solid-phase analog
+of evapotranspiration; it is therefore accounted for as an atmospheric loss in
+the water balance).
+
+Valid values for ``snow_sublimation_process``: ``"sublimation:constant"``,
+``"sublimation:pet"`` (default: ``None``, i.e. no sublimation).
+
+.. code-block:: python
+
+   socont = Socont(
+      snow_sublimation_process="sublimation:pet"
+   )
+
+.. note::
+
+   Sublimation is not gated by air temperature the way melt is: it is driven by
+   the vapor-pressure deficit, wind and net radiation, and often peaks below 0 °C. 
+   The ``sublimation:pet`` option is preferable when the potential evapotranspiration
+   is computed from a demand-based method (which already reflects radiation and
+   atmospheric humidity); ``sublimation:constant`` is a crude first-order fallback.
+
+
+Constant-rate sublimation (``sublimation:constant``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Removes snow at a fixed rate whenever snow is present:
+
+.. math::
+
+   S(t) = S_0
+
+where :math:`S_0` is a constant sublimation rate [mm d⁻¹]. The simplest
+possible parameterisation (no forcing dependency), a first-order approximation of
+the near-steady mean daily surface-sublimation rates reported from field
+measurements in mountain snowpacks (:cite:t:`Strasser2008`, :cite:t:`Herrero2016`).
+
+Parameters:
+
+* ``sublimation_rate`` *(optional, [mm d⁻¹], default: 0.1, [0, 2])*
+
+  - Constant sublimation rate.
+  - Full name: ``snowpack:sublimation_rate``.
+
+
+PET-fraction sublimation (``sublimation:pet``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Treats snow sublimation as the cold-surface analog of evaporation, driven by
+atmospheric demand ("evapo-sublimation", :cite:t:`Herrero2016`): a fixed fraction
+of the potential evapotranspiration is removed from the snowpack:
+
+.. math::
+
+   S(t) = c_S \cdot E_P(t)
+
+where :math:`c_S` is a dimensionless fraction and :math:`E_P` the potential
+evapotranspiration [mm d⁻¹]. Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``sublimation_pet_factor`` *(optional, dimensionless, default: 0.2, [0, 1])*
+
+  - Fraction of PET removed as sublimation.
+  - Full name: ``snowpack:sublimation_pet_factor``.
+
+
 .. _interception:
 
 Interception

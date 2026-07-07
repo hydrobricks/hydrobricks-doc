@@ -10,7 +10,11 @@ accessible through the ``Catchment`` object.
 * :ref:`Catchment topography <catchment-topography>` — compute slope and aspect from
   the DEM; required when discretizing by slope or aspect.
 * :ref:`Catchment discretization <catchment-discretization>` — divide the catchment
-  into hydro units based on elevation, aspect, slope, or radiation.
+  into hydro units based on elevation, aspect, slope, radiation, or sub-catchment
+  membership.
+* :ref:`Land cover extraction <land-cover-extraction>` — set the land-cover fractions
+  of each hydro unit from a raster (e.g. ESA WorldCover, CORINE) or a vector dataset
+  (e.g. swissTLMRegio).
 * :ref:`Catchment connectivity <catchment-connectivity>` — derive the fraction of
   flow leaving each hydro unit toward each downslope neighbor; required for snow
   redistribution.
@@ -123,9 +127,9 @@ shortcut:
 
 **Multiple criteria**
 
-To combine elevation with aspect, slope, or radiation, use ``discretize_by()``. The
-``criteria`` argument is a list of any combination of ``'elevation'``, ``'aspect'``,
-``'slope'``, and ``'radiation'``.
+To combine elevation with aspect, slope, radiation, or sub-catchment membership, use
+``discretize_by()``. The ``criteria`` argument is a list of any combination of
+``'elevation'``, ``'aspect'``, ``'slope'``, ``'radiation'``, and ``'sub_catchments'``.
 
 .. code-block:: python
 
@@ -170,11 +174,33 @@ Additional keyword arguments control each criterion independently:
      - Number of radiation bands for quantiles; default ``5``.
    * - ``min_radiation`` / ``max_radiation``
      - Force the radiation range.
+   * - ``sub_catchments``
+     - Path to a vector file of sub-catchment polygons; required when
+       ``'sub_catchments'`` is in ``criteria``.
 
 .. note::
 
    Aspect is always split into four cardinal-direction classes (N, E, S, W) and
    has no configurable parameters.
+
+**Sub-catchments**
+
+Including ``'sub_catchments'`` in the criteria keeps a hydro unit from spanning
+spatially-distant areas: each DEM cell is assigned to the sub-catchment polygon
+covering it, and units are formed within a single sub-catchment. The polygons must
+cover the whole catchment; if any part of the catchment is left uncovered, an error is
+raised (the area is not silently dropped).
+
+.. code-block:: python
+
+   catchment.discretize_by(
+      ['elevation', 'sub_catchments'],
+      elevation_distance=50,
+      sub_catchments='path/to/sub_catchments.shp'
+   )
+
+The resulting sub-catchment id of each unit is stored as the ``sub_catchment``
+hydro-unit property.
 
 After discretization, save the hydro unit table and the unit-ID raster for
 reuse in subsequent runs:
@@ -189,6 +215,95 @@ To reload an existing unit-ID raster instead of rerunning discretization:
 .. code-block:: python
 
    catchment.load_unit_ids_from_raster('path/to/output/dir/', 'unit_ids.tif')
+
+
+.. _land-cover-extraction:
+
+Land cover extraction
+---------------------
+
+Once the catchment has been discretized, the land-cover fractions of each hydro unit
+can be set from a categorical raster or a vector dataset. This is handled by the
+``CatchmentLandCover`` class, accessible via ``catchment.land_cover``. Each source
+class is mapped to a hydrobricks land cover (``open``, ``forest``, ``glacier``,
+``lake``, or a user-defined name); classes without a mapping entry fall into the
+residual absorbed by the generic (soil) cover. Covers targeted by the mapping that the
+catchment does not yet declare are registered automatically.
+
+**From a raster (e.g. ESA WorldCover, CORINE)**
+
+.. code-block:: python
+
+   catchment = hb.Catchment(outline='path/to/watershed.shp')
+   catchment.extract_dem('path/to/dem.tif')
+   catchment.create_elevation_bands(distance=50)
+
+   catchment.land_cover.extract_from_raster(
+      'path/to/worldcover.tif',
+      dataset='esa_worldcover'
+   )
+
+The raster is warped onto the DEM grid even when its coordinate reference system
+differs from the catchment (e.g. ESA WorldCover is provided in EPSG:4326 while the DEM
+is projected), so no manual reprojection is required.
+
+.. note::
+
+   ESA WorldCover is distributed as many 3°×3° tiles. Point at the tile covering the
+   catchment (or a VRT/mosaic of the relevant tiles), not the containing directory.
+
+**From a vector dataset (e.g. swissTLMRegio)**
+
+.. code-block:: python
+
+   catchment.land_cover.extract_from_shapefile(
+      'path/to/land_cover.shp',
+      class_field='OBJEKTART',
+      mapping={'Wald': 'forest', 'Gletscher': 'glacier'}
+   )
+
+The polygons are reprojected to the catchment CRS and rasterized onto the DEM grid;
+each cell is assigned to a single class (the first match in the mapping wins).
+
+.. note::
+
+   For convenience, the ``Catchment`` also exposes the equivalent passthroughs
+   ``catchment.extract_land_cover_from_raster(...)`` and
+   ``catchment.extract_land_cover_from_shapefile(...)``.
+
+**Class mapping**
+
+The class-to-cover mapping can be supplied as a ``mapping`` dict and/or selected from
+a built-in ``dataset`` preset. Built-in presets are ``'esa_worldcover'`` and
+``'corine'`` (exposed as ``CatchmentLandCover.PRESETS``); a ``mapping`` dict overrides
+or extends the chosen preset. At least one of ``mapping`` or ``dataset`` must be
+provided.
+
+.. code-block:: python
+
+   # Preset, with a couple of classes overridden
+   catchment.land_cover.extract_from_raster(
+      'path/to/worldcover.tif',
+      dataset='esa_worldcover',
+      mapping={50: 'urban'}  # map built-up to a user-defined cover
+   )
+
+**Parameters** (see also :ref:`API <api_land_cover_extraction>`):
+
+* ``raster_path`` / ``shapefile_path`` — path to the land-cover dataset.
+* ``class_field`` *(shapefile only)* — attribute field holding each feature's class
+  code.
+* ``mapping`` — dict mapping source class codes to hydrobricks land-cover names.
+* ``dataset`` — name of a built-in preset: ``'esa_worldcover'`` or ``'corine'``.
+* ``all_touched`` *(shapefile only)* — if ``True`` *(default)*, a cell is assigned to a
+  class as soon as a polygon touches it; if ``False``, only cells whose centre falls
+  within a polygon are assigned.
+
+.. note::
+
+   These methods set the *initial* land-cover fractions and must be called before
+   ``Model.setup()``. The generic soil cover (``open``) absorbs the residual area
+   automatically, so it is never passed as a mapping target on its own.
 
 
 .. _potential-solar-radiation:
@@ -375,6 +490,20 @@ Ice thickness is then estimated per elevation band using the
   default ``10``.
 * ``pixel_based_approach`` — if ``True`` *(default)*, glacier area evolution uses
   the topography; otherwise uses the :cite:t:`Bahr1997` formula at each step.
+* ``land_cover`` — name of the glacier land cover to initialize; if ``None``
+  *(default)*, the single land cover of type ``glacier`` is detected automatically.
+* ``initialize_cover`` — if ``True`` *(default)*, the glacier land-cover fractions of
+  each hydro unit are set from the extracted areas, so the model starts with the actual
+  glacier extent. Set to ``False`` only if you initialize the glacier cover separately
+  (e.g. from a land-cover-change CSV or shapefiles).
+
+.. note::
+
+   Because ``compute_initial_ice_thickness()`` initializes the glacier cover by default,
+   you should **not** also call ``catchment.initialize_area_from_land_cover_change()`` for
+   the same glacier — doing so applies the glacier area twice and drives the residual
+   (generic ``open``) cover negative. Pass ``initialize_cover=False`` if you need to set
+   the cover yourself.
 
 **Parameters for** ``compute_lookup_table()``:
 

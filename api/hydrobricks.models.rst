@@ -19,6 +19,13 @@ Model settings
    :undoc-members:
    :show-inheritance:
 
+Custom structures
+-----------------
+
+.. automodule:: hydrobricks.models.custom
+   :members:
+   :show-inheritance:
+
 GSM-Socont
 ----------
 

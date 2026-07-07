@@ -14,7 +14,35 @@ Additional code examples can be found in the
 The `test suite <https://github.com/hydrobricks/hydrobricks/tree/main/python/tests>`_
 is also a useful reference for understanding function behaviour.
 
-A minimal working example is shown below:
+The quickest route to a first simulation is a :ref:`project file
+<project-files>`: a single YAML file describing the whole setup. It can be
+created interactively and run from the command line — no Python required:
+
+.. code-block:: console
+
+   $ hydrobricks init                  # interactive wizard, writes project.yaml
+   $ hydrobricks validate project.yaml # check the file and the input data
+   $ hydrobricks run project.yaml      # run and score the model
+
+The same project file can be loaded from Python, returning the wired-up
+objects so the setup can be customized further (see :ref:`project files
+<project-files>`):
+
+.. code-block:: python
+
+    import hydrobricks as hb
+
+    project = hb.load_project('project.yaml')
+
+    simulated = project.run()   # date-indexed pandas Series
+
+    scores = hb.evaluate_periods(
+        project.model, project.observations, project.periods,
+        metrics=('nse', 'kge_2012'),
+    )
+
+The equivalent step-by-step Python workflow, which the rest of this
+documentation builds on, is shown below:
 
 .. code-block:: python
 
@@ -73,7 +101,7 @@ A minimal working example is shown below:
     forcing.compute_pet(method='Hamon', use=['t', 'lat'], lat=47.3)
 
     # Obs data
-    obs = hb.Observations()
+    obs = hb.DischargeObservations('1981-01-01', '2020-12-31')
     obs.load_from_csv(
         'path/to/discharge.csv', 
         column_time='Date', 

@@ -62,3 +62,13 @@ Potential solar radiation
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_land_cover_extraction:
+
+Land cover extraction
+---------------------
+
+.. automodule:: hydrobricks.preprocessing.catchment_land_cover
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -3,6 +3,17 @@ Components
 
 .. automodule:: hydrobricks
 
+.. _api_project:
+
+Project files
+-------------
+
+.. autofunction:: hydrobricks.load_project
+
+.. autoclass:: Project
+   :members: run
+   :show-inheritance:
+
 .. _api_catchment:
 
 Catchment
@@ -51,6 +62,23 @@ Discharge observations
    :undoc-members:
    :show-inheritance:
 
+.. _api_periods:
+
+Periods
+-------
+
+.. autoclass:: Period
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: Periods
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autofunction:: hydrobricks.evaluate_periods
+
 Results
 -------
 
@@ -89,6 +117,10 @@ Trainer
 
 .. autofunction:: hydrobricks.trainer.calibrate_from_factory
 
+.. autofunction:: hydrobricks.trainer.get_best
+
+.. autofunction:: hydrobricks.trainer.get_results
+
 Evaluation (auxiliary observations)
 -----------------------------------
 
@@ -96,10 +128,18 @@ Evaluation (auxiliary observations)
 
 .. autoclass:: hydrobricks.evaluation.AuxiliaryObservation
    :members:
-   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: hydrobricks.evaluation.RecordingRequest
+   :members:
    :show-inheritance:
 
 .. autoclass:: hydrobricks.evaluation.GlacierMassBalanceObservations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: hydrobricks.evaluation.SnowCoverObservations
    :members:
    :undoc-members:
    :show-inheritance:

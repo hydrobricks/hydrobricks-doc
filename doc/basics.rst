@@ -88,7 +88,7 @@ Spatial structure
 .. _catchment-class:
 
 The Catchment object
-^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 
 :class:`Catchment` is the central object for defining the study area. It is
 initialized with a catchment outline shapefile and then provides access to the
@@ -123,7 +123,7 @@ See the :ref:`API reference <api_catchment>` for the full method list.
 
 
 Hydro units
-^^^^^^^^^^^^
+~~~~~~~~~~~~
 
 The catchment is discretized into sub-units called **hydro units**, which can
 represent elevation bands, hydrological response units (HRUs), raster pixels,
@@ -142,7 +142,7 @@ Source:* :cite:t:`Argentin2025`
 
 
 Loading hydro units from a CSV file
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The simplest way to define hydro units is to load them from a CSV file. At
 minimum, the file must contain the area and mean elevation of each unit:
@@ -245,7 +245,7 @@ The CSV must list the area of each land cover per hydro unit
 
 
 Generating hydro units from a DEM
-"""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When spatial data are available, hydro units can be generated automatically
 from a DEM, with discretization criteria chosen to match the melt model in use:
@@ -274,7 +274,7 @@ combined with aspect classes. The elevation range covers the entire catchment
 
 
 Discretizing by potential solar radiation
-""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``'temperature_index'`` melt model requires per-unit radiation values.
 Hydrobricks computes the daily mean potential clear-sky direct solar radiation
@@ -354,7 +354,7 @@ To export all internal fluxes and states to a NetCDF file for further analysis:
 
 
 Initializing state variables
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, all water storages (snowpack, soil reservoirs, etc.) start empty at
 the beginning of the simulation. To initialize them to more realistic values,
@@ -374,24 +374,45 @@ the model is run multiple times — as during calibration — it resets to these
 saved values at the start of each run rather than to empty reservoirs.
 
 
-Warmup period
-^^^^^^^^^^^^^^
+.. _spinup:
 
-Even with ``initialize_state_variables()``, the very first years of a
-simulation are typically unreliable because the storages have not yet settled
-into a realistic seasonal cycle. This initial period is called the **warmup**
-or **spin-up** period, and it is conventionally set to one or two years.
+Spin-up and warmup
+~~~~~~~~~~~~~~~~~~~
 
-During the warmup, snow accumulation and discharge are usually underestimated
-because the snowpack starts from the previous season's final state, which may
-not match the actual initial conditions. For this reason, the warmup years
-should be excluded from evaluation, calibration, and analysis. The calibration
-setup accepts a ``warmup`` argument for this purpose — see the
-:ref:`calibration page <calibration>`.
+The very first years of a simulation are typically unreliable because the
+storages start empty and have not yet settled into a realistic seasonal cycle.
+Two mechanisms address this:
+
+**Spin-up (recommended).** Pass ``spinup`` to ``setup()`` and the model replays
+the first years of its own period (without logging) to initialize the storages,
+then restarts at the period start with the warmed-up states:
+
+.. code-block:: python
+
+   socont.setup(
+      spatial_structure=hydro_units,
+      output_path='/path/to/dir',
+      start_date='1981-01-01',
+      end_date='2020-12-31',
+      spinup='4y',   # or a number of days, e.g. 1461
+   )
+
+The spin-up happens transparently on **every** run (including each calibration
+run), no forcing data before ``start_date`` is needed, and the **whole**
+declared period can be evaluated — no year of observations is discarded. The
+land cover area fractions are restored to their initial values after the
+spin-up (only the storage states are kept), and a spin-up longer than the
+period is clamped to a single replay of the whole period.
+
+**Warmup trimming (legacy alternative).** Without a spin-up, the opening period
+of each run can instead be excluded from the evaluation: the calibration setup
+accepts a ``warmup`` argument (in days) for this purpose — see the
+:ref:`calibration page <calibration>`. The evaluated span is then shorter than
+the declared one.
 
 
 Evaluation
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 After a run, performance metrics can be computed by comparing the simulated
 discharge to observations. Load observations from a CSV file (discharge in
@@ -416,6 +437,11 @@ Any metric from their
 `full list <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
 can be used by passing its function name as a string.
 
+``eval()`` also accepts a ``period`` to score a date slice of the simulation
+only (e.g. a validation period), and a whole simulation can be scored on
+several declared periods at once with ``evaluate_periods()`` — see
+:ref:`calibration and validation periods <periods>`.
+
 
 Outputs
 -------
@@ -431,7 +457,7 @@ Results are available at three levels of detail:
 
 
 Direct outputs
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
 
 The following outputs are accessible on the model object after a run:
 
@@ -451,7 +477,7 @@ The following outputs are accessible on the model object after a run:
 .. _netcdf-output-file:
 
 NetCDF output file
-^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 
 A detailed NetCDF file is exported with ``model.dump_outputs('some/path')``.
 How much data it contains depends on the ``record_all`` option set at model
@@ -462,6 +488,41 @@ creation:
 * ``record_all=True``: every flux and state variable is recorded at every
   time step. This is useful for diagnosing model behaviour but slows execution
   and produces large files.
+
+.. _selective_recording:
+
+Recording specific stores and fluxes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When only a few internal series are needed — for example an auxiliary calibration
+signal such as glacier mass balance — recording *everything* with ``record_all=True``
+is wasteful. Instead, record just the required items. The recordings must be configured
+**before** ``model.setup()`` (they are part of the model build).
+
+An auxiliary observation knows what it needs; let it configure the model for you:
+
+.. code-block:: python
+
+   glacier_mb.configure_recording(model)   # before model.setup()
+   model.setup(...)
+
+To record specific items by hand, build a
+:class:`RecordingRequest <hydrobricks.evaluation.base.RecordingRequest>` and pass it to
+``model.add_recordings``:
+
+.. code-block:: python
+
+   from hydrobricks.evaluation import RecordingRequest
+
+   model.add_recordings(RecordingRequest(
+       brick_states=[('glacier_snowpack', 'snow_content')],   # '<brick>:<item>'
+       process_outputs=[('glacier', 'melt', 'output')],       # '<brick>:<process>:<item>'
+       fractions=True,                                        # land-cover fractions over time
+   ))
+   model.setup(...)
+
+The recorded series are read from memory (``model.get_recorded_hydro_unit_values(label)``)
+or written to the NetCDF output, exactly like those from ``record_all``.
 
 **File structure**
 
@@ -547,7 +608,18 @@ Example output for GSM-Socont with two glacier types:
   * **State variables** (names ending in ``:content`` or ``:snow``, unit: mm):
     the water depth stored in a reservoir. These are *not* area-weighted — to
     aggregate over the catchment, multiply each value by its land cover fraction
-    and relative hydro unit area.
+    and relative hydro unit area. The :class:`Results <hydrobricks.results.Results>`
+    class provides helpers that do this for you:
+    :meth:`get_mean_hydro_units_values() <hydrobricks.results.Results.get_mean_hydro_units_values>`
+    (area-weighted catchment mean of any component for one land cover),
+    :meth:`get_land_cover_areas() <hydrobricks.results.Results.get_land_cover_areas>`
+    (per-unit area of a land cover over time), and, specifically for snow water
+    equivalent,
+    :meth:`get_total_swe() <hydrobricks.results.Results.get_total_swe>` (per-unit
+    SWE aggregated across all land covers) and
+    :meth:`get_mean_swe() <hydrobricks.results.Results.get_mean_swe>` (the
+    catchment-wide mean). Land covers without a snowpack (e.g. open water)
+    contribute zero SWE over their area.
 
 * ``land_cover_fractions`` (2D, optional): time series of land cover fractions,
   present when glacier or other land cover evolution is active.
@@ -556,7 +628,7 @@ Example output for GSM-Socont with two glacier types:
 .. _others:
 
 Auxiliary outputs
-^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~
 
 * **Spatialized forcing** (``forcing.nc``): the per-unit forcing time series,
   saved with ``forcing.create_file()``. Useful for inspecting what the model

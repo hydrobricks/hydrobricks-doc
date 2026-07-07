@@ -10,6 +10,10 @@ The following model structures are currently implemented:
 * :ref:`GR6J <gr6j>`
 * :ref:`HBV-96 <hbv96>`
 
+Beyond the pre-built structures, a model can be defined entirely through a file —
+its stores, processes and fluxes declared in a YAML file — with
+:ref:`custom structures <custom-structures>`.
+
 
 Common options
 --------------
@@ -401,6 +405,10 @@ Specific options
 * ``snow_redistribution``: optional snow redistribution process
   (e.g., ``'transport:snow_slide'``).
   See the :ref:`snow redistribution section <snow-redistribution-params>`.
+* ``snow_sublimation_process``: optional snow sublimation process removing snow
+  water equivalent directly to the atmosphere (``'sublimation:constant'`` or
+  ``'sublimation:pet'``). Default ``None``.
+  See the :ref:`snow sublimation section <snow-sublimation>`.
 
 
 Parameters
@@ -647,6 +655,10 @@ Specific options
 * ``snow_redistribution``: optional snow redistribution process
   (e.g., ``'transport:snow_slide'``).
   See the :ref:`snow redistribution section <snow-redistribution-params>`.
+* ``snow_sublimation_process``: optional snow sublimation process removing snow
+  water equivalent directly to the atmosphere (``'sublimation:constant'`` or
+  ``'sublimation:pet'``). Default ``None``.
+  See the :ref:`snow sublimation section <snow-sublimation>`.
 
 
 Parameters
@@ -831,3 +843,92 @@ Usage example
     end_date='2020-12-31'
   )
   hbv.run(parameters=parameters, forcing=forcing)
+
+
+.. _custom-structures:
+
+Custom structures
+-----------------
+
+A model structure can be declared entirely as data — the bricks (stores and
+land covers), their processes, and the fluxes routing the water between bricks
+or to the outlet — in a YAML file (or an equivalent dict) consumed by
+``hb.models.CustomModel``:
+
+.. code-block:: yaml
+
+   name: my_model
+
+   options:
+     snow_melt_process: melt:degree_day
+
+   bricks:
+     open:                        # a land cover (must match land_cover_names)
+       kind: land_cover
+       processes:
+         infiltration: {kind: infiltration:socont, target: slow_reservoir}
+         runoff: {kind: outflow:rest, target: surface_runoff}
+     slow_reservoir:
+       kind: storage              # attached to each hydro unit by default
+       parameters: {capacity: 200}
+       processes:
+         et: {kind: et:socont}    # ET needs no target (to the atmosphere)
+         outflow: {kind: outflow:linear, target: outlet}
+         overflow: {kind: overflow, target: outlet}
+     surface_runoff:
+       kind: storage
+       processes:
+         runoff: {kind: outflow:linear, target: outlet}
+
+   aliases:
+     slow_reservoir:capacity: A
+     slow_reservoir:response_factor: k_slow
+     surface_runoff:response_factor: k_quick
+
+   constraints:
+     - [k_slow, "<", k_quick]
+
+.. code-block:: python
+
+   model = models.CustomModel('my_structure.yaml')
+   model.print_structure()
+   parameters = model.generate_parameters()
+
+The rain/snow splitters and one snowpack per land cover are generated from the
+``options`` (the same snow options every model supports), so the declared
+bricks start where the snow routine ends. The rules:
+
+* **Bricks** attach to each hydro unit by default; use ``attach_to:
+  sub_basin`` for catchment-level stores. ``kind: land_cover`` selects a
+  declared land cover (the name must match the model's ``land_cover_names``);
+  other kinds (e.g. ``storage``) create new stores. Fixed brick properties go
+  in ``parameters`` (e.g. ``{capacity: 200}``); ``computed_directly: true``
+  marks a brick as explicitly computed (outside the ODE solver).
+* **Processes** withdraw water from their brick: the ``kind`` selects the
+  formulation (see the :ref:`processes page <processes>`), and its
+  calibratable parameters are generated from it — ``generate_parameters()``,
+  calibration and :ref:`project files <project-files>` work exactly as for
+  the pre-built models. ``aliases`` gives the generated parameters friendly
+  names, and ``constraints`` declares relationships enforced during
+  calibration.
+* **Fluxes** are the process outputs: ``target`` routes to a declared brick,
+  a generated one (e.g. ``<cover>_snowpack``) or ``outlet``; ``targets`` (a
+  list) fans out to several bricks. ET and sublimation processes take no
+  target (the water leaves to the atmosphere). Declare the bricks in flow
+  order: fluxes must point to bricks declared **later** in the file (water
+  flows forward through the solver), and ``instantaneous: true`` transfers
+  within the same time step (required for same-brick loops). ``log: true``
+  records a flux for the output files.
+
+In a project file, point the ``model`` section at the structure instead of a
+pre-built name:
+
+.. code-block:: yaml
+
+   model:
+     structure: my_structure.yaml
+
+A complete example (replicating GSM-Socont as an illustration) is available
+in the `examples directory
+<https://github.com/hydrobricks/hydrobricks/tree/main/examples/basics>`_
+(``custom_structure.yaml`` and ``run_custom_structure.py``).
