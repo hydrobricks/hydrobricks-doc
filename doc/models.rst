@@ -8,6 +8,11 @@ The following model structures are currently implemented:
 * :ref:`GSM-Socont <gsm-socont>`
 * :ref:`GR4J <gr4j>`
 * :ref:`GR6J <gr6j>`
+* :ref:`HBV-96 <hbv96>`
+
+Beyond the pre-built structures, a model can be defined entirely through a file —
+its stores, processes and fluxes declared in a YAML file — with
+:ref:`custom structures <custom-structures>`.
 
 
 Common options
@@ -21,7 +26,7 @@ All models accept the following options at instantiation:
   variables are recorded at every time step. This slows computation and
   produces large output files. Enable only for diagnostic analysis, not
   during calibration.
-* ``land_cover_types``: list of land cover types (e.g., ``['ground', 'glacier']``).
+* ``land_cover_types``: list of land cover types (e.g., ``['open', 'glacier']``).
   See :ref:`the section on the spatial structure <spatial-structure>`.
 * ``land_cover_names``: list of land cover names. Each entry must correspond
   to a type in ``land_cover_types``. Names distinguish similar types, for
@@ -116,26 +121,26 @@ It is exclusively for snow and includes the following parameters:
 * ``Kf`` *(mm/d/°C, no default, [1, 10])*
 
   - Degree-day melt factor.
-  - Full name: ``ground_snowpack:degree_day_factor``.
+  - Full name: ``open_snowpack:degree_day_factor``.
 
 * ``CTG`` *(dimensionless, no default, [0, 1])*
 
   - Cold content weighting factor. Controls how quickly the thermal state of the snowpack
     tracks air temperature. Values close to 1 give longer memory.
-  - Full name: ``ground_snowpack:cold_content_factor``.
+  - Full name: ``open_snowpack:cold_content_factor``.
 
 * ``Tmelt`` *(optional, °C, default: 0, [0, 2])*
 
   - Melt temperature threshold.
-  - Full name: ``ground_snowpack:melting_temperature``.
+  - Full name: ``open_snowpack:melting_temperature``.
 
 * ``Cn`` *(mm, no default, [50, 1000])*
 
   - Mean annual solid precipitation. Used to scale the melt factor at low snow accumulation.
-  - Full name: ``ground_snowpack:mean_annual_snow``.
+  - Full name: ``open_snowpack:mean_annual_snow``.
 
 
-.. _snow-redistribution:
+.. _snow-redistribution-params:
 
 Snow redistribution
 ^^^^^^^^^^^^^^^^^^^
@@ -182,6 +187,48 @@ gravitational downslope transport of snow between hydro units. It is activated b
   - Full name: ``<snowpack>:max_snow_depth``.
 
 
+.. _glacier-modules:
+
+Glacier modules
+^^^^^^^^^^^^^^^
+
+Models that support a ``glacier`` land cover handle the glacierized area through a
+pluggable **glacier module**, selected with the ``glacier_module`` option. This lets
+different glacier formulations be swapped in without changing the model.
+
+* ``glacier_module`` (default ``"gsm"``): the glacier formulation, given either as a
+  registry name or as a ``GlacierModule`` instance (for a custom formulation).
+
+Currently available:
+
+* ``"gsm"`` — the Glacier Sub-Model of GSM-Socont (:cite:t:`Schaefli2005`): the
+  glacierized area routes its rain + snowmelt and its ice melt into two catchment-level
+  linear reservoirs draining to the outlet (parameters :math:`k_\mathrm{snow}`,
+  :math:`k_\mathrm{ice}`), bypassing the soil routine. Ice melt is suppressed while snow
+  covers the ice, and the ice is treated as an infinite store by default
+  (``glacier_infinite_storage``). This is the formulation used by both GSM-Socont and HBV.
+
+When a glacier cover is present, the model builds a glacier-free **base** structure (used
+by ice-free units) and a **with-glacier** variant (used by glacierized units), so ice-free
+units carry no glacier bricks.
+
+A custom formulation subclasses ``GlacierModule`` (in ``hydrobricks.modules.glacier``),
+implementing ``add_bricks``, ``land_cover_keys`` and ``parameter_aliases``, and is either
+registered under a name with the ``@GlacierModule.register("name")`` decorator or passed
+directly as an instance:
+
+.. code-block:: python
+
+  import hydrobricks.models as models
+  from hydrobricks.modules.glacier import GSM
+
+  socont = models.Socont(
+      glacier_module=GSM(),  # or glacier_module="gsm"
+      land_cover_names=['open', 'glacier'],
+      land_cover_types=['open', 'glacier'],
+  )
+
+
 .. _gsm-socont:
 
 GSM-Socont
@@ -202,6 +249,10 @@ Specific options
   or ``linear_storage`` (a classic linear storage).
 * ``snow_melt_process``: melt model to use; see :ref:`melt models <melt-models>`.
   Default: ``"melt:degree_day"``.
+* ``glacier_infinite_storage`` (default ``True``): treat the glacier ice as an
+  infinite store.
+* ``glacier_module`` (default ``"gsm"``): glacier formulation; see
+  :ref:`glacier modules <glacier-modules>`.
 
 
 Parameters
@@ -353,7 +404,11 @@ Specific options
 
 * ``snow_redistribution``: optional snow redistribution process
   (e.g., ``'transport:snow_slide'``).
-  See the :ref:`snow redistribution section <snow-redistribution>`.
+  See the :ref:`snow redistribution section <snow-redistribution-params>`.
+* ``snow_sublimation_process``: optional snow sublimation process removing snow
+  water equivalent directly to the atmosphere (``'sublimation:constant'`` or
+  ``'sublimation:pet'``). Default ``None``.
+  See the :ref:`snow sublimation section <snow-sublimation>`.
 
 
 Parameters
@@ -520,3 +575,360 @@ GR6J is used exactly like :ref:`GR4J <gr4j>`, with two extra parameters:
     end_date='2020-12-31'
   )
   gr6j.run(parameters=parameters, forcing=forcing)
+
+
+.. _hbv96:
+
+HBV-96
+------
+
+HBV-96 (:cite:t:`Lindstrom1997`) is the revised version of the HBV model
+(:cite:t:`Bergstrom1976`), a widely used conceptual rainfall-runoff model.
+The hydrobricks implementation consists of an abstract ``HBV`` base class,
+which holds the routines shared by the HBV versions, and the ``HBV96`` model
+class, which adds the HBV-96 response routine. Future HBV variants only need 
+to provide their own response routine.
+
+The structure chains four routines:
+
+* **Snow routine**: degree-day melt (CFMAX, TT) with liquid water retention in
+  the snowpack (holding capacity CWH) and refreezing of the retained water
+  (refreezing coefficient CFR). As in the original model, rain falls onto the
+  snowpack: it is added to the liquid water storage, where it can be retained
+  and refrozen; without snow it passes through to the ground within the same
+  time step. See :ref:`snowpack water retention <snow-water-retention>`.
+* **Soil moisture routine**: the incoming water (rain and snowpack outflow) is
+  split between the soil moisture storage (capacity FC) and the response
+  routine using the beta function; evapotranspiration is limited by the LP
+  fraction (see :ref:`infiltration:hbv <infiltration-processes>` and
+  :ref:`et:hbv <evapotranspiration>`). With several land covers each has, by
+  default, its own soil moisture store (the original HBV land-use formulation);
+  set ``share_soil=True`` to use a single shared store.
+* **Response routine** (HBV-96 specific): a non-linear upper zone
+  (:math:`Q_0 = k_{uz} \cdot UZ^{1+\alpha}`), a constant-rate percolation
+  (PERC) to a linear lower zone (:math:`Q_1 = k_{lz} \cdot LZ`), and an
+  optional capillary transport (CFLUX) returning water from the upper zone to
+  the soil moisture storage.
+* **Transformation function**: the total runoff is smoothed by the MAXBAS
+  triangular unit hydrograph (see :ref:`routing:hbv <routing-processes>`).
+
+The model is integrated by the ODE solver, so the results are
+a continuous approximation of the original discrete HBV-96 formulation.
+
+Beyond the default ``open`` cover, HBV supports the HBV land-use classes as land
+covers — ``forest``, ``lake`` and ``glacier`` — each with its own behaviour; see
+:ref:`HBV land covers <hbv-land-covers>`.
+
+* **Spatial structure**: lumped or semi-lumped (elevation bands)
+* **Time step**: daily
+
+
+Specific options
+^^^^^^^^^^^^^^^^^
+
+* ``snow_melt_process``: melt model to use; see :ref:`melt models <melt-models>`.
+  Default: ``"melt:degree_day"``. Must be ``"melt:degree_day"`` when snow
+  refreezing is enabled.
+* ``share_soil`` (default ``False``): share a single soil moisture store across all
+  land covers instead of one store per cover (see
+  :ref:`HBV land covers <hbv-land-covers>`).
+* ``forest_interception`` (default ``False``): add a canopy interception store on each
+  ``forest`` cover (only relevant with a ``forest`` cover; see
+  :ref:`HBV land covers <hbv-land-covers>`).
+* ``glacier_infinite_storage`` (default ``True``): treat the glacier ice as an
+  infinite store (only relevant with a ``glacier`` cover).
+* ``glacier_module`` (default ``"gsm"``): glacier formulation; see
+  :ref:`glacier modules <glacier-modules>` (only relevant with a ``glacier`` cover).
+* ``snow_water_retention_process``: outflow process of the snowpack liquid
+  water storage. Default: ``"outflow:snow_holding"`` (the HBV holding capacity
+  CWH). ``None`` disables the liquid water retention (melt water then leaves
+  the snowpack directly).
+* ``snow_refreezing_process``: refreezing process of the retained liquid
+  water. Default: ``"refreeze:degree_day"`` (the HBV refreezing coefficient
+  CFR). ``None`` disables refreezing. Requires a snow water retention process.
+* ``rain_to_snowpack`` (default ``True``): route the rain to the snowpack
+  liquid water storage instead of the ground, as in the original HBV snow
+  routine. Requires a snow water retention process.
+* ``snow_rain_process``: rain/snow partitioning method. Default: ``None``,
+  i.e. ``"snow_rain:linear"``, which matches the HBV-96 linear transition over
+  TT ± TTI/2 (see :ref:`rain/snow partitioning <snow-rain-partitioning>`).
+* ``snow_redistribution``: optional snow redistribution process
+  (e.g., ``'transport:snow_slide'``).
+  See the :ref:`snow redistribution section <snow-redistribution-params>`.
+* ``snow_sublimation_process``: optional snow sublimation process removing snow
+  water equivalent directly to the atmosphere (``'sublimation:constant'`` or
+  ``'sublimation:pet'``). Default ``None``.
+  See the :ref:`snow sublimation section <snow-sublimation>`.
+
+
+Parameters
+^^^^^^^^^^^
+
+The parameters are exposed under their literature names (as aliases).
+
+**Precipitation (snow/rain transition)**
+
+The linear rain/snow transition parameters ``prec_t_start`` and ``prec_t_end``
+are the same as in :ref:`GSM-Socont <gsm-socont>`; together they correspond to
+the HBV-96 transition interval TT ± TTI/2.
+
+**Snow routine**
+
+* ``cfmax`` *(mm/d/°C, no default, [2, 20])*
+
+  - Degree-day snow melt factor.
+  - Full name: ``snowpack:degree_day_factor``.
+
+* ``tt`` *(optional, °C, default: 0, [0, 5])*
+
+  - Threshold/melting temperature.
+  - Full name: ``snowpack:melting_temperature``.
+
+* ``cwh`` *(optional, dimensionless, default: 0.1, [0, 0.2])*
+
+  - Liquid water holding capacity of the snowpack, as a fraction of the snow
+    water equivalent.
+  - Full name: ``snowpack:water_holding_capacity``.
+
+* ``cfr`` *(optional, dimensionless, default: 0.05, [0, 0.1])*
+
+  - Refreezing coefficient of the retained liquid water.
+  - Full name: ``snowpack:refreezing_factor``.
+
+
+**Soil moisture routine**
+
+With a single soil-bearing land cover (or ``share_soil=True``) the aliases below are
+used as-is. With several soil-bearing covers and per-class soils (the default), they
+take a per-cover suffix instead — ``fc_<cover>``, ``lp_<cover>``, ``beta_<cover>``,
+``cevpf_<cover>`` (e.g. ``fc_forest``) — and the full names use the cover's store
+(``<cover>_soil_moisture:...``).
+
+* ``fc`` *(mm, no default, [0, 3000])*
+
+  - Maximum soil moisture storage capacity.
+  - Full name: ``soil_moisture:capacity``.
+
+* ``lp`` *(dimensionless, default: 0.9, [0.3, 1])*
+
+  - Fraction of ``fc`` above which the actual evapotranspiration reaches the
+    potential rate.
+  - Full name: ``soil_moisture:lp``.
+
+* ``cevpf`` *(optional, dimensionless, default: 1, [0.5, 2])*
+
+  - Evapotranspiration correction factor, scaling the potential evaporation:
+    :math:`E_a = \mathrm{cevpf} \cdot \mathrm{PET} \cdot \min(SM/(LP \cdot FC), 1)`.
+    Set it per cover (e.g. ``cevpf_forest`` > 1) to give a higher evaporation over
+    forests.
+  - Full name: ``soil_moisture:et_correction_factor``.
+
+* ``beta`` *(dimensionless, default: 2, [1, 6])*
+
+  - Shape coefficient of the recharge (beta) function.
+  - Full name: ``open:beta`` (``<cover>:beta`` in general).
+
+
+**Response routine**
+
+* ``k_uz`` *(mm^(-alpha)/d, no default, [0.0001, 1])*
+
+  - Response factor of the non-linear upper zone.
+  - Full name: ``upper_zone:response_factor``.
+
+* ``alpha``, ``alfa`` *(dimensionless, default: 1, [0, 3])*
+
+  - Non-linearity coefficient of the upper zone runoff (``alfa`` is the SMHI
+    spelling).
+  - Full name: ``upper_zone:alpha``.
+
+* ``perc`` *(mm/d, no default, [0, 10])*
+
+  - Constant percolation rate from the upper to the lower zone.
+  - Full name: ``upper_zone:percolation_rate``.
+
+* ``cflux`` *(optional, mm/d, default: 0, [0, 3])*
+
+  - Maximum capillary flux from the upper zone back to the soil moisture
+    storage.
+  - Full name: ``upper_zone:max_capillary_flux``.
+
+* ``k_lz``, ``k4`` *(1/d, no default, [0.0001, 1])*
+
+  - Response factor of the linear lower zone.
+  - Full name: ``lower_zone:response_factor``.
+
+
+**Transformation function**
+
+* ``maxbas`` *(d, default: 1, [1, 10])*
+
+  - Base length of the triangular unit hydrograph.
+  - Full name: ``routing:maxbas``.
+
+
+Pre-defined parameter constraints:
+
+* ``k_lz < k_uz``
+* ``a_snow < a_ice`` (only with a ``glacier`` cover)
+
+
+.. _hbv-land-covers:
+
+Land covers
+^^^^^^^^^^^
+
+In addition to the default ``open`` cover (the HBV "open areas" class; the former
+``ground`` name is kept as an accepted alias), HBV accepts the HBV land-use classes as
+land covers (``land_cover_types``). Each soil-bearing cover (``open``, ``forest``) has,
+by default, its own soil moisture store feeding the shared response routine;
+``share_soil=True`` collapses them into one. The soil/recharge parameters are then
+exposed per cover (``fc_<cover>``, ``lp_<cover>``, ``beta_<cover>``).
+
+* **forest** — a soil-bearing cover that, when ``forest_interception=True``, intercepts
+  rain in a canopy store on the rain path (upstream of the snowpack): the canopy holds
+  up to the interception capacity, evaporates at the potential rate, and passes the
+  excess as throughfall (snowmelt bypasses the canopy). Interception is **off by
+  default**, in which case a ``forest`` cover behaves like a generic soil cover (it can
+  still differ from ``open`` through its own per-class soil parameters and ``cevpf``).
+
+  * ``ic`` (or ``ic_<cover>`` with several forests) *(mm, optional, default: 2, [0, 10])*
+
+    - Canopy interception capacity (only with ``forest_interception=True``).
+      Full name: ``<cover>_canopy:capacity``.
+
+* **lake** — an exclusive open-water cover (a lake unit is entirely lake). All
+  precipitation enters the lake directly (no snowpack), the open water evaporates at
+  the potential rate, and a linear outflow drains to the outlet. Lake units use a
+  dedicated no-snow structure variant.
+
+  * ``k_lake`` (or ``k_lake_<cover>``) *(1/d, no default, [0.0001, 1])*
+
+    - Response factor of the lake's linear outflow.
+      Full name: ``<cover>_storage:response_factor``.
+
+* **glacier** — Socont-style glacier handled by the :ref:`glacier module
+  <glacier-modules>`: the glacierized area drains its rain + snowmelt and its ice melt
+  to two catchment-level linear reservoirs. Parameters ``a_ice`` (ice melt factor),
+  ``k_snow`` and ``k_ice`` (reservoir response factors) are as in
+  :ref:`GSM-Socont <gsm-socont>`.
+
+At least one soil-bearing cover (``open`` or ``forest``) is required.
+
+
+Usage example
+^^^^^^^^^^^^^
+
+.. code-block:: python
+
+  import hydrobricks as hb
+  import hydrobricks.models as models
+
+  hbv = models.HBV96()
+
+  parameters = hbv.generate_parameters()
+  parameters.set_values({
+    'cfmax': 3, 'tt': 0, 'cwh': 0.1, 'cfr': 0.05,
+    'fc': 250, 'lp': 0.9, 'beta': 2,
+    'k_uz': 0.2, 'alpha': 1, 'perc': 0.7, 'cflux': 0.5, 'k_lz': 0.05,
+    'maxbas': 2.5
+  })
+
+  # ... load hydro_units and forcing as for the other models ...
+
+  hbv.setup(
+    spatial_structure=hydro_units,
+    output_path='path/to/outputs',
+    start_date='1981-01-01',
+    end_date='2020-12-31'
+  )
+  hbv.run(parameters=parameters, forcing=forcing)
+
+
+.. _custom-structures:
+
+Custom structures
+-----------------
+
+A model structure can be declared entirely as data — the bricks (stores and
+land covers), their processes, and the fluxes routing the water between bricks
+or to the outlet — in a YAML file (or an equivalent dict) consumed by
+``hb.models.CustomModel``:
+
+.. code-block:: yaml
+
+   name: my_model
+
+   options:
+     snow_melt_process: melt:degree_day
+
+   bricks:
+     open:                        # a land cover (must match land_cover_names)
+       kind: land_cover
+       processes:
+         infiltration: {kind: infiltration:socont, target: slow_reservoir}
+         runoff: {kind: outflow:rest, target: surface_runoff}
+     slow_reservoir:
+       kind: storage              # attached to each hydro unit by default
+       parameters: {capacity: 200}
+       processes:
+         et: {kind: et:socont}    # ET needs no target (to the atmosphere)
+         outflow: {kind: outflow:linear, target: outlet}
+         overflow: {kind: overflow, target: outlet}
+     surface_runoff:
+       kind: storage
+       processes:
+         runoff: {kind: outflow:linear, target: outlet}
+
+   aliases:
+     slow_reservoir:capacity: A
+     slow_reservoir:response_factor: k_slow
+     surface_runoff:response_factor: k_quick
+
+   constraints:
+     - [k_slow, "<", k_quick]
+
+.. code-block:: python
+
+   model = models.CustomModel('my_structure.yaml')
+   model.print_structure()
+   parameters = model.generate_parameters()
+
+The rain/snow splitters and one snowpack per land cover are generated from the
+``options`` (the same snow options every model supports), so the declared
+bricks start where the snow routine ends. The rules:
+
+* **Bricks** attach to each hydro unit by default; use ``attach_to:
+  sub_basin`` for catchment-level stores. ``kind: land_cover`` selects a
+  declared land cover (the name must match the model's ``land_cover_names``);
+  other kinds (e.g. ``storage``) create new stores. Fixed brick properties go
+  in ``parameters`` (e.g. ``{capacity: 200}``); ``computed_directly: true``
+  marks a brick as explicitly computed (outside the ODE solver).
+* **Processes** withdraw water from their brick: the ``kind`` selects the
+  formulation (see the :ref:`processes page <processes>`), and its
+  calibratable parameters are generated from it — ``generate_parameters()``,
+  calibration and :ref:`project files <project-files>` work exactly as for
+  the pre-built models. ``aliases`` gives the generated parameters friendly
+  names, and ``constraints`` declares relationships enforced during
+  calibration.
+* **Fluxes** are the process outputs: ``target`` routes to a declared brick,
+  a generated one (e.g. ``<cover>_snowpack``) or ``outlet``; ``targets`` (a
+  list) fans out to several bricks. ET and sublimation processes take no
+  target (the water leaves to the atmosphere). Declare the bricks in flow
+  order: fluxes must point to bricks declared **later** in the file (water
+  flows forward through the solver), and ``instantaneous: true`` transfers
+  within the same time step (required for same-brick loops). ``log: true``
+  records a flux for the output files.
+
+In a project file, point the ``model`` section at the structure instead of a
+pre-built name:
+
+.. code-block:: yaml
+
+   model:
+     structure: my_structure.yaml
+
+A complete example (replicating GSM-Socont as an illustration) is available
+in the `examples directory
+<https://github.com/hydrobricks/hydrobricks/tree/main/examples/basics>`_
+(``custom_structure.yaml`` and ``run_custom_structure.py``).

@@ -26,7 +26,8 @@ over a user-defined temperature range:
 * Above ``prec_t_end`` *(optional, °C, default: 2, [0, 4])*: all precipitation falls as rain.
 * Between the two thresholds: the snow fraction decreases linearly.
 
-This partitioning is used by default in GSM-Socont and in GR4J when
+This partitioning is used by default in GSM-Socont, in HBV-96 (where it
+corresponds to the transition interval TT ± TTI/2), and in GR4J when
 ``snow_melt_process`` is not ``'melt:cemaneige'``.
 
 
@@ -231,6 +232,156 @@ CemaNeige is the recommended snow model for the :ref:`GR4J <gr4j>` model:
    gr4j = models.GR4J(snow_melt_process='melt:cemaneige')
 
 
+.. _snow-water-retention:
+
+Snowpack liquid water retention
+-------------------------------
+
+By default, melt water leaves the snowpack directly. The HBV snow routine
+(:cite:t:`Bergstrom1976`, :cite:t:`Lindstrom1997`) instead retains liquid water
+in the snowpack, releases only the excess over a holding capacity, and lets the
+retained water refreeze during cold spells. This behaviour is enabled by the
+``snow_water_retention_process`` and ``snow_refreezing_process`` options (it is
+the default in :ref:`HBV-96 <hbv96>`); the melt process output is then kept in
+the snowpack liquid water storage instead of leaving the snowpack.
+
+In addition, the ``rain_to_snowpack`` option routes the rain onto the snowpack
+liquid water storage instead of the land cover, as in the original HBV snow
+routine. Rain falling on an existing snowpack is then retained (up to the
+holding capacity) and exposed to refreezing; when there is no snow, the holding
+capacity is zero and the rain passes through to the land cover within the same
+time step. This option requires a snow water retention process.
+
+
+Snow water holding capacity (``outflow:snow_holding``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Releases the liquid water exceeding the snowpack holding capacity, defined as a
+fraction CWH of the snow water equivalent:
+
+.. math::
+
+   Q_{\mathrm{out}}(t) = \max\!\left(0,\; W(t) - CWH \cdot SWE(t)\right)
+
+where :math:`W` is the liquid water content of the snowpack [mm] and
+:math:`SWE` is the snow water equivalent [mm]. The excess is released within
+the time step to the parent land cover. When the snowpack is melted away
+(:math:`SWE = 0`), all the liquid water is released.
+
+Parameters:
+
+* ``cwh`` (alias ``whc``) *(optional, dimensionless, default: 0.1, [0, 0.2])*
+
+  - Liquid water holding capacity, as a fraction of the SWE.
+  - Full name: ``snowpack:water_holding_capacity``.
+
+
+Degree-day refreezing (``refreeze:degree_day``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Refreezes the liquid water retained in the snowpack (transfer from the water
+storage back to the snow storage) when the temperature drops below the melt
+threshold:
+
+.. math::
+
+   R(t) =
+   \begin{cases}
+       CFR \cdot a_{\mathrm{snow}} \cdot (T_T - T_a(t)) & : T_a(t) < T_T \\
+       0 & : T_a(t) \geq T_T
+   \end{cases}
+
+where :math:`CFR` is the refreezing coefficient [−], and :math:`a_{\mathrm{snow}}`
+(degree-day factor) and :math:`T_T` (melt temperature threshold) are read from
+the melt process of the same snowpack, so melt and refreezing stay consistent.
+It therefore requires ``snow_melt_process='melt:degree_day'``.
+
+Parameters:
+
+* ``cfr`` *(optional, dimensionless, default: 0.05, [0, 0.1])*
+
+  - Refreezing coefficient.
+  - Full name: ``snowpack:refreezing_factor``.
+
+
+.. _snow-sublimation:
+
+Snow sublimation
+----------------
+
+By default, snow leaves a snowpack only as melt water or through lateral
+redistribution. In cold, dry, high-radiation or windy environments, however, a
+sizeable share of the snow water equivalent is lost directly to the atmosphere by
+sublimation — from 0.1 % up to 90 % of snowfall depending on site and weather,
+and of the order of 30 % of the annual snow water equivalent in some semiarid
+mountains (:cite:t:`Strasser2008`, :cite:t:`Herrero2016`). The optional
+``snow_sublimation_process`` model option adds a process on each snowpack that
+removes snow water equivalent straight to the atmosphere (the solid-phase analog
+of evapotranspiration; it is therefore accounted for as an atmospheric loss in
+the water balance).
+
+Valid values for ``snow_sublimation_process``: ``"sublimation:constant"``,
+``"sublimation:pet"`` (default: ``None``, i.e. no sublimation).
+
+.. code-block:: python
+
+   socont = Socont(
+      snow_sublimation_process="sublimation:pet"
+   )
+
+.. note::
+
+   Sublimation is not gated by air temperature the way melt is: it is driven by
+   the vapor-pressure deficit, wind and net radiation, and often peaks below 0 °C. 
+   The ``sublimation:pet`` option is preferable when the potential evapotranspiration
+   is computed from a demand-based method (which already reflects radiation and
+   atmospheric humidity); ``sublimation:constant`` is a crude first-order fallback.
+
+
+Constant-rate sublimation (``sublimation:constant``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Removes snow at a fixed rate whenever snow is present:
+
+.. math::
+
+   S(t) = S_0
+
+where :math:`S_0` is a constant sublimation rate [mm d⁻¹]. The simplest
+possible parameterisation (no forcing dependency), a first-order approximation of
+the near-steady mean daily surface-sublimation rates reported from field
+measurements in mountain snowpacks (:cite:t:`Strasser2008`, :cite:t:`Herrero2016`).
+
+Parameters:
+
+* ``sublimation_rate`` *(optional, [mm d⁻¹], default: 0.1, [0, 2])*
+
+  - Constant sublimation rate.
+  - Full name: ``snowpack:sublimation_rate``.
+
+
+PET-fraction sublimation (``sublimation:pet``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Treats snow sublimation as the cold-surface analog of evaporation, driven by
+atmospheric demand ("evapo-sublimation", :cite:t:`Herrero2016`): a fixed fraction
+of the potential evapotranspiration is removed from the snowpack:
+
+.. math::
+
+   S(t) = c_S \cdot E_P(t)
+
+where :math:`c_S` is a dimensionless fraction and :math:`E_P` the potential
+evapotranspiration [mm d⁻¹]. Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``sublimation_pet_factor`` *(optional, dimensionless, default: 0.2, [0, 1])*
+
+  - Fraction of PET removed as sublimation.
+  - Full name: ``snowpack:sublimation_pet_factor``.
+
+
 .. _interception:
 
 Interception
@@ -261,7 +412,12 @@ Requires the ``pet`` forcing; no calibrated parameters.
 Evapotranspiration
 ------------------
 
-Two ET formulations are available.
+Several ET formulations are available. They all convert the potential
+evapotranspiration (``pet`` forcing) into actual ET by reducing it as a function
+of the storage filling ratio :math:`S(t)/S_{\max}`; they differ only in the shape
+of that reduction. The generic ``et:linear``, ``et:power_law`` and
+``et:exponential`` reductions can be attached to any storage brick that has a
+maximum capacity.
 
 
 Socont ET (``et:socont``)
@@ -300,6 +456,103 @@ content after this step's infiltration. No calibrated parameters beyond
 :math:`X_1`.
 
 
+HBV ET (``et:hbv``)
+^^^^^^^^^^^^^^^^^^^
+
+Used in :ref:`HBV-96 <hbv96>`. Actual ET is withdrawn from the soil moisture
+storage at the (corrected) potential rate when the soil moisture exceeds a
+threshold, and decreases linearly below it (:cite:t:`Lindstrom1997`):
+
+.. math::
+
+   E(t) = \mathrm{cevpf} \cdot E_P(t) \cdot \min\!\left(1,\; \frac{SM(t)}{LP \cdot FC}\right)
+
+where:
+
+- :math:`E_P(t)` is the potential evapotranspiration [mm d⁻¹],
+- :math:`\mathrm{cevpf}` is the evapotranspiration correction factor [−],
+- :math:`SM(t)` is the current soil moisture [mm],
+- :math:`FC` is the soil moisture storage capacity [mm],
+- :math:`LP` is the fraction of :math:`FC` above which ET reaches the
+  potential rate [−].
+
+Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``lp`` *(dimensionless, default: 0.9, [0.3, 1])*
+
+  - ET reduction threshold, as a fraction of :math:`FC`.
+  - Full name: ``soil_moisture:lp``.
+
+* ``cevpf`` *(optional, dimensionless, default: 1, [0.5, 2])*
+
+  - Evapotranspiration correction factor, scaling the potential evaporation. Set it
+    per cover (e.g. higher for forests) to vary the evaporation by land cover.
+  - Full name: ``soil_moisture:et_correction_factor``.
+
+
+Linear ET (``et:linear``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Generic parameter-free reduction. Actual ET increases linearly with the filling
+ratio and reaches PET when the reservoir is full:
+
+.. math::
+
+   E(t) = E_P(t) \cdot \min\!\left(1,\; \frac{S(t)}{S_{\max}}\right)
+
+where:
+
+- :math:`E_P(t)` is the potential evapotranspiration [mm d⁻¹],
+- :math:`S(t)` is the current water content of the reservoir [mm],
+- :math:`S_{\max}` is the maximum storage capacity [mm].
+
+No calibrated parameters. Requires the ``pet`` forcing.
+
+
+Power-law ET (``et:power_law``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Generalization of the Socont ET with a calibratable exponent. Actual ET scales
+with the filling ratio raised to the ``exponent`` power:
+
+.. math::
+
+   E(t) = E_P(t) \left(\frac{S(t)}{S_{\max}}\right)^{\beta}
+
+where :math:`\beta` is the exponent. It recovers the linear reduction at
+:math:`\beta = 1`, the Socont ET at :math:`\beta = 0.5`, and gives convex
+(:math:`\beta > 1`) or concave (:math:`\beta < 1`) reductions otherwise.
+Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``exponent`` *(dimensionless, default: 0.5, [0.2, 3])*
+
+  - Exponent applied to the filling ratio. Alias: ``et_beta``.
+
+
+Exponential ET (``et:exponential``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Concave, asymptotic reduction. Actual ET rises steeply when the store is wet and
+saturates toward PET as it fills:
+
+.. math::
+
+   E(t) = E_P(t) \left(1 - \exp\!\left(-\alpha \, \frac{S(t)}{S_{\max}}\right)\right)
+
+where :math:`\alpha` controls the curvature: a larger :math:`\alpha` makes ET
+approach PET faster as the reservoir fills. Requires the ``pet`` forcing.
+
+Parameters:
+
+* ``alpha`` *(dimensionless, default: 2, [0.5, 10])*
+
+  - Curvature of the reduction curve. Alias: ``et_alpha``.
+
+
 .. _infiltration-processes:
 
 Infiltration
@@ -308,7 +561,7 @@ Infiltration
 Socont infiltration (``infiltration:socont``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Used in :ref:`GSM-Socont <gsm-socont>` for the ground land cover. Water
+Used in :ref:`GSM-Socont <gsm-socont>` for the open (soil) land cover. Water
 infiltrates into the slow reservoir at a rate that decreases quadratically as
 the reservoir fills (:cite:t:`Schaefli2005`):
 
@@ -340,6 +593,32 @@ water content. The rate increases with :math:`P_n` and decreases as the store
 fills, going to zero when :math:`S = X_1`. No calibrated parameters.
 
 
+HBV infiltration / beta function (``infiltration:hbv``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used in :ref:`HBV-96 <hbv96>` on each soil-bearing land cover (e.g. open, forest).
+The incoming water :math:`P` (rain and snowpack outflow) is split between the soil
+moisture
+storage and the response routine using the HBV beta function
+(:cite:t:`Lindstrom1997`). The infiltrating part is
+
+.. math::
+
+   \mathrm{Inf}(t) = P(t) \left(1 - \left(\frac{SM(t)}{FC}\right)^{\beta}\right)
+
+and the complement, the recharge :math:`P \cdot (SM/FC)^{\beta}`, is routed to
+the upper zone by an :ref:`outflow:rest <outflow-processes>` process. When the
+soil is dry, all the water infiltrates; when it is at capacity, all the water
+becomes recharge.
+
+Parameters:
+
+* ``beta`` *(dimensionless, default: 2, [1, 6])*
+
+  - Shape coefficient of the beta function.
+  - Full name: ``open:beta`` (``<cover>:beta`` in general).
+
+
 .. _percolation-processes:
 
 Percolation
@@ -357,12 +636,14 @@ storage:
 
 where :math:`r` is the percolation rate [mm d⁻¹]. Used in
 :ref:`GSM-Socont <gsm-socont>` when ``soil_storage_nb=2`` to connect the first
-slow reservoir to the baseflow reservoir.
+slow reservoir to the baseflow reservoir, and in :ref:`HBV-96 <hbv96>` (PERC)
+to connect the upper zone to the lower zone.
 
 Parameters:
 
 * ``percol`` (alias for ``percolation_rate``): constant drainage rate [mm d⁻¹],
-  range [0, 10]. Full name: ``slow_reservoir:percolation_rate``.
+  range [0, 10]. Full name: ``slow_reservoir:percolation_rate`` /
+  ``upper_zone:percolation_rate`` (alias ``perc``).
 
 GR4J percolation (``percolation:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -377,6 +658,34 @@ where :math:`S` is the current production-store water content and :math:`X_1` is
 its capacity. Percolation increases non-linearly with the filling ratio and goes
 to zero when the store is empty. In the GR4J model it is applied as part of the
 combined :ref:`production:gr4j <gr4j-production>` step. No calibrated parameters.
+
+
+.. _capillary-processes:
+
+Capillary flux
+--------------
+
+HBV capillary transport (``capillary:hbv``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used in :ref:`HBV-96 <hbv96>`. Returns water from the upper zone to the soil
+moisture storage, at a rate that increases with the soil moisture deficit
+(:cite:t:`Lindstrom1997`):
+
+.. math::
+
+   C(t) = CFLUX \cdot \left(1 - \frac{SM(t)}{FC}\right)
+
+where :math:`CFLUX` is the maximum capillary flux [mm d⁻¹], :math:`SM` is the
+soil moisture [mm] and :math:`FC` its capacity [mm]. The flux vanishes when the
+soil is at capacity. It is disabled by default (:math:`CFLUX = 0`).
+
+Parameters:
+
+* ``cflux`` *(optional, mm/d, default: 0, [0, 3])*
+
+  - Maximum capillary flux.
+  - Full name: ``upper_zone:max_capillary_flux``.
 
 
 .. _production:
@@ -471,6 +780,7 @@ Use this formulation when a simpler quick-flow representation is preferred.
 
 
 .. _transfer-processes:
+.. _routing-processes:
 
 Transfer
 --------
@@ -587,6 +897,36 @@ plus
   must be > 0. Full name: ``uh_input:exp_store_coeff``.
 
 
+HBV routing / MAXBAS (``routing:hbv``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Used in :ref:`HBV-96 <hbv96>`. Smooths the total runoff (upper and lower zone
+outflows) with the MAXBAS transformation function, a triangular unit hydrograph
+of base length :math:`MAXBAS` [d] (:cite:t:`Lindstrom1997`). The weight
+assigned to day :math:`j` after the inflow is the difference of the cumulative
+triangular distribution
+
+.. math::
+
+   C(t) =
+   \begin{cases}
+       2\left(\dfrac{t}{MAXBAS}\right)^{2} & 0 \le t \le \tfrac{MAXBAS}{2} \\[2ex]
+       1 - 2\left(1 - \dfrac{t}{MAXBAS}\right)^{2} & \tfrac{MAXBAS}{2} < t \le MAXBAS
+   \end{cases}
+
+evaluated at the time-step boundaries: :math:`u_j = C(j) - C(j-1)`. Each
+inflow is thus spread over :math:`\lceil MAXBAS \rceil` days with a symmetric,
+triangular weighting. With :math:`MAXBAS = 1` the inflow passes through within
+the time step.
+
+Parameters:
+
+* ``maxbas`` *(d, default: 1, [1, 10])*
+
+  - Base length of the triangular unit hydrograph.
+  - Full name: ``routing:maxbas``.
+
+
 .. _outflow-processes:
 
 Reservoir outflow
@@ -602,7 +942,22 @@ The following outflow mechanisms are used by storage bricks across all models.
       Q(t) = k \cdot S(t)
 
    Parameter: ``response_factor`` [d\ :sup:`-1`]. Used for the slow reservoirs, glacier
-   area storages, and the linear quick-flow option.
+   area storages, the linear quick-flow option, and the HBV-96 lower zone
+   (``k_lz``).
+
+**Non-linear outflow** (``runoff:hbv``)
+   The :ref:`HBV-96 <hbv96>` upper zone outflow (:cite:t:`Lindstrom1997`).
+   Outflow increases non-linearly with the current storage:
+
+   .. math::
+
+      Q_0(t) = k_{uz} \cdot UZ(t)^{\,1+\alpha}
+
+   where :math:`UZ` is the upper zone content [mm]. With :math:`\alpha = 0` it
+   reduces to a linear reservoir. Parameters: ``k_uz`` (``response_factor``)
+   [mm\ :sup:`-α` d\ :sup:`-1`], range [0.0001, 1], and ``alpha`` (alias
+   ``alfa``) [−], default 1, range [0, 3]. Full names:
+   ``upper_zone:response_factor``, ``upper_zone:alpha``.
 
 **Overflow** (``outflow:overflow``)
    Releases water instantaneously when storage exceeds its maximum capacity.
@@ -625,7 +980,8 @@ The following outflow mechanisms are used by storage bricks across all models.
    brick the siblings' current outflow rates are subtracted so the demands sum
    to the available content. It must therefore be declared *after* the other
    withdrawing processes. No parameters. Used for surface runoff in the Socont
-   ground land cover (water not infiltrated becomes runoff) and in GR4J for
+   open (soil) land cover (water not infiltrated becomes runoff), in GR4J for
    throughfall (the net precipitation :math:`P_n` passed on to the production
-   store).
+   store), and in HBV-96 for the recharge (the complement of the beta-function
+   infiltration, routed to the upper zone).
 

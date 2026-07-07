@@ -1,9 +1,9 @@
 Plotting
 ========
 
-.. automodule:: hydrobricks.plotting
+.. automodule:: hydrobricks.plotter
 
-.. automodule:: hydrobricks.plotting.plot_results
+.. autoclass:: hydrobricks.plotter.Plotter
    :members:
    :undoc-members:
    :show-inheritance:

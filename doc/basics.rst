@@ -32,6 +32,54 @@ The available models and their options are described on the
 :ref:`models page <models>`.
 
 
+.. _inspecting-structure:
+
+Inspecting the structure
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The structure of a model can be inspected right after construction (no ``setup()`` or
+``run()`` needed). It reflects the complete structure, including the auto-generated parts
+(snow routine, precipitation splitters, forest canopy, glacier reservoirs), and each flux
+is labelled with the **process** that withdraws the water.
+
+.. code-block:: python
+
+   model = models.HBV96()
+
+   # Textual summary (à la model.summary() in deep-learning frameworks)
+   model.print_structure()
+
+   # A serializable graph object
+   graph = model.get_structure_graph()
+   graph.to_dict()      # nested dict (nodes + edges)
+   graph.to_json()      # JSON string
+   graph.to_yaml()      # YAML string
+   graph.to_dot()       # Graphviz DOT string (no extra dependency)
+
+   # A rendered diagram (requires the optional `graphviz` package)
+   model.plot_structure('model_structure', fmt='png')
+
+The diagram can be tuned with several options (also available on
+``graph.plot()`` / ``graph.to_dot()``):
+
+.. code-block:: python
+
+   model.plot_structure(
+       'model_structure',
+       fmt='pdf',           # 'png', 'pdf' or 'svg' ('pdf'/'svg' are vector = sharpest)
+       dpi=200,             # raster resolution for PNG (default 150); ignored for vector
+       with_forcing=False,  # drop the meteo forcing inputs for a cleaner diagram
+       legend=False,        # omit the legend
+       nodesep=0.8,         # spacing between nodes in a rank
+       ranksep=1.0,         # spacing between ranks
+       structure_id=2,      # which structure variant to draw
+   )
+
+Models with glacier or lake covers define several structure *variants* (e.g. a
+glacier-free base and a with-glacier variant); pass ``structure_id=`` to inspect a
+specific one. ``with_forcing`` is also available on ``get_structure_graph()``.
+
+
 .. _spatial-structure:
 
 Spatial structure
@@ -40,7 +88,7 @@ Spatial structure
 .. _catchment-class:
 
 The Catchment object
-^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 
 :class:`Catchment` is the central object for defining the study area. It is
 initialized with a catchment outline shapefile and then provides access to the
@@ -75,7 +123,7 @@ See the :ref:`API reference <api_catchment>` for the full method list.
 
 
 Hydro units
-^^^^^^^^^^^^
+~~~~~~~~~~~~
 
 The catchment is discretized into sub-units called **hydro units**, which can
 represent elevation bands, hydrological response units (HRUs), raster pixels,
@@ -94,7 +142,7 @@ Source:* :cite:t:`Argentin2025`
 
 
 Loading hydro units from a CSV file
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The simplest way to define hydro units is to load them from a CSV file. At
 minimum, the file must contain the area and mean elevation of each unit:
@@ -130,23 +178,40 @@ with units. A minimal example:
    11, 1340, 3496875
    12, 1390, 2361250
 
-By default, each hydro unit has a single ``ground`` land cover. Catchments
+By default, each hydro unit has a single ``open`` land cover. Catchments
 with glaciers or other distinct surface types require multiple land covers.
 Each land cover has a type (which determines its physical behaviour) and a
-name (which distinguishes it from other land covers of the same type). For example,
-a catchment with bare-ice and debris-covered glacier areas uses three land covers:
+name (which distinguishes it from other land covers of the same type).
+
+The available land cover types are:
+
+* ``open`` (aliases ``ground``, ``generic``, ``generic_land_cover``): the default
+  soil-bearing surface — the HBV "open areas" class; its behaviour comes entirely from
+  the processes the model attaches to it. (``ground`` was the former default and is kept
+  as an alias for backward compatibility.)
+* ``glacier``: a glacierized surface with ice melt, handled by the model's
+  :ref:`glacier module <glacier-modules>` (e.g. draining to dedicated reservoirs).
+* ``forest``: a soil-bearing surface that can optionally intercept rain in a canopy
+  store (HBV only, enabled with ``forest_interception=True``; see
+  :ref:`HBV land covers <hbv-land-covers>`).
+* ``lake``: an exclusive open-water surface — all precipitation enters the open water,
+  which evaporates at the potential rate and drains through a linear outflow (HBV only).
+
+Which types a given model accepts depends on the model (see :ref:`Models <models>`);
+all models support ``open`` and ``glacier``. For example, a catchment with bare-ice
+and debris-covered glacier areas uses three land covers:
 
 .. code-block:: python
 
-   land_cover_names = ['ground', 'glacier_ice', 'glacier_debris']
-   land_cover_types = ['ground', 'glacier', 'glacier']
+   land_cover_names = ['open', 'glacier_ice', 'glacier_debris']
+   land_cover_types = ['open', 'glacier', 'glacier']
 
    hydro_units = hb.HydroUnits(land_cover_types, land_cover_names)
    hydro_units.load_from_csv(
       'path/to/file.csv', 
       column_elevation='Elevation',
       columns_areas={
-         'ground': 'Area Non Glacier',
+         'open': 'Area Non Glacier',
          'glacier_ice': 'Area Ice',
          'glacier_debris': 'Area Debris'
       }
@@ -180,7 +245,7 @@ The CSV must list the area of each land cover per hydro unit
 
 
 Generating hydro units from a DEM
-"""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When spatial data are available, hydro units can be generated automatically
 from a DEM, with discretization criteria chosen to match the melt model in use:
@@ -209,7 +274,7 @@ combined with aspect classes. The elevation range covers the entire catchment
 
 
 Discretizing by potential solar radiation
-""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``'temperature_index'`` melt model requires per-unit radiation values.
 Hydrobricks computes the daily mean potential clear-sky direct solar radiation
@@ -289,7 +354,7 @@ To export all internal fluxes and states to a NetCDF file for further analysis:
 
 
 Initializing state variables
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, all water storages (snowpack, soil reservoirs, etc.) start empty at
 the beginning of the simulation. To initialize them to more realistic values,
@@ -309,24 +374,45 @@ the model is run multiple times — as during calibration — it resets to these
 saved values at the start of each run rather than to empty reservoirs.
 
 
-Warmup period
-^^^^^^^^^^^^^^
+.. _spinup:
 
-Even with ``initialize_state_variables()``, the very first years of a
-simulation are typically unreliable because the storages have not yet settled
-into a realistic seasonal cycle. This initial period is called the **warmup**
-or **spin-up** period, and it is conventionally set to one or two years.
+Spin-up and warmup
+~~~~~~~~~~~~~~~~~~~
 
-During the warmup, snow accumulation and discharge are usually underestimated
-because the snowpack starts from the previous season's final state, which may
-not match the actual initial conditions. For this reason, the warmup years
-should be excluded from evaluation, calibration, and analysis. The calibration
-setup accepts a ``warmup`` argument for this purpose — see the
-:ref:`calibration page <calibration>`.
+The very first years of a simulation are typically unreliable because the
+storages start empty and have not yet settled into a realistic seasonal cycle.
+Two mechanisms address this:
+
+**Spin-up (recommended).** Pass ``spinup`` to ``setup()`` and the model replays
+the first years of its own period (without logging) to initialize the storages,
+then restarts at the period start with the warmed-up states:
+
+.. code-block:: python
+
+   socont.setup(
+      spatial_structure=hydro_units,
+      output_path='/path/to/dir',
+      start_date='1981-01-01',
+      end_date='2020-12-31',
+      spinup='4y',   # or a number of days, e.g. 1461
+   )
+
+The spin-up happens transparently on **every** run (including each calibration
+run), no forcing data before ``start_date`` is needed, and the **whole**
+declared period can be evaluated — no year of observations is discarded. The
+land cover area fractions are restored to their initial values after the
+spin-up (only the storage states are kept), and a spin-up longer than the
+period is clamped to a single replay of the whole period.
+
+**Warmup trimming (legacy alternative).** Without a spin-up, the opening period
+of each run can instead be excluded from the evaluation: the calibration setup
+accepts a ``warmup`` argument (in days) for this purpose — see the
+:ref:`calibration page <calibration>`. The evaluated span is then shorter than
+the declared one.
 
 
 Evaluation
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 After a run, performance metrics can be computed by comparing the simulated
 discharge to observations. Load observations from a CSV file (discharge in
@@ -351,6 +437,11 @@ Any metric from their
 `full list <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
 can be used by passing its function name as a string.
 
+``eval()`` also accepts a ``period`` to score a date slice of the simulation
+only (e.g. a validation period), and a whole simulation can be scored on
+several declared periods at once with ``evaluate_periods()`` — see
+:ref:`calibration and validation periods <periods>`.
+
 
 Outputs
 -------
@@ -366,7 +457,7 @@ Results are available at three levels of detail:
 
 
 Direct outputs
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
 
 The following outputs are accessible on the model object after a run:
 
@@ -386,7 +477,7 @@ The following outputs are accessible on the model object after a run:
 .. _netcdf-output-file:
 
 NetCDF output file
-^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 
 A detailed NetCDF file is exported with ``model.dump_outputs('some/path')``.
 How much data it contains depends on the ``record_all`` option set at model
@@ -397,6 +488,41 @@ creation:
 * ``record_all=True``: every flux and state variable is recorded at every
   time step. This is useful for diagnosing model behaviour but slows execution
   and produces large files.
+
+.. _selective_recording:
+
+Recording specific stores and fluxes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When only a few internal series are needed — for example an auxiliary calibration
+signal such as glacier mass balance — recording *everything* with ``record_all=True``
+is wasteful. Instead, record just the required items. The recordings must be configured
+**before** ``model.setup()`` (they are part of the model build).
+
+An auxiliary observation knows what it needs; let it configure the model for you:
+
+.. code-block:: python
+
+   glacier_mb.configure_recording(model)   # before model.setup()
+   model.setup(...)
+
+To record specific items by hand, build a
+:class:`RecordingRequest <hydrobricks.evaluation.base.RecordingRequest>` and pass it to
+``model.add_recordings``:
+
+.. code-block:: python
+
+   from hydrobricks.evaluation import RecordingRequest
+
+   model.add_recordings(RecordingRequest(
+       brick_states=[('glacier_snowpack', 'snow_content')],   # '<brick>:<item>'
+       process_outputs=[('glacier', 'melt', 'output')],       # '<brick>:<process>:<item>'
+       fractions=True,                                        # land-cover fractions over time
+   ))
+   model.setup(...)
+
+The recorded series are read from memory (``model.get_recorded_hydro_unit_values(label)``)
+or written to the NetCDF output, exactly like those from ``record_all``.
 
 **File structure**
 
@@ -433,18 +559,18 @@ Example output for GSM-Socont with two glacier types:
       "outlet";
 
    labels_distributed =
-      "ground:content",
-      "ground:infiltration:output",
-      "ground:runoff:output",
+      "open:content",
+      "open:infiltration:output",
+      "open:runoff:output",
       "glacier_ice:content",
       "glacier_ice:outflow_rain_snowmelt:output",
       "glacier_ice:melt:output",
       "glacier_debris:content",
       "glacier_debris:outflow_rain_snowmelt:output",
       "glacier_debris:melt:output",
-      "ground_snowpack:content",
-      "ground_snowpack:snow",
-      "ground_snowpack:melt:output",
+      "open_snowpack:content",
+      "open_snowpack:snow",
+      "open_snowpack:melt:output",
       "glacier_ice_snowpack:content",
       "glacier_ice_snowpack:snow",
       "glacier_ice_snowpack:melt:output",
@@ -462,7 +588,7 @@ Example output for GSM-Socont with two glacier types:
       "surface_runoff:outflow:output";
 
    labels_land_covers =
-      "ground",
+      "open",
       "glacier_ice",
       "glacier_debris";
 
@@ -482,7 +608,18 @@ Example output for GSM-Socont with two glacier types:
   * **State variables** (names ending in ``:content`` or ``:snow``, unit: mm):
     the water depth stored in a reservoir. These are *not* area-weighted — to
     aggregate over the catchment, multiply each value by its land cover fraction
-    and relative hydro unit area.
+    and relative hydro unit area. The :class:`Results <hydrobricks.results.Results>`
+    class provides helpers that do this for you:
+    :meth:`get_mean_hydro_units_values() <hydrobricks.results.Results.get_mean_hydro_units_values>`
+    (area-weighted catchment mean of any component for one land cover),
+    :meth:`get_land_cover_areas() <hydrobricks.results.Results.get_land_cover_areas>`
+    (per-unit area of a land cover over time), and, specifically for snow water
+    equivalent,
+    :meth:`get_total_swe() <hydrobricks.results.Results.get_total_swe>` (per-unit
+    SWE aggregated across all land covers) and
+    :meth:`get_mean_swe() <hydrobricks.results.Results.get_mean_swe>` (the
+    catchment-wide mean). Land covers without a snowpack (e.g. open water)
+    contribute zero SWE over their area.
 
 * ``land_cover_fractions`` (2D, optional): time series of land cover fractions,
   present when glacier or other land cover evolution is active.
@@ -491,7 +628,7 @@ Example output for GSM-Socont with two glacier types:
 .. _others:
 
 Auxiliary outputs
-^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~
 
 * **Spatialized forcing** (``forcing.nc``): the per-unit forcing time series,
   saved with ``forcing.create_file()``. Useful for inspecting what the model

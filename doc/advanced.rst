@@ -68,8 +68,19 @@ The CSV format:
 * **Remaining rows**: one row per hydro unit that changes, with the identifier value
   followed by the area at each snapshot date.
 
-Hydro units not listed in the file are assumed unchanged. The ``ground`` fraction is
-adjusted automatically to preserve the total unit area.
+Hydro units not listed in the file are assumed unchanged. The generic soil cover
+fraction (``open``, or its ``ground`` alias) is adjusted automatically to preserve the
+total unit area.
+
+.. note::
+
+   The water balance is conserved across land cover changes. When a cover's area
+   changes, the water and snow stored on the land that changes hands is transferred
+   between the changed cover and the generic soil cover that absorbs the difference, so
+   no water is created or destroyed. Glacier ice volume is conserved by the
+   :ref:`glacier evolution <internal_glacier_evolution>` methods; an externally driven
+   reduction of a glacier's area (CSV or shapefile) removes the ice on the lost area,
+   as that ice is assumed to have melted.
 
 .. code-block:: text
    :caption: Example CSV file for land cover evolution (areas in km²).
@@ -137,7 +148,7 @@ processing on subsequent runs:
 
    changes_df[0].to_csv('/path/to/surface_changes_glacier_ice.csv', index=False)
    changes_df[1].to_csv('/path/to/surface_changes_glacier_debris.csv', index=False)
-   changes_df[2].to_csv('/path/to/surface_changes_ground.csv', index=False)
+   changes_df[2].to_csv('/path/to/surface_changes_open.csv', index=False)
 
 The hydro units can also be initialized directly from the derived time series:
 
@@ -369,9 +380,23 @@ Snow redistribution
           :align: center
 
 Without redistribution, elevation-band models can accumulate unrealistic amounts of snow
-at high elevations — so-called "snow towers". Hydrobricks addresses this with the
-SnowSlide algorithm (:cite:t:`Bernhardt2010`), which simulates gravitational transport of snow
-downslope across elevation bands.
+at high elevations — so-called "snow towers". Hydrobricks addresses this by moving snow
+downslope across hydro units. Two redistribution methods are available, selected through
+the ``snow_redistribution`` option:
+
+* ``'transport:snow_slide'`` — the SnowSlide algorithm (:cite:t:`Bernhardt2010`). Snow
+  exceeding a slope-dependent holding capacity (decreasing with slope) is transported
+  downslope.
+* ``'transport:snow_redistribution_frey'`` — the conceptual model of
+  :cite:t:`Frey2015`. The snow above a land-cover-specific holding capacity ``H_v`` (the
+  ``snow_holding_capacity`` parameter, registered per land cover) is redistributed,
+  scaled by a distribution coefficient that increases with slope and decreases with snow
+  density, and by a calibratable correction coefficient ``correction`` (``C``). The snow
+  density is a constant parameter (``snow_density``).
+* ``'transport:snow_redistribution_frey_dynamic'`` — the same Frey & Holzmann method, but
+  with the snow density evolving over time: fresh snow density is derived from air
+  temperature and the snowpack settles toward a maximum density. Drier (fresher) snow is
+  then more mobile.
 
 Enable snow redistribution at model creation:
 
@@ -382,9 +407,9 @@ Enable snow redistribution at model creation:
       snow_redistribution='transport:snow_slide'
    )
 
-A connectivity CSV file describing the downslope pathways between hydro units is also
-required (see :ref:`Catchment connectivity <catchment-connectivity>` for how to compute
-it):
+Both methods require a slope property on the hydro units and a connectivity CSV file
+describing the downslope pathways between hydro units (see
+:ref:`Catchment connectivity <catchment-connectivity>` for how to compute it):
 
 .. code-block:: python
 

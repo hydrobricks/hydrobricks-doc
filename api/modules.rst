@@ -6,6 +6,7 @@ API reference
 
    hydrobricks
    hydrobricks.models
+   hydrobricks.modules
    hydrobricks.actions
    hydrobricks.preprocessing
    hydrobricks.submodules
