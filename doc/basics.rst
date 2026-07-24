@@ -420,7 +420,7 @@ mm/d):
 
 .. code-block:: python
 
-   obs = hb.Observations()
+   obs = hb.DischargeObservations('1981-01-01', '2020-12-31')
    obs.load_from_csv(
       '/path/to/obs.csv', 
       column_time='Date', 
