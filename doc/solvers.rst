@@ -46,11 +46,16 @@ Available solvers
      - Integrates linear reservoirs exactly (see
        :ref:`below <analytic-solver>`); unconditionally stable; no transit
        lag through reservoir cascades.
+   * - ``implicit_euler`` (or ``euler_implicit``)
+     - 1
+     - iterative
+     - Backward Euler (see :ref:`below <implicit-solver>`); unconditionally
+       stable for any process, including non-linear ones; no transit lag.
 
 The first three are classic explicit Runge–Kutta schemes: they evaluate the
 outflow rates at one or more intermediate states and advance all the solved
-reservoirs together as one coupled system. The analytic solver follows a
-different strategy described below.
+reservoirs together as one coupled system. The analytic and implicit solvers
+follow a different, sequential strategy described below.
 
 
 How a time step is computed
@@ -112,6 +117,33 @@ Two restrictions apply:
   the same reservoir are approximated with their start-of-step rate. For
   strongly non-linear reservoirs (e.g. the Socont quick-runoff store), the
   analytic solver degrades to a first-order approximation for that store.
+
+
+.. _implicit-solver:
+
+The implicit Euler solver
+-------------------------
+
+The ``implicit_euler`` solver shares the sequential structure of the analytic
+solver (same processing order, same inflow treatment, same capacity/overflow
+requirement) but advances each reservoir by solving the implicit equation
+
+.. math::
+
+   S(t+h) = S(t) + h \left(I - Q\!\left(S(t+h)\right)\right),
+
+where :math:`Q(S)` is the total outflow of the reservoir's processes evaluated
+at the **end-of-step** content. The scalar equation is solved by bisection,
+which is robust because the total outflow does not decrease with the content.
+
+Because every process — including non-linear ones such as evapotranspiration —
+is evaluated at the end-of-step state, the scheme is **unconditionally stable
+for any process formulation**: this is the recommended choice when the
+calibration explores fast response factors or strongly non-linear reservoirs,
+where the analytic solver's frozen-rate approximation is less accurate and the
+explicit schemes risk instability. Its accuracy is first order, like explicit
+Euler, but it undershoots where explicit Euler overshoots and never
+oscillates.
 
 
 Accuracy and the time step
@@ -180,9 +212,8 @@ Explicit schemes are only conditionally stable: for a linear reservoir,
 explicit Euler oscillates when :math:`k\,h > 1` and diverges when
 :math:`k\,h > 2`. With daily steps, this concerns fast-reacting reservoirs
 with response factors approaching :math:`1\,\mathrm{d^{-1}}` and beyond. If a
-calibration explores such values, prefer ``heun_explicit`` (wider stability
-margin) or ``analytic_linear`` (unconditionally stable), or reduce the time
-step.
+calibration explores such values, prefer ``analytic_linear`` or
+``implicit_euler`` (both unconditionally stable), or reduce the time step.
 
 
 Verification

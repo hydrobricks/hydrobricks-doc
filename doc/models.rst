@@ -21,8 +21,9 @@ Common options
 All models accept the following options at instantiation:
 
 * ``solver``: numerical solver to use; choices are ``heun_explicit`` (default),
-  ``runge_kutta``, ``euler_explicit``, and ``analytic_linear``. See the
-  :ref:`solvers page <solvers>` for their properties and how to choose.
+  ``runge_kutta``, ``euler_explicit``, ``analytic_linear``, and
+  ``implicit_euler``. See the :ref:`solvers page <solvers>` for their
+  properties and how to choose.
 * ``record_all`` (default ``False``): when ``True``, all fluxes and state
   variables are recorded at every time step. This slows computation and
   produces large output files. Enable only for diagnostic analysis, not
