@@ -20,10 +20,10 @@ Common options
 
 All models accept the following options at instantiation:
 
-* ``solver``: numerical solver to use; choices are ``heun_explicit`` (default),
-  ``runge_kutta``, ``euler_explicit``, ``analytic_linear``, and
-  ``implicit_euler``. See the :ref:`solvers page <solvers>` for their
-  properties and how to choose.
+* ``solver``: numerical solver to use; choices are ``crank_nicolson``
+  (default), ``heun_explicit``, ``runge_kutta``, ``euler_explicit``,
+  ``analytic_linear``, ``implicit_euler``, and ``exponential_euler``. See the
+  :ref:`solvers page <solvers>` for their properties and how to choose.
 * ``record_all`` (default ``False``): when ``True``, all fluxes and state
   variables are recorded at every time step. This slows computation and
   produces large output files. Enable only for diagnostic analysis, not
@@ -39,7 +39,7 @@ Example:
 
 .. code-block:: python
 
-    socont = models.Socont(solver="heun_explicit", record_all=False)
+    socont = models.Socont(solver="crank_nicolson", record_all=False)
 
 
 Shared processes

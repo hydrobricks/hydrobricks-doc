@@ -12,7 +12,7 @@ selected at model instantiation:
 
 .. code-block:: python
 
-   socont = models.Socont(solver="heun_explicit")  # the default
+   socont = models.Socont(solver="crank_nicolson")  # the default
 
 
 Available solvers
@@ -31,10 +31,11 @@ Available solvers
      - 1
      - Fastest; least accurate; can become unstable for fast-reacting
        reservoirs (see :ref:`stability <solver-stability>`).
-   * - ``heun_explicit`` (default)
+   * - ``heun_explicit``
      - 2
      - 2
-     - Good accuracy/cost compromise for daily simulations.
+     - Good accuracy/cost compromise for daily simulations; conditionally
+       stable.
    * - ``runge_kutta`` (or ``rk4``)
      - 4
      - 4
@@ -51,11 +52,23 @@ Available solvers
      - iterative
      - Backward Euler (see :ref:`below <implicit-solver>`); unconditionally
        stable for any process, including non-linear ones; no transit lag.
+   * - ``crank_nicolson`` (or ``trapezoidal``) — **default**
+     - 2
+     - iterative
+     - Implicit trapezoidal (see :ref:`below <crank-nicolson-solver>`);
+       second-order accurate and unconditionally stable for any process; no
+       transit lag.
+   * - ``exponential_euler``
+     - 2 (exact for linear)
+     - 3
+     - Analytic integration of the per-step linearized system (see
+       :ref:`below <exponential-euler-solver>`); unconditionally stable; no
+       transit lag.
 
 The first three are classic explicit Runge–Kutta schemes: they evaluate the
 outflow rates at one or more intermediate states and advance all the solved
-reservoirs together as one coupled system. The analytic and implicit solvers
-follow a different, sequential strategy described below.
+reservoirs together as one coupled system. The remaining solvers follow a
+different, sequential strategy described below.
 
 
 How a time step is computed
@@ -108,11 +121,15 @@ This gives the analytic solver three properties the explicit schemes lack:
   inflows one (Euler) or a fraction of a step later; a rainfall pulse
   therefore needs several steps to traverse a cascade.
 
-Two restrictions apply:
+Two points to note:
 
-* Reservoirs with a maximum capacity must have an overflow process attached
-  (this is verified at initialization); the capacity excess is routed through
-  the overflow.
+* A reservoir with a maximum capacity that can actually be reached must route
+  its excess through an overflow process: the sequential solvers process
+  bricks one after another and cannot reduce an inflow an upstream brick has
+  already delivered, so an overflowing capped store without an overflow would
+  lose water. Stores whose capacity acts only as a process parameter with a
+  self-limiting inflow (e.g. the GR4J production store, whose infiltration
+  tends to zero as the store fills) never reach the limit and need no overflow.
 * Only outflows declared as linear are integrated exactly; other processes on
   the same reservoir are approximated with their start-of-step rate. For
   strongly non-linear reservoirs (e.g. the Socont quick-runoff store), the
@@ -125,8 +142,9 @@ The implicit Euler solver
 -------------------------
 
 The ``implicit_euler`` solver shares the sequential structure of the analytic
-solver (same processing order, same inflow treatment, same capacity/overflow
-requirement) but advances each reservoir by solving the implicit equation
+solver (same processing order, same inflow treatment, same handling of
+capacity-limited stores) but advances each reservoir by solving the implicit
+equation
 
 .. math::
 
@@ -138,12 +156,48 @@ which is robust because the total outflow does not decrease with the content.
 
 Because every process — including non-linear ones such as evapotranspiration —
 is evaluated at the end-of-step state, the scheme is **unconditionally stable
-for any process formulation**: this is the recommended choice when the
-calibration explores fast response factors or strongly non-linear reservoirs,
-where the analytic solver's frozen-rate approximation is less accurate and the
-explicit schemes risk instability. Its accuracy is first order, like explicit
+for any process formulation**. Its accuracy is first order, like explicit
 Euler, but it undershoots where explicit Euler overshoots and never
-oscillates.
+oscillates: this makes it the most robust choice for very stiff reservoirs,
+where the second-order Crank-Nicolson solver can show a decaying oscillation.
+
+
+.. _crank-nicolson-solver:
+
+The Crank-Nicolson solver (default)
+-----------------------------------
+
+The ``crank_nicolson`` solver is the default. It shares the sequential,
+bisection-based structure of the implicit Euler solver but advances each
+reservoir with the implicit trapezoidal rule,
+
+.. math::
+
+   S(t+h) = S(t) + h \left(I - \frac{Q\!\left(S(t)\right) +
+   Q\!\left(S(t+h)\right)}{2}\right),
+
+applying to each process the average of its start- and end-of-step rates. This
+combines **second-order accuracy** (like Heun) with **unconditional
+stability** (like implicit Euler) for any process formulation, which is why it
+is the default. One caveat: the trapezoidal rule is A-stable but not L-stable,
+so for very stiff reservoirs (:math:`k\,h \gg 1`) it can produce a decaying
+oscillation where ``implicit_euler`` stays monotone; if a calibration explores
+extreme response factors, prefer the latter.
+
+
+.. _exponential-euler-solver:
+
+The exponential Euler solver
+----------------------------
+
+The ``exponential_euler`` solver generalizes the analytic solver to non-linear
+processes. Each reservoir's total outflow is linearized around the
+start-of-step content, :math:`Q(S) \approx Q(S_0) + k\,(S - S_0)` (with
+:math:`k` obtained by finite difference), and the linearized equation is
+integrated exactly over the step. For linear reservoirs the linearization *is*
+the reservoir, so the solution is exact, as with ``analytic_linear``; for
+smooth non-linear processes the scheme is second-order accurate. It is
+unconditionally stable and free of transit lag.
 
 
 Accuracy and the time step
