@@ -179,10 +179,29 @@ reservoir with the implicit trapezoidal rule,
 applying to each process the average of its start- and end-of-step rates. This
 combines **second-order accuracy** (like Heun) with **unconditional
 stability** (like implicit Euler) for any process formulation, which is why it
-is the default. One caveat: the trapezoidal rule is A-stable but not L-stable,
-so for very stiff reservoirs (:math:`k\,h \gg 1`) it can produce a decaying
-oscillation where ``implicit_euler`` stays monotone; if a calibration explores
-extreme response factors, prefer the latter.
+is the default. One caveat: the trapezoidal rule is *A-stable but not
+L-stable*. These two properties describe how a scheme handles a stiff
+(fast-decaying) reservoir, and differ in a way that matters here:
+
+* **A-stable** means the solution can never blow up, whatever the time step:
+  for a linear reservoir the step-to-step amplification factor of
+  Crank-Nicolson, :math:`(1 - k\,h/2)\,/\,(1 + k\,h/2)`, stays below one in
+  magnitude for every :math:`k\,h`. Explicit Euler is *not* A-stable — its
+  factor :math:`1 - k\,h` exceeds one once :math:`k\,h > 2`, which is why it
+  diverges for fast reservoirs.
+* **L-stable** is the stronger property that this factor also tends to *zero*
+  as :math:`k\,h \to \infty`, so a very stiff mode is damped away within a
+  single step. Implicit Euler is L-stable (its factor :math:`1/(1 + k\,h)`
+  goes to zero); Crank-Nicolson is not, because its factor instead tends to
+  :math:`-1`.
+
+A factor approaching :math:`-1` means a stiff mode is not damped but flips
+sign each step and decays only slowly. In practice, for very stiff reservoirs
+(:math:`k\,h \gg 1`) Crank-Nicolson can therefore show a decaying oscillation
+(ringing) around the solution where the L-stable ``implicit_euler`` approaches
+it monotonically. Both remain bounded and converge; but if a calibration
+explores such extreme response factors and the oscillation is undesirable,
+prefer ``implicit_euler``.
 
 
 .. _exponential-euler-solver:
