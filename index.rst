@@ -23,6 +23,7 @@ Additional resources contributed by the community are listed on the
    doc/basics
    doc/models
    doc/processes
+   doc/solvers
    doc/parameters
    doc/forcing
    doc/preprocessing
