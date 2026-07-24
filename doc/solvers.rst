@@ -65,10 +65,19 @@ Available solvers
        :ref:`below <exponential-euler-solver>`); unconditionally stable; no
        transit lag.
 
-The first three are classic explicit Runge–Kutta schemes: they evaluate the
-outflow rates at one or more intermediate states and advance all the solved
-reservoirs together as one coupled system. The remaining solvers follow a
-different, sequential strategy described below.
+The first three are classic explicit Runge–Kutta schemes
+(:ref:`illustrated below <explicit-solvers>`): they evaluate the outflow rates
+at one or more intermediate states and advance all the solved reservoirs
+together as one coupled system. The remaining solvers follow a different,
+sequential strategy described in the sections that follow.
+
+To show how each scheme works, the sections below illustrate it on a single
+step of the same linear reservoir (:math:`k = 0.5\,\mathrm{d^{-1}}`, initially
+empty, constant inflow :math:`I = 5\ \mathrm{mm/d}`), with the step taken
+deliberately large (:math:`h = 1.5\ \mathrm{d}`, so :math:`k\,h = 0.75`) to
+make the schemes' behaviour visible. In every panel the blue curve is the
+exact solution and the filled marker is where the scheme places the reservoir
+at the end of the step.
 
 
 How a time step is computed
@@ -86,6 +95,43 @@ Within each time step, the computation proceeds in two phases:
 This split keeps threshold-type surface processes (rain/snow partition, melt
 switching on and off) out of the ODE system, which the solver can then treat
 as smooth dynamics.
+
+
+.. _explicit-solvers:
+
+The explicit schemes (Euler, Heun, RK4)
+---------------------------------------
+
+The explicit Runge–Kutta schemes build the step from outflow rates ("slopes")
+evaluated at one or more trial states, then advance all reservoirs together.
+They need no iteration, but are only conditionally stable and lose accuracy
+where thresholds or storage limits activate mid-step.
+
+.. figure:: images/solver_euler_explicit.png
+   :width: 70%
+
+   **euler_explicit** — a single slope, evaluated at the start of the step, is
+   extrapolated across the whole step. Because the outflow rate is frozen at
+   its start-of-step value (here still too low, as the store has barely
+   filled), the reservoir overshoots the exact solution. First-order accurate;
+   the simplest and cheapest scheme.
+
+.. figure:: images/solver_heun_explicit.png
+   :width: 70%
+
+   **heun_explicit** — a predictor first takes an Euler step to estimate the
+   end state; a second slope is evaluated there, and the step advances along
+   the *average* of the two slopes. Averaging the start and predicted-end
+   rates cancels the leading Euler error, giving second-order accuracy at
+   twice the cost.
+
+.. figure:: images/solver_rk4.png
+   :width: 70%
+
+   **runge_kutta (rk4)** — four slopes (one at the start, two probing the
+   mid-step state, one at the end) are combined in a 1:2:2:1 weighted average.
+   The resulting step tracks the exact curve closely: fourth-order accurate for
+   smooth dynamics, at four rate evaluations per step.
 
 
 .. _analytic-solver:
@@ -108,6 +154,13 @@ reservoirs one by one in declaration order (upstream before downstream); each
 reservoir receives the upstream outflow of the *same* step as a constant
 inflow rate. Processes that are not linear in the content (e.g. evapotranspiration)
 are accounted for with their rate evaluated at the start of the step.
+
+.. figure:: images/solver_analytic.png
+   :width: 70%
+
+   **analytic_linear** — for a linear store the step follows the exact
+   exponential, so the scheme's end-of-step value lies exactly on the true
+   curve, at any step size and without transit lag.
 
 This gives the analytic solver three properties the explicit schemes lack:
 
@@ -154,6 +207,14 @@ where :math:`Q(S)` is the total outflow of the reservoir's processes evaluated
 at the **end-of-step** content. The scalar equation is solved by bisection,
 which is robust because the total outflow does not decrease with the content.
 
+.. figure:: images/solver_implicit_euler.png
+   :width: 70%
+
+   **implicit_euler** — the outflow slope is evaluated at the *end-of-step*
+   content, found (by bisection) so that advancing along that slope lands
+   exactly on it. The store undershoots the exact solution but can never
+   overshoot or oscillate, whatever the step size.
+
 Because every process — including non-linear ones such as evapotranspiration —
 is evaluated at the end-of-step state, the scheme is **unconditionally stable
 for any process formulation**. Its accuracy is first order, like explicit
@@ -176,8 +237,17 @@ reservoir with the implicit trapezoidal rule,
    S(t+h) = S(t) + h \left(I - \frac{Q\!\left(S(t)\right) +
    Q\!\left(S(t+h)\right)}{2}\right),
 
-applying to each process the average of its start- and end-of-step rates. This
-combines **second-order accuracy** (like Heun) with **unconditional
+applying to each process the average of its start- and end-of-step rates.
+
+.. figure:: images/solver_crank_nicolson.png
+   :width: 70%
+
+   **crank_nicolson** — the step advances along the average of the start- and
+   end-of-step slopes (the end state again found by bisection). Averaging the
+   two slopes recovers second-order accuracy, so the step stays close to the
+   exact curve while remaining unconditionally stable.
+
+This combines **second-order accuracy** (like Heun) with **unconditional
 stability** (like implicit Euler) for any process formulation, which is why it
 is the default. One caveat: the trapezoidal rule is *A-stable but not
 L-stable*. These two properties describe how a scheme handles a stiff
@@ -217,6 +287,14 @@ integrated exactly over the step. For linear reservoirs the linearization *is*
 the reservoir, so the solution is exact, as with ``analytic_linear``; for
 smooth non-linear processes the scheme is second-order accurate. It is
 unconditionally stable and free of transit lag.
+
+.. figure:: images/solver_exponential_euler.png
+   :width: 70%
+
+   **exponential_euler** — the outflow is replaced by its linear tangent at the
+   start of the step, and that linearized equation is integrated exactly (as in
+   the analytic solver). For a linear store the tangent *is* the outflow, so the
+   step is exact; for a smoothly non-linear store it is second-order accurate.
 
 
 Accuracy and the time step
