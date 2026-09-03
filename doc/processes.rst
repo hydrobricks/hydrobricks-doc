@@ -69,6 +69,48 @@ The ``temperature_min`` and ``temperature_max`` forcing variables are required f
 hydro units below 1500 m.
 
 
+.. _precipitation-correction:
+
+Precipitation correction
+-------------------------
+
+Independently of the rain/snow partitioning method, every model registers a
+pair of multiplicative undercatch-correction factors (the HBV RFCF/SFCF) on
+its precipitation splitter. They scale the rain and snow amounts *after* the
+partitioning, so they can compensate for gauge undercatch without changing
+where the rain/snow threshold sits. Both default to 1.0 (no correction) and
+are optional.
+
+For snow-bearing models, the splitter (``snow_rain_transition``) carries both
+factors and a built-in constraint keeps the snow factor at least as large as
+the rain factor (snow undercatch is usually the larger of the two):
+
+.. math::
+
+   P_{\mathrm{rain}}(t) = \mathrm{RCF} \cdot P_{\mathrm{rain}}^{\mathrm{raw}}(t),
+   \qquad
+   P_{\mathrm{snow}}(t) = \mathrm{SCF} \cdot P_{\mathrm{snow}}^{\mathrm{raw}}(t)
+
+For no-snow models, only the rain-only splitter (``rain``) and its correction
+factor are registered.
+
+Parameters:
+
+* ``rain_correction_factor`` (aliases ``rain_corr_factor``, ``rfcf``, ``rcf``)
+  *(optional, dimensionless, default: 1.0, [0.5, 2.0])*
+
+  - Multiplicative correction applied to the rain fraction.
+  - Full name: ``snow_rain_transition:rain_correction_factor`` (or
+    ``rain:rain_correction_factor`` for no-snow models).
+
+* ``snow_correction_factor`` (aliases ``snow_corr_factor``, ``sfcf``, ``scf``)
+  *(optional, dimensionless, default: 1.0, [0.5, 2.0])*
+
+  - Multiplicative correction applied to the snow fraction. Not registered for
+    no-snow models. Constrained to ``rain_correction_factor <= snow_correction_factor``.
+  - Full name: ``snow_rain_transition:snow_correction_factor``.
+
+
 .. _melt-models:
 
 Melt models
@@ -124,10 +166,24 @@ where:
 - :math:`T_a` is the air temperature [°C],
 - :math:`T_T` is the melt temperature threshold [°C].
 
-This is the simplest option: melt is proportional to the temperature excess above 
+This is the simplest option: melt is proportional to the temperature excess above
 the threshold, with a single degree-day factor per surface type (snow or ice).
 Requires only temperature and elevation band data. Use this model when
 computational simplicity or data availability is a priority.
+
+Parameters:
+
+* ``degree_day_factor`` *(mm d⁻¹ °C⁻¹, no default, [2, 20])*
+
+  - Degree-day factor :math:`a_j`. Registered independently per snow- or
+    ice-bearing component (e.g. ``snowpack:degree_day_factor``,
+    ``glacier:degree_day_factor``), so snow and ice can be calibrated
+    separately.
+
+* ``melting_temperature`` *(optional, °C, default: 0, [0, 5])*
+
+  - Melt temperature threshold :math:`T_T`.
+  - Full name: ``<component>:melting_temperature``.
 
 
 Aspect-based degree-day model (``degree_day_aspect``)
@@ -139,6 +195,28 @@ receive more radiation and melt faster for the same air temperature; this model
 captures that effect without explicitly computing radiation. It requires the
 catchment to be discretized by elevation and aspect. Use this model when aspect
 strongly differentiates melt rates across the catchment.
+
+Parameters:
+
+* ``degree_day_factor_n`` *(mm d⁻¹ °C⁻¹, no default, [1, 20])*
+
+  - Degree-day factor for north-facing slopes.
+  - Full name: ``<component>:degree_day_factor_n``.
+
+* ``degree_day_factor_s`` *(mm d⁻¹ °C⁻¹, no default, [1, 20])*
+
+  - Degree-day factor for south-facing slopes.
+  - Full name: ``<component>:degree_day_factor_s``.
+
+* ``degree_day_factor_ew`` *(mm d⁻¹ °C⁻¹, no default, [1, 20])*
+
+  - Degree-day factor for east- and west-facing slopes.
+  - Full name: ``<component>:degree_day_factor_ew``.
+
+* ``melting_temperature`` *(optional, °C, default: 0, [0, 5])*
+
+  - Melt temperature threshold :math:`T_T`, shared by all three aspects.
+  - Full name: ``<component>:melting_temperature``.
 
 
 Radiation-enhanced temperature-index model (``temperature_index``)
@@ -176,10 +254,29 @@ the surface normal and the solar beam. Radiation is computed at 15-minute
 intervals and aggregated to daily values to capture diurnal and shading effects.
 
 This model requires the catchment to be discretized by elevation and radiation.
-It is the most physically realistic of the three temperature-based variants and 
-is recommended when snow and glacier melt dominate runoff. 
-The main trade-off is that computing the radiation field adds some preprocessing time. 
+It is the most physically realistic of the three temperature-based variants and
+is recommended when snow and glacier melt dominate runoff.
+The main trade-off is that computing the radiation field adds some preprocessing time.
 See :cite:t:`Argentin2025` for a comparative evaluation of all three models.
+
+Parameters:
+
+* ``melt_factor`` (alias ``hock_melt_factor``) *(mm d⁻¹ °C⁻¹, no default, [0, 12])*
+
+  - Base melt factor :math:`m`, common to ice and snow.
+  - Full name: ``<component>:melt_factor``.
+
+* ``radiation_coefficient`` (alias ``hock_radiation_coefficient``)
+  *(m² W⁻¹ mm d⁻¹ °C⁻¹, no default, [0, 1])*
+
+  - Radiation factor :math:`r_j`, set independently per snow or ice component.
+  - Full name: ``<component>:radiation_coefficient``.
+
+* ``melting_temperature`` (alias ``hock_melting_temperature``)
+  *(optional, °C, default: 0, [0, 5])*
+
+  - Melt temperature threshold :math:`T_T`.
+  - Full name: ``<component>:melting_temperature``.
 
 
 CemaNeige snowmelt model (``cemaneige``)
@@ -304,6 +401,81 @@ Parameters:
   - Full name: ``snowpack:refreezing_factor``.
 
 
+.. _snow-to-ice-transformation-process:
+
+Snow-to-ice transformation
+---------------------------
+
+Converts snow accumulated on a glacier land cover into glacier ice (transfer
+from the snow container to the ice container of the same brick). It is
+important for melt-driven glacier evolution methods (delta-h or area
+scaling, see :ref:`glacier-related options <glacier_options>`), which derive
+glacier area from tracked ice volume: snow left unconverted at the end of the
+accumulation season would otherwise understate the ice thickness. Selected
+via the ``snow_ice_transformation`` model option, with the process key as its
+value (``None`` disables the transformation, the default).
+
+.. note::
+
+   This is the underlying per-time-step transformation process. It is
+   typically paired with the periodic
+   :ref:`ActionGlacierSnowToIceTransformation <snow-to-ice-transformation>`
+   action, which applies a one-off, end-of-season conversion of the remaining
+   snowpack.
+
+
+Constant-rate transformation (``transform:snow_ice_constant``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Converts snow to ice at a fixed rate whenever snow is present, capped by the
+available snow water equivalent:
+
+.. math::
+
+   T(t) = r
+
+where :math:`r` is a constant transformation rate [mm d⁻¹].
+
+Parameters:
+
+* ``snow_ice_transformation_rate`` *(mm d⁻¹, default: 0.5, [0, 10])*
+
+  - Constant snow-to-ice transformation rate :math:`r`.
+  - Full name: ``<glacier_component>_snowpack:snow_ice_transformation_rate``.
+
+
+SWAT-based transformation (``transform:snow_ice_swat``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Scales the transformation rate by the current snow water equivalent and by a
+seasonal factor derived from the day of year, following the SWAT model's
+glacier accumulation routine:
+
+.. math::
+
+   T(t) = c \left(1 + \sin\!\left(\frac{2\pi (d(t) - d_{\mathrm{ref}})}{365}\right)\right) SWE(t)
+
+where :math:`d(t)` is the day of year, :math:`d_{\mathrm{ref}}` is the day of
+year of the start of the local astronomical spring (day 81, March 22, for the
+northern hemisphere; day 264, September 21, for the southern hemisphere), and
+:math:`c` is the basal accumulation coefficient. The seasonal factor swings
+between 0 and 2 over the year, so the effective rate is highest roughly
+half a year after :math:`d_{\mathrm{ref}}`.
+
+Parameters:
+
+* ``snow_ice_transformation_basal_acc_coeff`` *(optional, dimensionless, default: 0.0014, [0.001, 0.006])*
+
+  - Basal accumulation coefficient :math:`c` [d⁻¹].
+  - Full name: ``<glacier_component>_snowpack:snow_ice_transformation_basal_acc_coeff``.
+
+* ``north_hemisphere`` *(optional, dimensionless, default: 1, [0, 1])*
+
+  - Hemisphere flag: non-zero selects the northern-hemisphere reference day
+    (81), zero selects the southern-hemisphere one (264).
+  - Full name: ``<glacier_component>_snowpack:north_hemisphere``.
+
+
 .. _snow-sublimation:
 
 Snow sublimation
@@ -380,6 +552,197 @@ Parameters:
 
   - Fraction of PET removed as sublimation.
   - Full name: ``snowpack:sublimation_pet_factor``.
+
+
+.. _snow-redistribution-processes:
+
+Snow redistribution
+--------------------
+
+Without redistribution, elevation-band models can accumulate unrealistic amounts
+of snow at high elevations ("snow towers"). The optional
+``snow_redistribution`` model option adds a lateral process that moves excess
+snow water equivalent (SWE) downslope, from each hydro unit to its
+lower-elevation neighbours, following a connectivity graph (see
+:ref:`Catchment connectivity <catchment-connectivity>`). Both methods redistribute
+only *excess* snow above a holding capacity, and cap the amount transported per
+time step to 1000 mm SWE to avoid unrealistic single-step transfers; the
+target's own accumulation is separately capped by ``max_snow_depth``.
+
+Valid values for ``snow_redistribution``: ``"transport:snow_slide"``,
+``"transport:snow_redistribution_frey"``,
+``"transport:snow_redistribution_frey_dynamic"`` (default: ``None``, i.e. no
+redistribution).
+
+.. code-block:: python
+
+   socont = Socont(
+      snow_redistribution="transport:snow_slide"
+   )
+
+
+SnowSlide (``transport:snow_slide``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements the SnowSlide algorithm (:cite:t:`Bernhardt2010`): snow exceeding a
+slope-dependent holding capacity slides downslope. The holding capacity
+decreases with slope (steeper terrain holds less snow):
+
+.. math::
+
+   h_{\mathrm{hold}} = \mathrm{coeff} \cdot \theta^{\mathrm{exp}}
+
+where :math:`\theta` is the slope in degrees (clamped to ``min_slope`` from
+below), converted from metres to a SWE threshold via a fixed snow density. Above
+``max_slope``, the holding capacity is set directly to
+``min_snow_holding_depth`` instead of following the equation. The excess SWE
+above the holding capacity is redistributed to the downslope neighbours.
+
+Parameters:
+
+* ``snow_slide_coeff`` *(optional, dimensionless, default: 3178.4, [0, 10000])*
+
+  - Coefficient in the holding-depth equation.
+  - Full name: ``<snowpack>:coeff``.
+
+* ``snow_slide_exp`` *(optional, dimensionless, default: -1.998, [-5, 0])*
+
+  - Exponent in the holding-depth equation.
+  - Full name: ``<snowpack>:exp``.
+
+* ``snow_slide_min_slope`` *(optional, °, default: 10, [0, 45])*
+
+  - Minimum slope used in the holding-depth calculation; units with a lower
+    slope are treated as having this minimum.
+  - Full name: ``<snowpack>:min_slope``.
+
+* ``snow_slide_max_slope`` *(optional, °, default: 75, [45, 90])*
+
+  - Slope above which ``min_snow_holding_depth`` is applied directly, instead
+    of the equation.
+  - Full name: ``<snowpack>:max_slope``.
+
+* ``snow_slide_min_snow_depth`` *(optional, mm, default: 50, [0, 1000])*
+
+  - Minimum snow holding depth, used as a floor on the equation's result and
+    directly above ``max_slope``.
+  - Full name: ``<snowpack>:min_snow_holding_depth``.
+
+* ``snow_slide_max_snow_depth`` *(optional, mm, default: 20000, [-1, 50000])*
+
+  - Maximum snow depth allowed to accumulate in a receiving unit (extension to
+    the original method). Set to ``-1`` for no limit.
+  - Full name: ``<snowpack>:max_snow_depth``.
+
+
+Frey & Holzmann redistribution (``transport:snow_redistribution_frey``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Implements the conceptual model of :cite:t:`Frey2015`: snow above a
+land-cover-specific holding capacity is redistributed, scaled by a
+distribution coefficient that increases with slope and decreases with snow
+density, and by a calibratable correction coefficient:
+
+.. math::
+
+   f_\rho = \frac{\rho_{\max} - \rho}{\rho_{\max}} \, e^{-\rho/\rho_{\max}} \, \frac{\theta}{90},
+   \qquad
+   \mathrm{redistributed} = \max(SWE - SWE_{\mathrm{hold}},\, 0) \cdot f_\rho \cdot C
+
+where :math:`\rho` is the snow density (a constant parameter in this variant)
+and :math:`\theta` is the slope in degrees; :math:`f_\rho = 0` once
+:math:`\rho \geq \rho_{\max}` or on flat terrain. The holding capacity
+:math:`SWE_{\mathrm{hold}}` is given as a snow depth [mm] and converted to SWE
+using the same density :math:`\rho`.
+
+Parameters:
+
+* ``snow_redist_frey_c`` *(optional, dimensionless, default: 1.0, [0, 10])*
+
+  - Correction coefficient :math:`C`.
+  - Full name: ``<snowpack>:correction``.
+
+* ``snow_redist_frey_holding_capacity`` *(optional, mm, default: 200, [0, 5000])*
+
+  - Land-cover snow holding capacity :math:`H_v` (snow depth).
+  - Full name: ``<snowpack>:snow_holding_capacity``.
+
+* ``snow_redist_frey_rho_max`` *(optional, kg/m³, default: 450, [200, 600])*
+
+  - Maximum snow density :math:`\rho_{\max}`: at or above it, snow no longer
+    redistributes.
+  - Full name: ``<snowpack>:rho_max``.
+
+* ``snow_redist_frey_snow_density`` *(optional, kg/m³, default: 250, [50, 600])*
+
+  - Constant snow density :math:`\rho`, used for the SWE/depth conversion and
+    in :math:`f_\rho`.
+  - Full name: ``<snowpack>:snow_density``.
+
+* ``snow_redist_frey_max_snow_depth`` *(optional, mm, default: 20000, [-1, 50000])*
+
+  - Maximum snow depth allowed to accumulate in a receiving unit. Set to
+    ``-1`` for no limit.
+  - Full name: ``<snowpack>:max_snow_depth``.
+
+
+Frey & Holzmann redistribution, dynamic density (``transport:snow_redistribution_frey_dynamic``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The same method as above, but the snow density :math:`\rho` evolves over time
+instead of staying constant, so drier (less-settled) snow is more mobile.
+Requires the ``temperature`` forcing.
+
+At each time step, the tracked density settles toward :math:`\rho_{\max}` at a
+fixed rate, and freshly-added SWE (from snowfall or from redistribution
+received from other units) is mixed in at a temperature-dependent fresh-snow
+density:
+
+.. math::
+
+   \rho_{\mathrm{fresh}} = \rho_{\min} + \left(\rho_{\mathrm{fresh,max}} - \rho_{\min}\right)
+   \frac{1 + \tanh_\sigma(T_a)}{2}
+
+where :math:`\tanh_\sigma` is a sigmoid of the air temperature :math:`T_a`,
+shaped by ``rho_scale`` and ``t_scale``: colder air yields a fresh-snow density
+near :math:`\rho_{\min}`, warmer air near :math:`\rho_{\mathrm{fresh,max}}`.
+
+Parameters: ``snow_redist_frey_dyn_c``, ``snow_redist_frey_dyn_holding_capacity``,
+``snow_redist_frey_dyn_rho_max`` and ``snow_redist_frey_dyn_max_snow_depth`` as for
+:ref:`transport:snow_redistribution_frey <snow-redistribution-processes>` above
+(with the ``_dyn_`` aliases in place of the static-density ones), plus:
+
+* ``snow_redist_frey_dyn_rho_min`` *(optional, kg/m³, default: 100, [50, 300])*
+
+  - Minimum fresh-snow density (coldest end of the sigmoid).
+  - Full name: ``<snowpack>:rho_min``.
+
+* ``snow_redist_frey_dyn_rho_fresh_max`` *(optional, kg/m³, default: 300, [100, 500])*
+
+  - Maximum fresh-snow density (warmest end of the sigmoid).
+  - Full name: ``<snowpack>:rho_fresh_max``.
+
+* ``snow_redist_frey_dyn_rho_settling`` *(optional, 1/day, default: 0.1, [0, 1])*
+
+  - Rate at which the tracked density settles toward :math:`\rho_{\max}`.
+  - Full name: ``<snowpack>:rho_settling``.
+
+* ``snow_redist_frey_dyn_rho_scale`` *(optional, dimensionless, default: 1.2, [0.1, 10])*
+
+  - Slope of the temperature-to-fresh-density sigmoid.
+  - Full name: ``<snowpack>:rho_scale``.
+
+* ``snow_redist_frey_dyn_t_scale`` *(optional, °C, default: 1.0, [-5, 5])*
+
+  - Shift of the temperature-to-fresh-density sigmoid.
+  - Full name: ``<snowpack>:t_scale``.
+
+Both methods require a slope property on the hydro units and a connectivity
+CSV file describing the downslope pathways between hydro units:
+
+.. code-block:: python
+
+   hydro_units.set_connectivity('/path/to/connectivity.csv')
 
 
 .. _interception:

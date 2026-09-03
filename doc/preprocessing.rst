@@ -124,6 +124,9 @@ shortcut:
   default ``50``.
 * ``min_elevation`` / ``max_elevation`` — force the elevation range, useful to keep
   band boundaries consistent across runs.
+* ``split_discontinuous`` / ``min_patch_area`` / ``connectivity`` — optionally create
+  one hydro unit per connected patch, see
+  :ref:`Spatially discontinuous units <discontinuous-hydro-units>`.
 
 **Multiple criteria**
 
@@ -177,6 +180,14 @@ Additional keyword arguments control each criterion independently:
    * - ``sub_catchments``
      - Path to a vector file of sub-catchment polygons; required when
        ``'sub_catchments'`` is in ``criteria``.
+   * - ``split_discontinuous``
+     - Split a hydro unit made of several disconnected patches into one hydro unit
+       per patch; default ``False``. Requires scipy.
+   * - ``min_patch_area``
+     - Minimum area (m²) for a disconnected patch to become its own hydro unit;
+       default ``None`` (no minimum).
+   * - ``connectivity``
+     - Pixel connectivity defining a patch, ``8`` *(default)* or ``4``.
 
 .. note::
 
@@ -201,6 +212,45 @@ raised (the area is not silently dropped).
 
 The resulting sub-catchment id of each unit is stored as the ``sub_catchment``
 hydro-unit property.
+
+.. _discontinuous-hydro-units:
+
+**Spatially discontinuous units**
+
+Hydro units are defined by combinations of criteria, not by geometry: all the cells
+matching a combination share the same unit id, wherever they are in the catchment. A
+single hydro unit therefore usually covers several spatially disconnected patches —
+for instance the 2000–2050 m north-facing band on two opposite valley flanks. This is
+the default behaviour and is often what is wanted, as it keeps the number of units
+low.
+
+It has a cost, though: the mean slope, aspect, latitude and longitude of such a unit
+average over patches that may be kilometers apart, which matters for the processes
+using them (e.g. the lateral snow redistribution).
+
+Set ``split_discontinuous=True`` to create one hydro unit per connected patch
+instead. Unlike ``'sub_catchments'``, it needs no additional data:
+
+.. code-block:: python
+
+   catchment.discretize_by(
+      ['elevation', 'aspect'],
+      elevation_distance=100,
+      split_discontinuous=True,
+      min_patch_area=10000
+   )
+
+``min_patch_area`` (m²) guards against a proliferation of tiny units: a patch smaller
+than this threshold does not become its own unit but is merged into the largest
+retained patch of the same unit, so no area is ever lost. If no patch of a unit
+reaches the threshold, the unit is left unsplit. ``connectivity`` selects whether
+diagonal neighbours belong to the same patch (``8``, the default) or not (``4``).
+
+.. note::
+
+   Splitting refines the discretization: it increases the number of hydro units and
+   renumbers them. The unit-ID raster changes accordingly, so any cached gridded
+   forcing, radiation or snow-cover aggregation is recomputed.
 
 After discretization, save the hydro unit table and the unit-ID raster for
 reuse in subsequent runs:

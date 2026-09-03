@@ -16,9 +16,11 @@ elevation bands (loaded from a CSV, or :ref:`delineated from a DEM
 (CSV, spatialized with elevation gradients) or by :ref:`gridded netCDF data
 <project-files-gridded>` (aggregated per hydro unit) — the two can be mixed,
 one source per variable — plus an optional observed discharge series.
-Everything beyond that — glacier evolution, custom calibration logic — is
-done in Python, starting from the objects the loader returns (see
-:ref:`below <project-files-python>`).
+A :ref:`calibration section <project-files-calibration>` can declare how the
+parameters are optimized, and :ref:`study files <study-files>` cross several
+project settings into a comparison matrix. Everything beyond that — glacier
+evolution, custom calibration logic — is done in Python, starting from the
+objects the loader returns (see :ref:`below <project-files-python>`).
 
 
 Creating a project file
@@ -86,7 +88,7 @@ An annotated example
        gradient: 0.05          # optional multiplicative gradient per 100 m
      pet:
        method: Oudin           # computed with pyet when no 'pet' column is given
-       latitude: 47.3
+       lat: 47.3
 
    observations:               # optional
      file: discharge.csv
@@ -107,6 +109,13 @@ An annotated example
      k_slow_2: 0.8
      k_quick: 1
      percol: 9.8
+
+   calibration:                # optional: how to optimize the parameters
+     algorithm: sceua
+     repetitions: 10000
+     objective: kge_2012
+     transform: power(0.2)
+     parameters: [a_snow, A, k_slow_1, k_slow_2, k_quick, percol]
 
 Relative paths are resolved from the directory containing the project file.
 Two example project files are available in the
@@ -136,9 +145,12 @@ at all:
        distance: 100             # band height [m] (equal_intervals)
        # number: 25              # number of bands (quantiles)
        # min_elevation: 400      # optional fixed bounds, to homogenize runs
+       # split_discontinuous: true  # one hydro unit per connected patch
+       # min_patch_area: 10000      # smallest patch to promote [m2]
+       # connectivity: 8            # 8 (default) or 4
 
 ``file`` and ``discretization`` are mutually exclusive (``columns``,
-``land_cover_areas`` and ``unit_ids_raster`` only apply to the CSV case). The
+``columns_areas`` and ``unit_ids_raster`` only apply to the CSV case). The
 delineation computes each band's area, mean elevation, slope and aspect from
 the DEM — so, for instance, SOCONT's default kinematic-wave surface runoff
 (which needs the slope) works out of the box. With gridded forcing, the hydro
@@ -146,6 +158,11 @@ unit ids raster is generated automatically in the output directory. The
 delineation requires the optional packages ``geopandas``, ``shapely``,
 ``rasterio`` and ``pyproj``. For other discretizations (aspect, radiation,
 combined criteria) use the :ref:`preprocessing API <preprocessing>`.
+
+An elevation band usually covers several spatially disconnected patches;
+``split_discontinuous`` turns each patch into its own hydro unit, with
+``min_patch_area`` and ``connectivity`` as described in
+:ref:`Spatially discontinuous units <discontinuous-hydro-units>`.
 
 
 .. _project-files-gridded:
@@ -165,7 +182,7 @@ preprocessing, e.g. ``catchment.save_unit_ids_raster()``):
      file: hydro_units.csv
      unit_ids_raster: unit_ids.tif
      # Optional: with an outline and a DEM, elevation gradients can be
-     # derived from the gridded data itself (elevation_gradient below).
+     # derived from the gridded data itself (apply_data_gradient below).
      # outline: outline.shp
      # dem: dem.tif
 
@@ -175,29 +192,29 @@ preprocessing, e.g. ``catchment.save_unit_ids_raster()``):
          path: RhiresD_v2.0_swiss.lv95     # a netCDF file or a folder
          file_pattern: "RhiresD_*.nc"      # when path is a folder
          var_name: RhiresD                 # variable name in the file
-         crs: 2056                         # EPSG id (omit to read from file)
+         data_crs: 2056                    # EPSG id (omit to read from file)
          dim_x: E                          # dimension names (defaults:
          dim_y: N                          # time, x, y)
        temperature:
          path: TabsD_v2.0_swiss.lv95
          file_pattern: "TabsD_*.nc"
          var_name: TabsD
-         crs: 2056
+         data_crs: 2056
          dim_x: E
          dim_y: N
-         elevation_gradient: true          # needs hydro_units.outline + dem
+         apply_data_gradient: true         # needs hydro_units.outline + dem
      pet:
        method: Oudin
-       latitude: 47.3
+       lat: 47.3
 
 Station and gridded sources can be **mixed** — for example gridded
 precipitation with a station temperature — with one source per variable
 (declaring a variable both in ``columns`` and in ``gridded`` is an error).
-With ``elevation_gradient: true``, elevation gradients are derived from the
+With ``apply_data_gradient: true``, elevation gradients are derived from the
 gridded data and applied to the hydro units; this needs the catchment
 ``outline`` and ``dem`` in the ``hydro_units`` section. The PET is taken from
 a ``pet`` source when given, and computed from the temperature otherwise
-(``latitude`` can be omitted when an outline/DEM is provided, as it is then
+(``lat`` can be omitted when an outline/DEM is provided, as it is then
 derived from the catchment).
 
 The gridded files are read lazily at run time, so ``validate`` checks the
@@ -230,7 +247,7 @@ Section reference
    :ref:`above <project-files-discretization>`). With a CSV, ``columns``
    maps the ``elevation`` and ``area`` columns (defaults: ``elevation``
    and ``area``); any additional entry is loaded as a hydro unit property
-   (e.g. ``slope``); ``land_cover_areas`` can replace the single ``area``
+   (e.g. ``slope``); ``columns_areas`` can replace the single ``area``
    column with a mapping of land cover name to area column; and
    ``unit_ids_raster`` (required with gridded forcing) is the raster of
    hydro unit ids. ``outline`` and ``dem`` (together) define a catchment —
@@ -250,7 +267,7 @@ Section reference
    variable to a netCDF source (see :ref:`above <project-files-gridded>`).
    PET is taken from a ``pet`` source when given, and computed from the
    temperature otherwise (``pet.method``, default ``Oudin``, with
-   ``pet.latitude`` unless an outline/DEM is given).
+   ``pet.lat`` unless an outline/DEM is given).
 
 ``observations``
    Optional observed discharge (``file``, ``time``, ``column``), loaded
@@ -266,8 +283,24 @@ Section reference
    span only. The model is set up over the full span, ready for
    ``evaluate_periods``.
 
+``calibration``
+   Optional: how to optimize the parameters (see
+   :ref:`below <project-files-calibration>`). ``algorithm`` (a SPOTPY
+   algorithm name, default ``sceua``), ``repetitions``, ``objective`` (a
+   metric name, default: the non-parametric KGE), ``transform`` (an optional
+   :ref:`discharge transformation <discharge-transformations>` applied in the
+   objective, e.g. ``power(0.2)``) and ``parameters`` — the names of the
+   parameters to calibrate (model parameters or ``data_parameters``).
+   Declaring it requires ``observations`` and a calibration period.
+
 ``output``
    Output directory (default: ``output`` next to the project file).
+
+``cache``
+   Directory for the cache of expensive forcing spatializations (e.g.
+   regridding gridded data per hydro unit), automatically reloaded when the
+   same setup is reused. Default: ``<output>/cache``; set it explicitly to
+   share one cache between several projects on the same data.
 
 ``parameters``
    Parameter values by name or alias, passed to
@@ -329,11 +362,7 @@ use ``project.forcing`` in a calibration setup.
    project.parameters.set_values({'a_snow': 3})   # anything beyond it: Python
    project.model.run(parameters=project.parameters, forcing=project.forcing)
 
-Calibration follows the same pattern: load a project file without parameter
-values (with ``param:`` forcing references where the corrections should be
-calibrated), select ``project.parameters.allow_changing`` and hand the objects
-to the :ref:`trainer <calibration>` — this is how the calibration examples of
-the repository are written. Two variations are available on top:
+Two variations are available on top:
 
 * ``hb.load_project(..., setup=False)`` builds everything but does **not**
   set the model up — for the cases where something must happen in between,
@@ -344,3 +373,46 @@ the repository are written. Two variations are available on top:
   period) — the split-sample workflow: calibrate on the calibration period,
   then reload the project (full span) and score every period with
   ``evaluate_periods``.
+
+
+.. _project-files-calibration:
+
+Calibrating a project
+---------------------
+
+With a ``calibration`` section (and ``observations`` plus a calibration
+period), the whole split-sample workflow is one call —
+:meth:`Project.calibrate <hydrobricks.Project.calibrate>`:
+
+.. code-block:: python
+
+   project = hb.load_project('project.yaml')
+
+   best = project.calibrate()          # optimizes on the calibration period
+   print(best['score'], best['parameters'])
+
+   simulated = project.run()           # best values applied, full span
+   scores = hb.evaluate_periods(
+       project.model, project.observations, project.periods,
+       metrics=('kge_2012', 'nse'),
+   )
+
+``calibrate()`` optimizes the declared ``parameters`` with the declared
+``algorithm``/``objective``/``transform`` on the calibration period (with the
+project's spin-up), applies the best values to ``project.parameters`` and
+returns the :func:`trainer.get_best <hydrobricks.trainer.get_best>` record
+(plus the SPOTPY ``sampler`` for further analysis). Every setting can be
+overridden per call — ``project.calibrate(algorithm='mc', repetitions=500)``
+— so the file holds the defaults, not a straitjacket. Since a model instance
+is single-use, the calibration runs on a fresh internal build of the project
+over the calibration period; the loaded project stays set up over the full
+span, ready for the validation ``run()``.
+
+The same is available without any Python through :ref:`study files
+<study-files>`, which also cross several settings (catchments, models,
+objectives, transformations, ...) into a comparison matrix. For anything
+beyond a single objective — auxiliary observations such as snow cover,
+weighted multi-signal objectives, Pareto calibration — hand the project's
+objects to the :ref:`trainer <calibration>` directly (load with ``param:``
+forcing references where the corrections should be calibrated, and select
+``project.parameters.allow_changing``).

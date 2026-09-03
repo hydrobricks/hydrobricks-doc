@@ -147,46 +147,14 @@ It is exclusively for snow and includes the following parameters:
 Snow redistribution
 ^^^^^^^^^^^^^^^^^^^
 
-Snow redistribution via the SnowSlide method (:cite:t:`Bernhardt2010`) simulates
-gravitational downslope transport of snow between hydro units. It is activated by setting
-``snow_redistribution="transport:snow_slide"``.
-
-**Snow slide** (``transport:snow_slide``)
-
-* ``snow_slide_coeff`` *(optional, dimensionless, default: 3178.4, [0, 10000])*
-
-  - Coefficient in the snow holding depth equation
-    :math:`h_\mathrm{hold} = \mathrm{coeff} \cdot \theta^{\mathrm{exp}}`,
-    where :math:`\theta` is the slope in degrees.
-  - Full name: ``<snowpack>:coeff``.
-
-* ``snow_slide_exp`` *(optional, dimensionless, default: -1.998, [-5, 0])*
-
-  - Exponent in the snow holding depth equation (see above).
-  - Full name: ``<snowpack>:exp``.
-
-* ``snow_slide_min_slope`` *(optional, °, default: 10, [0, 45])*
-
-  - Minimum slope used in the holding depth calculation. Units with a slope below 
-    this value are treated as having this minimum slope.
-  - Full name: ``<snowpack>:min_slope``.
-
-* ``snow_slide_max_slope`` *(optional, °, default: 75, [45, 90])*
-
-  - Slope above which the minimum snow holding depth is applied directly, regardless 
-    of the equation result.
-  - Full name: ``<snowpack>:max_slope``.
-
-* ``snow_slide_min_snow_depth`` *(optional, mm, default: 50, [0, 1000])*
-
-  - Minimum snow holding depth applied when the slope exceeds ``snow_slide_max_slope``.
-  - Full name: ``<snowpack>:min_snow_holding_depth``.
-
-* ``snow_slide_max_snow_depth`` *(optional, mm, default: 20000, [-1, 50000])*
-
-  - Maximum snow depth allowed to accumulate in a receiving unit (extension to the original
-    method). Set to ``-1`` for no limit.
-  - Full name: ``<snowpack>:max_snow_depth``.
+Snow redistribution simulates lateral transport of snow between hydro units, driven
+by either the SnowSlide method (:cite:t:`Bernhardt2010`) or the conceptual model of
+:cite:t:`Frey2015`. It is activated by setting ``snow_redistribution`` to one of
+``"transport:snow_slide"``, ``"transport:snow_redistribution_frey"`` or
+``"transport:snow_redistribution_frey_dynamic"``. The aliases below (e.g.
+``snow_slide_coeff``) are the same for every model — see the
+:ref:`process formulas and full parameter list <snow-redistribution-processes>`
+on the :ref:`processes page <processes>`.
 
 
 .. _glacier-modules:

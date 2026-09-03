@@ -435,12 +435,54 @@ mm/d):
 Metrics are provided by the `HydroErr package <https://hydroerr.readthedocs.io>`_.
 Any metric from their
 `full list <https://hydroerr.readthedocs.io/en/stable/list_of_metrics.html>`_
-can be used by passing its function name as a string.
+can be used by passing its function name as a string. In addition, ``'kge_np'``
+(alias ``'kge_non_parametric'``) selects the non-parametric Kling-Gupta Efficiency
+(:cite:t:`Pool2018`), which is computed via the optional SPOTPY dependency.
 
 ``eval()`` also accepts a ``period`` to score a date slice of the simulation
 only (e.g. a validation period), and a whole simulation can be scored on
 several declared periods at once with ``evaluate_periods()`` — see
 :ref:`calibration and validation periods <periods>`.
+
+
+.. _discharge-transformations:
+
+Discharge transformations
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Squared-error-based metrics (NSE, KGE and its variants, RMSE, ...) computed on
+raw discharge are dominated by high flows. A :class:`~hydrobricks.DischargeTransform`
+can be applied to both the observed and simulated series before scoring, to shift
+that emphasis — the *streamflow transformations* of :cite:t:`Thirel2024`:
+
+.. code-block:: python
+
+   nse_low_flows = hb.evaluate(sim_ts, obs_ts, 'nse', transform='power(0.2)')
+
+``transform`` accepts anything :meth:`DischargeTransform.from_spec
+<hydrobricks.evaluation.transforms.DischargeTransform.from_spec>` understands: a
+string, a dict, a :class:`~hydrobricks.DischargeTransform` instance, or a custom
+callable ``f(q) -> q_t``. Available kinds:
+
+* ``'power(exponent)'`` — ``(q + epsilon) ** exponent``. A small exponent (e.g.
+  0.2) emphasizes low flows while keeping the whole regime in play.
+* ``'sqrt'`` — the power transform with exponent 0.5, a balanced weighting.
+* ``'log(epsilon)'`` — ``ln(q + epsilon)``, a strong low-flow emphasis.
+* ``'inverse(epsilon)'`` — ``1 / (q + epsilon)``, an even stronger low-flow
+  emphasis.
+* ``'identity'`` (alias ``'none'``) — no transformation (the default).
+
+``log`` and ``inverse`` diverge at zero flow, so they need a small ``epsilon``
+offset when the series contains zero flows. Left unset, ``epsilon`` defaults to
+``'auto'`` for these two kinds — one-hundredth of the mean observed flow
+(:cite:t:`Pushpalatha2011`) — and to 0 otherwise; it is resolved once from the
+observations and applied identically to both series.
+
+This same ``transform`` argument is accepted by :func:`hb.evaluate
+<hydrobricks.evaluation.metrics.evaluate>`, :func:`hb.evaluate_periods
+<hydrobricks.periods.evaluate_periods>`, and :class:`trainer.SpotpySetup
+<hydrobricks.trainer.SpotpySetup>` for calibration — see the
+:ref:`calibration page <calibration>`.
 
 
 Outputs
