@@ -20,9 +20,11 @@ Additional resources contributed by the community are listed on the
 
    doc/getting-started
    doc/project-files
+   doc/study-files
    doc/basics
    doc/models
    doc/processes
+   doc/solvers
    doc/parameters
    doc/forcing
    doc/preprocessing

@@ -296,9 +296,12 @@ method in use:
    shapefiles), which supply area directly without tracking ice volume.
 
 ``snow_ice_transformation``
-   Rate at which accumulated snow converts to glacier ice [mm/day]; default
-   ``0.002`` mm/day. Set to ``False`` to disable. Enable with the melt-driven methods,
-   which track ice thickness to derive area.
+   The per-time-step :ref:`snow-to-ice transformation process
+   <snow-to-ice-transformation-process>` converting accumulated snow to
+   glacier ice: ``'transform:snow_ice_constant'`` (a fixed rate),
+   ``'transform:snow_ice_swat'`` (scaled by SWE and season), or ``None`` to
+   disable (default). Enable with the melt-driven methods, which track ice
+   thickness to derive area.
 
 Recommended settings:
 
@@ -307,14 +310,14 @@ Recommended settings:
   .. code-block:: python
 
      glacier_infinite_storage = True
-     snow_ice_transformation = False
+     snow_ice_transformation = None
 
 * For **melt-driven** glacier evolution (delta-h or area scaling):
 
   .. code-block:: python
 
      glacier_infinite_storage = False
-     snow_ice_transformation = True
+     snow_ice_transformation = 'transform:snow_ice_constant'
 
 Pass these options at model initialization:
 
@@ -345,6 +348,14 @@ to avoid underestimating ice thickness.
    :ref:`area-scaling <glacier_evolution_area_scaling>` evolution methods,
    which track ice volume and thickness.
    It is not needed for externally driven land cover changes via CSV or shapefile.
+
+.. note::
+
+   This is a one-off, periodic conversion (the whole remaining snowpack, once a
+   year). For a continuous per-time-step transformation instead, use the
+   ``snow_ice_transformation`` model option — see the
+   :ref:`snow-to-ice transformation process <snow-to-ice-transformation-process>`
+   and :ref:`glacier-related options <glacier_options>`. The two can be combined.
 
 .. code-block:: python
 

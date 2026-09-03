@@ -6,10 +6,38 @@ Upgrade guide
 Only breaking changes that require attention are listed here. For a complete list of changes, see the
 `changelog <https://github.com/hydrobricks/hydrobricks/blob/main/CHANGELOG.md>`_.
 
+v0.8 to v0.9
+------------
+
+Breaking changes:
+
+* The observation and evaluation classes moved to a new
+  ``hydrobricks.evaluation`` subpackage, and the old ``hydrobricks.observations``
+  module is gone. The classes stay importable from the top level, so
+  ``hb.DischargeObservations``, ``hb.AuxiliaryObservation``,
+  ``hb.GlacierMassBalanceObservations``, ``hb.SnowCoverObservations`` and
+  ``hb.evaluate`` keep working. Only explicit module imports must be updated:
+  replace ``from hydrobricks.observations import ...`` with the top-level access
+  (``import hydrobricks as hb`` then ``hb.DischargeObservations``) or with
+  ``from hydrobricks.evaluation import DischargeObservations``.
+* The discharge observations class ``Observations`` was renamed
+  ``DischargeObservations``, and the calibration argument ``obs`` (in
+  ``SpotpySetup``) was renamed ``discharge``. Update instantiations
+  (``hb.Observations(...)`` becomes ``hb.DischargeObservations(...)``) and the
+  calibration setup (``SpotpySetup(..., obs=...)`` becomes
+  ``SpotpySetup(..., discharge=...)``).
+* The default land cover is now ``open`` instead of ``ground``. The names
+  ``ground``, ``generic`` and ``generic_land_cover`` are still accepted as
+  aliases, so existing model definitions keep running, but the output labels of
+  a default run change from ``ground:*`` to ``open:*`` (e.g. ``ground:outflow``
+  becomes ``open:outflow``). Update any post-processing that looks up results by
+  these labels, or name the land cover explicitly.
+
+
 v0.7 to v0.8
 ------------
 
-Breaking change2:
+Breaking changes:
 
 * The minimum Python version is now 3.10.
 * Behaviours were renamed as Actions.

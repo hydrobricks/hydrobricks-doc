@@ -11,7 +11,22 @@ Project files
 .. autofunction:: hydrobricks.load_project
 
 .. autoclass:: Project
-   :members: run
+   :members: setup, run, calibrate
+   :show-inheritance:
+
+.. _api_study:
+
+Study files
+-----------
+
+.. autofunction:: hydrobricks.load_study
+
+.. autoclass:: Study
+   :members:
+   :show-inheritance:
+
+.. autoclass:: hydrobricks.study.StudyJob
+   :members:
    :show-inheritance:
 
 .. _api_catchment:
@@ -58,6 +73,11 @@ Discharge observations
 ----------------------
 
 .. autoclass:: DischargeObservations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: DischargeTransform
    :members:
    :undoc-members:
    :show-inheritance:
