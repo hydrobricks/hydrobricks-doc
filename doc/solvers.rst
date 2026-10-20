@@ -34,8 +34,9 @@ Available solvers
    * - ``heun_explicit``
      - 2
      - 2
-     - Good accuracy/cost compromise for daily simulations; conditionally
-       stable.
+     - Good accuracy/cost compromise while the response factors stay small;
+       conditionally stable, and loses accuracy as :math:`k\,h` approaches 1
+       (see :ref:`choosing a solver <choosing-a-solver>`).
    * - ``runge_kutta`` (or ``rk4``)
      - 4
      - 4
@@ -204,15 +205,16 @@ equation
    S(t+h) = S(t) + h \left(I - Q\!\left(S(t+h)\right)\right),
 
 where :math:`Q(S)` is the total outflow of the reservoir's processes evaluated
-at the **end-of-step** content. The scalar equation is solved by bisection,
-which is robust because the total outflow does not decrease with the content.
+at the **end-of-step** content. The scalar equation is solved by a bracketed
+iteration, which is robust because the total outflow does not decrease with the
+content, so the residual is monotonic and its root is bracketed from the start.
 
 .. figure:: images/solver_implicit_euler.png
    :width: 70%
 
    **implicit_euler** — the outflow slope is evaluated at the *end-of-step*
-   content, found (by bisection) so that advancing along that slope lands
-   exactly on it. The store undershoots the exact solution but can never
+   content, found by the bracketed iteration so that advancing along that slope
+   lands exactly on it. The store undershoots the exact solution but can never
    overshoot or oscillate, whatever the step size.
 
 Because every process — including non-linear ones such as evapotranspiration —
@@ -229,8 +231,8 @@ The Crank-Nicolson solver (default)
 -----------------------------------
 
 The ``crank_nicolson`` solver is the default. It shares the sequential,
-bisection-based structure of the implicit Euler solver but advances each
-reservoir with the implicit trapezoidal rule,
+iterative structure of the implicit Euler solver but advances each reservoir
+with the implicit trapezoidal rule,
 
 .. math::
 
@@ -243,9 +245,9 @@ applying to each process the average of its start- and end-of-step rates.
    :width: 70%
 
    **crank_nicolson** — the step advances along the average of the start- and
-   end-of-step slopes (the end state again found by bisection). Averaging the
-   two slopes recovers second-order accuracy, so the step stays close to the
-   exact curve while remaining unconditionally stable.
+   end-of-step slopes (the end state again found by the bracketed iteration).
+   Averaging the two slopes recovers second-order accuracy, so the step stays
+   close to the exact curve while remaining unconditionally stable.
 
 This combines **second-order accuracy** (like Heun) with **unconditional
 stability** (like implicit Euler) for any process formulation, which is why it
@@ -366,6 +368,106 @@ with response factors approaching :math:`1\,\mathrm{d^{-1}}` and beyond. If a
 calibration explores such values, prefer ``analytic_linear`` or
 ``implicit_euler`` (both unconditionally stable), or reduce the time step.
 
+
+.. _choosing-a-solver:
+
+Choosing a solver
+-----------------
+
+``crank_nicolson`` is the default because it is the only scheme that is both
+second-order accurate and unconditionally stable for any process. It is also
+among the more expensive ones. The two tables below give the orders of
+magnitude to weigh, both measured on the same setup: the Socont model on the
+Sitter catchment, 35 hydro units, 40 years at a daily time step.
+
+Relative run time, taking the cheapest scheme as the unit:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 22
+
+   * - Solver
+     - Relative run time
+   * - ``euler_explicit``
+     - 1.0
+   * - ``analytic_linear``
+     - 1.2
+   * - ``heun_explicit``
+     - 1.4
+   * - ``exponential_euler``
+     - 2.0
+   * - ``runge_kutta``
+     - 2.2
+   * - ``implicit_euler``
+     - 2.2
+   * - ``crank_nicolson``
+     - 2.3
+
+Accuracy, as the Nash-Sutcliffe efficiency of the simulated discharge against
+the observed series, for three values of the quick-runoff response factor
+:math:`k` (the daily step makes :math:`k\,h` equal to the value in the column
+header). The parameter is documented up to :math:`1\,\mathrm{d^{-1}}`, so the
+last column is the edge of the range a calibration may explore:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 22 22 22
+
+   * - Solver
+     - :math:`k = 0.05`
+     - :math:`k = 0.5`
+     - :math:`k = 1.0`
+   * - ``crank_nicolson``
+     - 0.216
+     - 0.702
+     - 0.704
+   * - ``analytic_linear``
+     - 0.216
+     - 0.701
+     - 0.690
+   * - ``runge_kutta``
+     - 0.216
+     - 0.701
+     - 0.686
+   * - ``heun_explicit``
+     - 0.217
+     - 0.692
+     - 0.557
+   * - ``implicit_euler``
+     - 0.239
+     - 0.648
+     - 0.557
+   * - ``euler_explicit``
+     - 0.189
+     - 0.607
+     - 0.181
+
+Read the rows against each other, not against the absolute values: the model
+is uncalibrated here, so the efficiencies themselves mean little, but the
+spread between schemes at a given :math:`k` is the discretization error.
+
+What this says in practice:
+
+* **At small response factors every scheme agrees.** With
+  :math:`k = 0.05\,\mathrm{d^{-1}}` the six schemes fall within 0.05 of each
+  other, and the cheap explicit ones are a legitimate choice. If your response
+  factors are all small and run time matters (a long calibration, a large
+  catchment), ``heun_explicit`` gives most of the accuracy for 60% of the cost
+  of the default.
+* **The schemes separate as** :math:`k\,h` **approaches 1.** At
+  :math:`k = 1\,\mathrm{d^{-1}}` the three reference schemes cluster around
+  0.69, while ``heun_explicit`` drops to 0.56 and overshoots the peak
+  discharge by about 7%; ``euler_explicit`` breaks down entirely. This is the
+  reason the default is implicit: a calibration exploring the upper part of the
+  parameter range would otherwise carry that error into the fitted parameters.
+* **First-order schemes cost accuracy even where they are stable.**
+  ``implicit_euler`` is unconditionally stable but only first order, and it is
+  no cheaper than ``crank_nicolson``. Reach for it when a very stiff reservoir
+  makes the trapezoidal rule ring (see
+  :ref:`above <crank-nicolson-solver>`), not for speed.
+* **Reducing the time step is the other lever.** All the differences above
+  shrink with :math:`h`; a sub-daily model is far less sensitive to the choice
+  of scheme.
 
 Verification
 ------------

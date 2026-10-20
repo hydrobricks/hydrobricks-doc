@@ -33,6 +33,17 @@ Catchment connectivity
    :undoc-members:
    :show-inheritance:
 
+.. _api_catchment_network:
+
+Catchment network (subbasins)
+-----------------------------
+
+.. automodule:: hydrobricks.preprocessing.catchment_network
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 .. _api_preproc_glacier_delta_h:
 
 Glacier evolution — delta-h

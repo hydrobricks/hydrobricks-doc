@@ -66,3 +66,11 @@ HBV-96
    :undoc-members:
    :show-inheritance:
 
+PREVAH-UniBE
+------------
+
+.. automodule:: hydrobricks.models.prevah_unibe
+   :members:
+   :undoc-members:
+   :show-inheritance:
+

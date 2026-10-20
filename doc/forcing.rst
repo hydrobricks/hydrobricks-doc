@@ -11,10 +11,11 @@ for every hydro unit. Provide the hydro units when creating the instance:
 
    forcing = hb.Forcing(hydro_units)
 
-Two input types are supported:
+Three input types are supported:
 
 1. **Meteorological station data** spatially interpolated using elevation gradients
 2. **Gridded NetCDF data** aggregated to the hydro units
+3. **Already spatialized series**, one column per hydro unit or per group of units
 
 All forcing operations — corrections, spatialization, and PET computation —
 are queued when defined and executed together, in a fixed order, just before
@@ -166,6 +167,67 @@ Arguments:
   ``False`` for all others.
 
 
+.. _spatialized-forcing:
+
+Loading already spatialized data
+---------------------------------
+
+Some datasets are not a station to interpolate but series that are already resolved
+in space: a distributed product, or a series computed once per elevation band. They
+are read with ``load_spatialized_data_from_csv()``, one call per variable, and are
+taken as they are — no gradient, no correction, no spatialization step afterwards.
+
+The file holds one time column and one data column per hydro unit:
+
+.. code-block:: python
+
+   forcing.load_spatialized_data_from_csv(
+      'precipitation.csv',
+      variable='precipitation',
+      column_time='date',
+      time_format='%Y-%m-%d',
+   )
+
+The columns can also be shared by groups of units. ``columns_are`` then names a
+hydro-unit property whose value picks the column, so a series computed per elevation
+band is read by every unit of that band:
+
+.. code-block:: python
+
+   hydro_units.load_from_csv(
+      'hydro_units.csv',
+      column_elevation='elevation',
+      column_area='area',
+      other_columns={'band': 'band'},   # the band number of each unit
+   )
+
+   forcing.load_spatialized_data_from_csv(
+      'temperature.csv',
+      variable='temperature',
+      column_time='date',
+      columns_are='band',               # column headers are band numbers
+   )
+
+A unit with no matching column is an error rather than a silently missing series.
+
+A variable that repeats every year — a climatology such as the potential clear-sky
+radiation of each unit — is given by day of the year instead of by date, and is
+expanded onto the dates of the other variables:
+
+.. code-block:: python
+
+   forcing.load_spatialized_data_from_csv(
+      'potential_radiation.csv',
+      variable='solar_radiation',
+      column_day_of_year='day_of_year',   # 366 rows, one per day of the year
+   )
+
+Load a dated variable first, since the climatology has no dates of its own.
+``examples/advanced/prevah_ticino.py`` uses all three forms together.
+
+
+.. _pet:
+
 Computing PET
 -------------
 
@@ -184,3 +246,23 @@ are retrieved from the forcing data after spatialization, so PET is computed
 per hydro unit, using the unit's temperature, for example. 
 A catchment latitude (``lat``) can be given as a fixed value; 
 if omitted, the latitude of each hydro unit is used.
+
+Beyond pyet's own methods, ``'Hamon_vapor_density'`` selects the vapour-density
+form of the Hamon equation (:cite:t:`Schulla2000`), the one used by
+:ref:`PREVAH-UniBE <prevah-unibe>`:
+
+.. math::
+
+   E_P = 0.1651 \cdot \frac{h_d}{12} \cdot \frac{216.7 \, e_s}{T + 273.3}
+
+where :math:`h_d` is the day length [h], :math:`e_s` the saturation vapour
+pressure at the air temperature :math:`T` [hPa] and :math:`T` the daily mean air
+temperature [°C]. It needs temperature and latitude only:
+
+.. code-block:: python
+
+   forcing.compute_pet(method='Hamon_vapor_density', use=['t', 'lat'], lat=47.3)
+
+Note that the default ``'Hamon'`` is pyet's exponential variant of the same
+equation, which gives markedly higher values (about 1.5 times as much on an
+Alpine test catchment). The two are not interchangeable.

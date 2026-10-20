@@ -49,6 +49,16 @@ HydroUnits
    :undoc-members:
    :show-inheritance:
 
+.. _api_land_covers:
+
+Land cover types
+----------------
+
+.. automodule:: hydrobricks.land_covers
+   :members:
+
+.. currentmodule:: hydrobricks
+
 .. _api_parameterset:
 
 ParameterSet
@@ -122,6 +132,20 @@ StructureGraph
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _api_river_network_graph:
+
+RiverNetworkGraph
+-----------------
+
+.. autoclass:: hydrobricks.network.RiverNetworkGraph
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: hydrobricks.network.Subbasin
+   :members:
+   :undoc-members:
 
 Trainer
 -------

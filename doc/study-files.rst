@@ -123,11 +123,13 @@ Results
 -------
 
 A finished job writes ``<output>/results/<job_id>.json`` holding the matrix
-values, the calibration score, the best parameter values and the long-format
-scores (period × transform × metric). ``assess`` aggregates all finished jobs
-into a tidy table, ``<output>/results/scores.csv``, with one column per matrix
-dimension plus ``period``, ``eval_transform``, ``eval_metric``, ``score`` and
-``calibration_score`` — ready to pivot however you like:
+values, the calibration score, the wall-clock time the calibration took, the
+best parameter values and the long-format scores (period × transform ×
+metric). ``assess`` aggregates all finished jobs into a tidy table,
+``<output>/results/scores.csv``, with one column per matrix dimension plus
+``period``, ``eval_transform``, ``eval_metric``, ``score``,
+``calibration_score`` and ``calibration_seconds`` — ready to pivot however you
+like:
 
 .. code-block:: text
 
@@ -141,6 +143,13 @@ The evaluation metrics/transforms are decoupled from the calibration ones
 (the ``evaluation`` section), so you can, for instance, compare how a KGE′
 calibration and a non-parametric-KGE calibration each score on a low-flow
 (``power(0.2)``) evaluation.
+
+``calibration_seconds`` measures the calibration alone (the model build and
+the assessment are excluded), which is what makes a comparison of calibration
+algorithms — ``matrix: {calibration.algorithm: [sceua, dds, ...]}`` — tell you
+what each of them costs as well as what it achieves. It is wall-clock time, so
+only jobs run on comparable hardware, and with the same number of
+``repetitions``, are comparable.
 
 
 Using studies from Python
@@ -160,6 +169,7 @@ resolved jobs:
 
    study.run('appenzell__socont2__kge_2012__none')   # one job
    study.run_all()                                   # everything pending
+   study.run_all(workers=8)                          # ... 8 at a time
 
    scores = study.assess()             # tidy long-format DataFrame
    print(study.pivot(period='validation'))
@@ -180,9 +190,29 @@ inspected or run manually.
 Parallelizing the jobs
 ----------------------
 
-``run_all()`` is a sequential loop; for large grids, launch one **process**
-per job instead — the jobs are independent and idempotent, so any process
-launcher works.
+The jobs are independent and idempotent, and the model itself is
+single-threaded, so a study uses a multi-core machine by running several jobs
+at once — one **process** per job. On a single machine, ``--workers`` does it
+for you:
+
+.. code-block:: bash
+
+   hydrobricks study run my_study.yaml --all --workers 70
+
+Each job runs in its own process, a failing one is reported without taking the
+others down, and finished jobs are skipped — so the run can be interrupted and
+restarted. The same from Python: ``study.run_all(workers=70)``, with an
+optional ``on_done`` callback for progress.
+
+Before fanning out, the **shared forcing** of each distinct setup is computed
+once (``Study.warm_up``, in parallel as well; ``--no-warmup`` skips it). This
+matters: the expensive step is regridding the gridded forcing onto the hydro
+units, it is cached, and it depends only on the catchment — so without the
+warm-up every job of a catchment would recompute it simultaneously, none of
+them able to reuse the others' result. The workers are also pinned to a single
+BLAS thread each, as a thread per core in every worker would only thrash.
+
+For a cluster, keep launching one process per job with your own scheduler:
 
 Bash / GNU parallel:
 
