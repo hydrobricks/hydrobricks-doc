@@ -200,9 +200,7 @@ Currently available:
   ``lag_firn`` [d]), starting at PREVAH's translation times of 2 h, 1 h and none. The
   delays keep their meaning in hours at any time step: on an hourly step a whole
   number of hours is an exact shift, and on a daily step a delay of a few hours moves
-  the matching share of each day's outflow onto the next day. (Daily xPREVAH runs its
-  hourly glacier routing once a day while still treating the step as one hour, so
-  there its storage and translation times act as days.) The covers are prepared with
+  the matching share of each day's outflow onto the next day. The covers are prepared with
   :ref:`initialize_glacier_covers_split_by_elevation <glacier-cover-init>`; a cover whose
   name contains ``firn`` is treated as the accumulation zone.
 
@@ -707,12 +705,10 @@ take a per-cover suffix instead — ``fc_<cover>``, ``lp_<cover>``, ``beta_<cove
 
 .. note::
 
-   A per-class soil store is fed by its land cover, whose outgoing fluxes already
-   carry the cover area fraction, so its content — and therefore ``fc_<cover>`` — is
-   expressed **over the whole hydro unit**, not over the cover itself. The capacities
-   of the covers add up to the unit's soil storage, so a per-class capacity is not
-   the physical field capacity of that cover: give each cover the share of the
-   unit's storage it accounts for. The same holds for
+   A per-class ``fc_<cover>`` is the capacity of the cover's own soil, in mm **over
+   the cover**. Each store's capacity and evapotranspiration are scaled by the cover's
+   area fraction in the unit, and follow land cover changes, so per-class soils with
+   the same parameters behave like a shared soil. The same holds for
    :ref:`PREVAH-UniBE <prevah-unibe>` with ``share_soil=False``.
 
 * ``fc`` *(mm, no default, [0, 3000])*
@@ -917,7 +913,7 @@ exactly; the other solvers only approximate them. The remaining difference is th
 sub-step structure: PREVAH adds the inflow at the start of each sub-step (six a day,
 or hourly in the gridded version), where the solver spreads it over the whole step.
 
-* **Spatial structure**: distributed (hydrological response units) or semi-lumped
+* **Spatial structure**: distributed or semi-distributed (hydrological units)
 * **Time step**: daily, or shorter (see
   :ref:`computation time step <computation-time-step>`); the parameters of the original
   are calibrated for a daily step
@@ -967,18 +963,16 @@ Specific options
   ``"snow_rain:linear"``, PREVAH's transition over TGR ± TTRANS.
 * ``snow_redistribution``: optional snow redistribution process.
 * ``share_soil`` (default ``True``): share a single soil moisture store across the
-  soil-bearing land covers. A PREVAH hydrotope carries one land use and one soil, so
-  a shared store is the right model when each hydro unit is dominated by one cover.
-  With ``share_soil=False`` each cover gets its own store, with its own ``fc_<cover>``
-  and ``lp_<cover>``, as PREVAH parameterizes the soil per land-use class; the
-  percolation is then gated by their area-weighted mean saturation. As for the
-  per-class soils of :ref:`HBV-96 <hbv96>`, a per-cover capacity is expressed over the
-  whole hydro unit rather than over the cover, so the covers' capacities add up to the
-  unit's soil storage. It is only meaningful when every cover holds a share of every
-  unit: a cover with no area in a unit still contributes its capacity to that unit's
-  percolation gate while its store stays empty, which would hold the gate shut. Keep
-  the shared store for a discretization that gives each unit a single land use (a
-  PREVAH hydrotope).
+  soil-bearing land covers. With ``share_soil=False`` each cover gets its own store,
+  with its own ``fc_<cover>`` and ``lp_<cover>``, as PREVAH parameterizes the soil per
+  land-use class; the percolation is then gated by their area-weighted mean
+  saturation. ``fc_<cover>`` is the capacity of the cover's own soil, in mm over the
+  cover's area. Each store represents its cover's area, so in each hydro unit its
+  capacity and its evapotranspiration are scaled by the cover's area fraction, read
+  live so that land cover changes apply during the run. A cover absent from a unit
+  therefore holds no soil there and does not affect its percolation. This suits both
+  a discretization giving each unit a single land use (a PREVAH hydrotope) and units
+  mixing several covers.
 * ``forest_interception`` (default ``True``): enable the canopy interception;
   ``False`` disables it unless ``interception_covers`` names covers explicitly.
 * ``interception_covers`` (default ``None``: every cover but the glaciers, as PREVAH
@@ -1199,7 +1193,9 @@ factors (PREVAH's cf_rain / cf_snow). See
   (built-up and rock hydrotopes); see
   :ref:`percolation:prevah <percolation-processes>`. Set them with
   ``model.apply_land_use_percolation(parameters, hydro_units, land_use, awc,
-  soil_depth, conductivity=None)``.
+  soil_depth, conductivity=None)``. The per-unit ``awc``, ``soil_depth`` and
+  ``conductivity`` come from the soil maps through
+  :ref:`extract_soil_properties <unit-properties-from-rasters>`.
 
 Pre-defined parameter constraints (the response cascade must slow down with depth):
 
@@ -1455,7 +1451,11 @@ bricks start where the snow routine ends. The rules:
   declared land cover (the name must match the model's ``land_cover_names``);
   other kinds (e.g. ``storage``) create new stores. Fixed brick properties go
   in ``parameters`` (e.g. ``{capacity: 200}``); ``computed_directly: true``
-  marks a brick as explicitly computed (outside the ODE solver).
+  marks a brick as explicitly computed (outside the ODE solver). ``area_of:
+  <land cover>`` makes a store represent that cover's area rather than the whole
+  unit (e.g. one soil store per cover, fed by it): its ``capacity`` is then the
+  cover's own, and the capacity and the evapotranspiration of the store are scaled
+  by the cover's live area fraction in each unit.
 * **Processes** withdraw water from their brick: the ``kind`` selects the
   formulation (see the :ref:`processes page <processes>`), and its
   calibratable parameters are generated from it — ``generate_parameters()``,

@@ -257,9 +257,9 @@ The CSV must list the area of each land cover per hydro unit
 Declaring subbasins (river network)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A catchment can be described as a tree of **subbasins**, each holding its own
+A basin can be described as a tree of **subbasins**, each holding its own
 hydro units and draining into one downstream subbasin (the terminal subbasin is
-the catchment outlet). The hydro units carry a ``subbasin`` column giving the
+the basin outlet). The hydro units carry a ``subbasin`` column giving the
 subbasin each unit drains to; it is picked up from the CSV file when present
 (``id``, ``subbasin`` with unit ``-``) or added afterwards:
 
@@ -276,7 +276,7 @@ a CSV path:
 
    hydro_units.set_subbasins(pd.DataFrame({
        "id": [1, 2],
-       "downstream": [0, 1],           # 0: the catchment outlet
+       "downstream": [0, 1],           # 0: the basin outlet
        "name": ["St. Gallen", "Appenzell"],
        "length": [12500.0, 8300.0],   # reach length [m], and any other property
    }))
@@ -295,18 +295,18 @@ travels along the reach for ``length / celerity`` (see :ref:`channel routing
 <channel-routing>`), which is why the subbasin table above carries the reach
 ``length``. After a run, the discharge at every subbasin outlet is available, in
 mm per time step over the area drained at that outlet (its own units plus every
-upstream subbasin), which is what a gauge normalized by its catchment area
+upstream subbasin), which is what a gauge normalized by its basin area
 shows:
 
 .. code-block:: python
 
    model.get_subbasin_ids()            # [2, 1]: upstream first, outlet last
    model.get_subbasin_discharge(2)     # the upper Sitter at Appenzell
-   model.get_outlet_discharge()        # the catchment outlet (subbasin 1)
+   model.get_outlet_discharge()        # the basin outlet (subbasin 1)
    model.get_subbasin_areas()          # local and drained areas [m2]
    model.get_outlet_discharge(units='m3/s')   # the same series as a gauge records
 
-A catchment without a declared network is a single subbasin and runs exactly as
+A basin without a declared network is a single subbasin and runs exactly as
 before. The subbasin-level stores of the model (e.g. the slow reservoirs of
 SOCONT) are built once per subbasin, with the same parameters, from the
 structure variant matching the land covers of the subbasin's units: a subbasin
@@ -465,16 +465,16 @@ Refining the step changes the result, because the reservoirs and the non-linear 
 function are then integrated over shorter intervals. The difference shrinks as the step
 shrinks, and a step of 24 hours is exactly the daily run.
 
-A shorter step on its own is worth much less than what it lets the forcing say. On the
+A shorter step alone changes the result little: the gain comes from forcing that varies
+within the day, such as an hourly temperature or precipitation. On the
 Ticino-Bellinzona catchment of ``examples/advanced/prevah_ticino.py``, moving
 PREVAH-UniBE from a daily to an hourly step while keeping the daily information (the
 precipitation shared evenly over the 24 hours, the temperature held at the daily value)
 changes the discharge by 0.9 % in volume, and the hourly run agrees with the daily one
-to a Nash-Sutcliffe efficiency of 0.98 (both score 0.986 against the daily Fortran
-reference). Giving that same hourly run a temperature that swings 8 °C through the
-day, around exactly the same daily mean, changes it by 2.3 % in volume and by 25 % in
-the winter months. The step buys the ability to resolve the day; the resolved day is
-what changes the answer.
+to a Nash-Sutcliffe efficiency of 0.98. Giving that same hourly run a temperature that 
+swings 8 °C through the day, around exactly the same daily mean, changes it by 2.3 % 
+in volume and by 25 % in the winter months. A sub-daily step is therefore worth using 
+only with sub-daily forcing.
 
 That also means a parameter set calibrated on daily forcing does not automatically
 transfer to a sub-daily run of the same catchment. The rates carry over unchanged, but

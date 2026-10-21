@@ -97,14 +97,14 @@ factor are registered.
 Parameters:
 
 * ``rain_correction_factor`` (aliases ``rain_corr_factor``, ``rfcf``, ``rcf``)
-  *(optional, dimensionless, default: 1.0, [0.5, 2.0])*
+  *(optional, dimensionless, default: 1.0, [0.7, 1.3])*
 
   - Multiplicative correction applied to the rain fraction.
   - Full name: ``snow_rain_transition:rain_correction_factor`` (or
     ``rain:rain_correction_factor`` for no-snow models).
 
 * ``snow_correction_factor`` (aliases ``snow_corr_factor``, ``sfcf``, ``scf``)
-  *(optional, dimensionless, default: 1.0, [0.5, 2.0])*
+  *(optional, dimensionless, default: 1.0, [0.8, 1.6])*
 
   - Multiplicative correction applied to the snow fraction. Not registered for
     no-snow models. Constrained to ``rain_correction_factor <= snow_correction_factor``.
@@ -1377,9 +1377,11 @@ process at a brick that does not receive its flux.
 The ``gate`` key also accepts a list of bricks, for a model carrying one soil
 moisture store per land cover. The contents and the capacities are then summed
 before the ratio is taken, which gives the area-weighted mean saturation of the
-hydro unit: a per-cover store is fed by its land cover, whose outgoing fluxes
-already carry the cover area fraction, so its content is expressed over the whole
-unit.
+hydro unit. A per-cover store is fed by its land cover, whose outgoing fluxes
+already carry the cover area fraction, and its capacity is scaled by that same
+fraction (the ``area_of`` key), so both are expressed over the whole unit. A cover
+with no area in a unit adds neither content nor capacity there and does not affect
+the gate.
 
 PREVAH also has a constant branch: a hydrotope percolates at :math:`r \cdot k_w`
 whatever its soil moisture when its ET limit is at least its capacity. The ET limit

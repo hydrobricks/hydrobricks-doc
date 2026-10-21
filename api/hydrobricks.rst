@@ -59,6 +59,16 @@ Land cover types
 
 .. currentmodule:: hydrobricks
 
+.. _api_soils:
+
+Soil parameter tables
+---------------------
+
+.. automodule:: hydrobricks.soils
+   :members:
+
+.. currentmodule:: hydrobricks
+
 .. _api_parameterset:
 
 ParameterSet
