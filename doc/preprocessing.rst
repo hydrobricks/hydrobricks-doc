@@ -645,19 +645,25 @@ Subbasins of a river network
 ----------------------------
 
 To run a catchment as a :ref:`river network of subbasins <subbasins>`, the
-subbasins are delineated from the gauge (outlet) locations on the DEM, with the
-D8 flow directions of ``pysheds``:
+subbasins are either delineated from the gauge (outlet) locations on the DEM, with
+the D8 flow directions of ``pysheds``, or read from subbasin polygons. Delineate
+them before the discretization: the hydro units are then created within the
+subbasins, so that none spans two of them:
 
 .. code-block:: python
 
    catchment = hb.Catchment(outline='path/to/watershed.shp')
    catchment.extract_dem('path/to/dem.tif')
-   catchment.create_elevation_bands(method='equal_intervals', distance=100)
 
    subbasins = catchment.delineate_subbasins(
        {'Appenzell': (2749050.0, 1244200.0)},   # gauges, in the catchment CRS
-       split_units=True,
    )
+   catchment.create_elevation_bands(method='equal_intervals', distance=100)
+
+The subbasins are an implicit criterion of the discretization (``discretize_by`` and
+``create_elevation_bands``), and the hydro units it creates carry their ``subbasin``
+column. Delineated after the discretization instead, the subbasins are assigned to
+the existing hydro units; see ``split_units`` below.
 
 Each outlet is snapped to the nearest stream cell (a cell draining more than
 ``stream_threshold_area``, 1 km² by default, or a cell crossed by the lines of
@@ -684,10 +690,39 @@ are not joined by the lines — a headwater above the mapped network, or a netwo
 not noded at its confluences — keeps its flow path length and says so in a
 warning.
 
+**From polygons.** When the subbasins are available as polygons, they replace the
+delineation:
+
+.. code-block:: python
+
+   subbasins = catchment.delineate_subbasins(
+       subbasins='path/to/subbasins.shp',
+       river_network='path/to/rivers.shp',
+   )
+
+The polygons can be the local areas of the subbasins (a partition of the
+catchment), the areas drained at each gauge (nested in each other), or a mix of
+both: every DEM cell goes to the smallest polygon covering it, which carves the
+nested areas out of the larger ones. The subbasin each polygon drains into is found
+on the DEM, from the cell just downstream of its outlet, unless
+``downstream_column`` gives it. A sliver of the catchment that no polygon covers
+(less than 0.5% of its area) goes to the nearest subbasin; a larger uncovered part
+becomes the ``outlet`` subbasin. With a ``river_network``, the flow directions are
+not computed at all (``pysheds`` is not needed): the outlet of a polygon is its
+lowest cell, the reaches are measured along the lines, and the reach of a headwater
+subbasin runs up to the farthest point of the network within it. A headwater the
+lines do not reach has no reach length, and a warning says so. Without a river
+network, the flow directions are still computed, for the reaches only.
+
 **Parameters** (see also :ref:`API <api_catchment_network>`):
 
 * ``outlets`` — a point vector file (a ``name`` column names the subbasins), a
   GeoDataFrame, a list of ``(x, y)`` pairs or a mapping of name to ``(x, y)``.
+* ``subbasins`` — in place of ``outlets``, a polygon vector file or GeoDataFrame,
+  with the optional ``id_column`` (the polygon IDs, kept as ``source_id``),
+  ``downstream_column`` (the ID of the polygon each drains into; 0, empty or an ID
+  absent from the file for the catchment outlet) and ``name_column`` (default
+  ``name``).
 * ``snap_distance`` — the maximum distance [m] to move an outlet onto a stream;
   default 10 DEM cells.
 * ``stream_threshold_area`` — the drained area [m²] from which a cell is a stream
@@ -698,12 +733,14 @@ warning.
 * ``split_units`` — ``True`` splits the hydro units spanning several subbasins,
   one part per subbasin, and rebuilds them from the DEM (extract the land covers
   afterwards). ``False`` (default) assigns each unit to the subbasin holding
-  most of its cells and lists the spanning units in a warning.
+  most of its cells and lists the spanning units in a warning. Only relevant when
+  the hydro units exist before the delineation.
 
 The result is the subbasin table (``id``, ``downstream``, ``name``,
 ``area_local``, ``area_drained``, ``length``, ``slope``, ``elevation_outlet``,
-``outlet_x``, ``outlet_y``), already set on the catchment's hydro units together
-with their ``subbasin`` column. Save what a project file needs:
+``outlet_x``, ``outlet_y``), set on the catchment's hydro units together with their
+``subbasin`` column (by the discretization, when it comes after). Save what a
+project file needs:
 
 .. code-block:: python
 
@@ -712,9 +749,10 @@ with their ``subbasin`` column. Save what a project file needs:
    catchment.save_subbasin_ids_raster('path/to/')                 # subbasin_ids.tif
 
 and declare them under ``hydro_units`` and ``subbasins`` (see
-:ref:`project files <project-files-subbasins>`). The delineation follows the
-DEM: where the flow directions of a coarse or filled DEM differ from the real
-drainage, the subbasin areas differ from official outlines accordingly.
+:ref:`project files <project-files-subbasins>`). The delineation from outlets
+follows the DEM: where the flow directions of a coarse or filled DEM differ from
+the real drainage, the subbasin areas differ from official outlines accordingly.
+Official outlines, when available, avoid that difference.
 
 
 .. _glacier-lookup-tables:
