@@ -612,7 +612,7 @@ The model is integrated by the ODE solver, so the results are
 a continuous approximation of the original discrete HBV-96 formulation.
 
 Beyond the default ``open`` cover, HBV supports the land cover types of the original
-HBV (its land-use classes) — ``forest``, ``water`` and ``glacier`` — each with its own
+HBV — ``forest``, ``water`` and ``glacier`` — each with its own
 behaviour; see
 :ref:`HBV land covers <hbv-land-covers>`.
 
@@ -787,7 +787,7 @@ Land covers
 
 In addition to the default ``open`` cover (the HBV "open areas" class; the former
 ``ground`` name is kept as an accepted alias), HBV accepts the land cover types of the
-original HBV, its land-use classes (``land_cover_types``). Each soil-bearing cover (``open``, ``forest``) has,
+original HBV (``land_cover_types``). Each soil-bearing cover (``open``, ``forest``) has,
 by default, its own soil moisture store feeding the shared response routine;
 ``share_soil=True`` collapses them into one. The soil/recharge parameters are then
 exposed per cover (``fc_<cover>``, ``lp_<cover>``, ``beta_<cover>``).
@@ -930,10 +930,10 @@ The defaults are PREVAH's own processes, and they expect the inputs PREVAH works
   ...)``, see :ref:`potential evapotranspiration <pet>`): the snow evaporation has no
   parameter to absorb a PET of another magnitude, and pyet's default Hamon runs about
   1.5 times hotter;
-* the **monthly vegetation tables** of the land uses (see
-  :ref:`land uses <prevah-land-uses>`), which are applied automatically to the covers
-  named after a PREVAH land use. A cover with a generic name (``open``, ``forest``)
-  keeps constant canopy parameters until ``apply_land_use`` is called for it.
+* the **monthly vegetation tables** of the cover classes (see
+  :ref:`cover classes <prevah-cover-classes>`), which are applied automatically to the covers
+  named after a PREVAH cover class. A cover with a generic name (``open``, ``forest``)
+  keeps constant canopy parameters until ``apply_cover_parameters`` is called for it.
 
 Each process can be swapped for a simpler one through the options below.
 
@@ -965,13 +965,13 @@ Specific options
 * ``share_soil`` (default ``True``): share a single soil moisture store across the
   soil-bearing land covers. With ``share_soil=False`` each cover gets its own store,
   with its own ``fc_<cover>`` and ``lp_<cover>``, as PREVAH parameterizes the soil per
-  land-use class; the percolation is then gated by their area-weighted mean
+  cover class; the percolation is then gated by their area-weighted mean
   saturation. ``fc_<cover>`` is the capacity of the cover's own soil, in mm over the
   cover's area. Each store represents its cover's area, so in each hydro unit its
   capacity and its evapotranspiration are scaled by the cover's area fraction, read
   live so that land cover changes apply during the run. A cover absent from a unit
   therefore holds no soil there and does not affect its percolation. This suits both
-  a discretization giving each unit a single land use (a PREVAH hydrotope) and units
+  a discretization giving each unit a single cover class (a PREVAH hydrotope) and units
   mixing several covers.
 * ``forest_interception`` (default ``True``): enable the canopy interception;
   ``False`` disables it unless ``interception_covers`` names covers explicitly.
@@ -1192,7 +1192,7 @@ factors (PREVAH's cf_rain / cf_snow). See
   factor of the percolation and the share of the unit percolating at a constant rate
   (built-up and rock hydrotopes); see
   :ref:`percolation:prevah <percolation-processes>`. Set them with
-  ``model.apply_land_use_percolation(parameters, hydro_units, land_use, awc,
+  ``model.apply_cover_percolation(parameters, hydro_units, cover_class, awc,
   soil_depth, conductivity=None)``. The per-unit ``awc``, ``soil_depth`` and
   ``conductivity`` come from the soil maps through
   :ref:`extract_soil_properties <unit-properties-from-rasters>`.
@@ -1221,28 +1221,35 @@ soil-bearing cover is required, and all of them share the single soil moisture s
   ice and firn covers split at the equilibrium line.
 
 
-.. _prevah-land-uses:
+.. _prevah-cover-classes:
 
-Land uses
-^^^^^^^^^
+Cover classes
+^^^^^^^^^^^^^
 
 .. note::
 
-   hydrobricks keeps two terms apart. A **land cover** is part of the model: a cover
-   with a name, a type (``open``, ``forest``, ``glacier``, ...) and an area fraction
-   in each hydro unit. A **land use** is an entry of an external classification
-   whose tables supply parameters, such as PREVAH's classes below. A land cover is
-   parameterized from a land use, and may be named after it, but several land uses
-   can share one land cover.
+   A **land cover** is a named cover of a hydro unit, with an area fraction in each
+   unit. Covers differ either by their **type** (``open``, ``forest``, ``glacier``,
+   ...), which decides what the model builds for them, or only by their
+   **parameters** — ``pasture`` and ``bush`` are both ``open`` and run the same
+   routines, but carry different monthly values. A **cover class** is an entry of
+   an external land cover classification, such as PREVAH's 22 classes below, used
+   to look up those parameters; it is finer-grained than a type, and a cover is
+   usually named after the class it stands for.
 
-The original PREVAH carries a fixed table of land uses: water, built-up, coniferous /
+   PREVAH calls its table a land-use table, after the German *Landnutzung*, but
+   its classes are land cover — forests, meadows, crops, water, built-up, firn,
+   bare ice, rock, wetland — and the values read from them are physical properties
+   of the canopy and the soil, so hydrobricks names them as land cover throughout.
+
+The original PREVAH carries a fixed table of cover classes: water, built-up, coniferous /
 deciduous / mixed forest, cereals, pasture, bush, firn, bare ice, rock, fruits,
 vegetables, wheat, alpine vegetation, wetlands, rough pasture, sub-alpine and alpine
 meadow, bare soil vegetation, corn and grapes.
 
 Only **six** of them carry distinct physics — water, built-up, firn, bare ice, rock
 and wetlands — and those are the hydrobricks land cover types of the same name
-(``water``, ``urban``, ``glacier``, ``rock``, ``wetland``). Every other land use runs
+(``water``, ``urban``, ``glacier``, ``rock``, ``wetland``). Every other cover class runs
 the same snow, soil and runoff routines and differs *only* through monthly tables of
 vegetation properties. They therefore need no dedicated cover type: declare them as
 ordinary land covers under their own name, typed ``open`` or ``forest``, and give each
@@ -1250,35 +1257,35 @@ its own monthly parameters.
 
 Those tables (maximal interception storage, vegetation cover fraction, rooting depth,
 albedo, leaf area index and the land-cover capacity overrides) live in
-:mod:`hydrobricks.land_covers` as ``PREVAH_LAND_USE_*``, where any model can use them,
+:mod:`hydrobricks.land_covers` as ``PREVAH_COVER_*``, where any model can use them,
 and ``PrevahUniBE`` applies them:
 
 .. code-block:: python
 
     import hydrobricks.models as models
-    from hydrobricks.land_covers import PREVAH_LAND_USE_COVER_TYPES
+    from hydrobricks.land_covers import PREVAH_COVER_TYPES
 
     covers = ["coniferous_forest", "pasture", "wetland"]
     model = models.PrevahUniBE(
         land_cover_names=covers,
-        land_cover_types=[PREVAH_LAND_USE_COVER_TYPES[c] for c in covers],
+        land_cover_types=[PREVAH_COVER_TYPES[c] for c in covers],
         share_soil=False,
     )
-    parameters = model.generate_parameters()  # the tables of the three land uses
+    parameters = model.generate_parameters()  # the tables of the three cover classes
     parameters.set_values(...)
 
 ``generate_parameters`` applies the tables to every canopy whose cover is named after
-a land use: the canopy interception capacity is set to
+a cover class: the canopy interception capacity is set to
 :math:`si_{\max} \cdot veg_{cov}` and, when the canopy uses ``et:open_water_prevah``
 (the default), the canopy evaporation factor to :math:`veg_{cov}`, both as
 :ref:`monthly parameters <monthly-parameters>`. A cover under another name gets them
-from ``apply_land_use``, given the land use it stands for:
+from ``apply_cover_parameters``, given the cover class it stands for:
 
 .. code-block:: python
 
-    model.apply_land_use(parameters, "alpine_meadow", cover_name="open")
+    model.apply_cover_parameters(parameters, "alpine_meadow", cover_name="open")
 
-``PrevahUniBE.land_use_field_capacity(land_use, awc, soil_depth)`` gives the monthly
+``PrevahUniBE.cover_field_capacity(cover_class, awc, soil_depth)`` gives the monthly
 soil moisture capacity PREVAH derives from a soil map,
 :math:`awc \cdot \min(root\_depth + 0.05,\ soil\_depth) \cdot 10`, with the
 available water content in [Vol-%] and the depths in [m]. The land cover then overrides
@@ -1287,34 +1294,34 @@ built-up, 3 mm rock, 0.1 mm glacier) and a minimum elsewhere (2500 mm open water
 on the vegetated covers).
 
 That capacity varies in space and through the year at once, which
-``apply_land_use_field_capacity`` sets up in one call — it builds the per-unit monthly
+``apply_cover_field_capacity`` sets up in one call — it builds the per-unit monthly
 table, stores it as twelve hydro-unit properties and binds the parameter to them as a
 :ref:`spatial monthly parameter <spatial-monthly-parameters>`:
 
 .. code-block:: python
 
-    model.apply_land_use_field_capacity(
-        parameters, hydro_units, land_uses,  # one land use per hydro unit
+    model.apply_cover_field_capacity(
+        parameters, hydro_units, cover_classes,  # one cover class per hydro unit
         available_water_content=awc,         # [Vol-%], one value per hydro unit
         soil_depth=soil_depth,               # [m], one value per hydro unit
     )
 
-A PREVAH hydrotope carries a single land use, so the land use is given per hydro unit
+A PREVAH hydrotope carries a single cover class, so the cover class is given per hydro unit
 here; a single name applies to all of them. A per-unit value times a shared monthly
 shape would not do, because each unit's own soil depth caps its rooting depth, so the
 shape of the year differs from unit to unit.
 
-Whether the capacity actually moves through the year depends on the land uses in play:
+Whether the capacity actually moves through the year depends on the cover classes in play:
 only the crops of the table root deeper in summer, and where none of them occurs the
 capacity is constant and a plain :ref:`spatial parameter <spatial-parameters>` would do
 as well.
 
-The tables are keyed by land-use name, following the hydrobricks conventions
+The tables are keyed by cover class name, following the hydrobricks conventions
 (``urban``, ``wetland``, ``glacier_ice`` / ``glacier_firn``, the latter two matching
 :ref:`the ELA split <glacier-cover-init>`); PREVAH's own class numbers are not used.
 
-A land cover often aggregates several land uses — a single ``forest`` cover standing
-for coniferous, deciduous and mixed stands, say. Give it the land use that represents
+A land cover often aggregates several cover classes — a single ``forest`` cover standing
+for coniferous, deciduous and mixed stands, say. Give it the cover class that represents
 the mixture: the dominant one where one dominates, and otherwise the one whose
 vegetation cover is closest to the area-weighted mean of the mixture, since
 ``veg_cov`` scales the canopy evaporation and therefore drives most of the effect.
@@ -1334,7 +1341,7 @@ together with the vapour-density Hamon PET used by PREVAH
 (``forcing.compute_pet(method="Hamon_vapor_density", ...)``, see
 :ref:`potential evapotranspiration <pet>`), the monthly vegetation tables
 (``ic`` = :math:`si_{\max} \cdot veg_{cov}`, ``canopy_et_factor`` =
-:math:`veg_{cov}`, see :ref:`land uses <prevah-land-uses>`) and the potential
+:math:`veg_{cov}`, see :ref:`cover classes <prevah-cover-classes>`) and the potential
 clear-sky radiation of each unit for the radiation-corrected (Hock) melt of the
 control file. The refreezing brings its own seasonal factor, since there is no
 degree-day melt to read it from.
@@ -1345,19 +1352,17 @@ potential rate, so the CU limit is set to ~0 rather than to its calibrated value
 
 ``examples/advanced/prevah_ticino.py`` runs that configuration on the
 Ticino-Bellinzona test catchment (570 hydrotopes, daily step, 1984-2000), building
-the soil moisture capacity of each hydrotope from its own soil and land use. With the
+the soil moisture capacity of each hydrotope from its own soil and cover class. With the
 parameters of the original taken as they are — **nothing is calibrated in
 hydrobricks** — it reproduces the discharge of the Fortran PREVAH with a
 Nash-Sutcliffe efficiency of about 0.985. The example also scores against the gauged
-discharge of the Ticino at Bellinzona, where both models land around 0.79: the
-distance that remains to the observations belongs to PREVAH itself, not to the
-reproduction.
+discharge of the Ticino at Bellinzona, where both models land around 0.79.
 
 Because the parameters belong to the original, they are only consistent with the
 original's process set. Making *one* component faithful while its neighbours stay
 approximate therefore tends to lower the score, since the approximations were
 compensating each other; the remedy is to make the others faithful too, never to
-retune. The same example shows both halves of that: adding the land-use tables on
+retune. The same example shows both halves of that: adding the cover tables on
 top of the hotter default PET raised the Nash-Sutcliffe efficiency but lowered the
 Kling-Gupta efficiency, whereas moving the PET, the evapotranspiration processes, the
 snow water release and finally the melt to their faithful form together raised the

@@ -490,9 +490,9 @@ class-coded Swiss soil suitability map (``hydrobricks.soils``:
 property, keyed by argument name. Omit it when the rasters already hold values.
 
 These three properties are what :ref:`PREVAH-UniBE <prevah-unibe>` needs for its
-soil moisture capacity (``apply_land_use_field_capacity``, from ``awc`` and
+soil moisture capacity (``apply_cover_field_capacity``, from ``awc`` and
 ``soil_depth``) and for its percolation factor KWPER
-(``apply_land_use_percolation``, from ``conductivity``).
+(``apply_cover_percolation``, from ``conductivity``).
 
 
 .. _glacier-cover-init:

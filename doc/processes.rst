@@ -1392,7 +1392,7 @@ above the capacity then stops the percolation altogether. ``perc_const`` is the
 share of the unit following it, and the snowpacks listed among the gate bricks tell
 its snow-covered part. Both :math:`k_w` and ``perc_const`` vary per unit (and
 ``perc_const`` per month, with the rooting depth):
-``PrevahUniBE.apply_land_use_percolation`` sets them from the soil and the land use,
+``PrevahUniBE.apply_cover_percolation`` sets them from the soil and the cover class,
 and ``PrevahUniBE.conductivity_factor`` computes KWPER from a soil conductivity as
 xPREVAH does, including its guard that sets it to 1 everywhere as soon as one
 hydrotope has no conductivity.

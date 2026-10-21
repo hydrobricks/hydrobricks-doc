@@ -281,9 +281,9 @@ month is reached the unit holds the mean of its own twelve values.
 The full per-unit table is asked for, rather than a per-unit value scaled by a
 shared monthly shape, because the two are not always separable. In
 :ref:`PREVAH-UniBE <prevah-unibe>` the soil moisture capacity is built from a soil
-map and from a rooting depth that depends on the land use and the month, but each
+map and from a rooting depth that depends on the cover class and the month, but each
 unit's own soil depth caps its rooting depth, so the shape of the year differs from
-unit to unit. ``PrevahUniBE.apply_land_use_field_capacity`` builds that table and
+unit to unit. ``PrevahUniBE.apply_cover_field_capacity`` builds that table and
 binds it in one call.
 
 The bound parameters can be listed with
