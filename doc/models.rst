@@ -1339,17 +1339,6 @@ clear-sky radiation of each unit for the radiation-corrected (Hock) melt of the
 control file. The refreezing brings its own seasonal factor, since there is no
 degree-day melt to read it from.
 
-.. note::
-
-   PREVAH computes that radiation per hydrotope from the latitude and the slope and
-   aspect of the hydrotope, with no terrain shading, and its calibrated radiation melt
-   factor multiplies exactly that quantity. The
-   :ref:`potential radiation <potential-solar-radiation>` of the preprocessing module
-   is a different measure: it is computed per DEM cell and carries the atmospheric
-   attenuation and another daily-integration convention. On the Ticino catchment the
-   ratio between the two varies through the year by about a third, so they are not
-   interchangeable — a DEM-derived radiation needs its own melt coefficient.
-
 The soil moisture limitation follows the control file too: the Hamon
 evapotranspiration method selects the PREVAH branch that evaporates the soil at the
 potential rate, so the CU limit is set to ~0 rather than to its calibrated value.
