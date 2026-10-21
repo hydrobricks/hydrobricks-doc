@@ -646,9 +646,9 @@ Subbasins of a river network
 
 To run a catchment as a :ref:`river network of subbasins <subbasins>`, the
 subbasins are either delineated from the gauge (outlet) locations on the DEM, with
-the D8 flow directions of ``pysheds``, or read from subbasin polygons. Delineate
-them before the discretization: the hydro units are then created within the
-subbasins, so that none spans two of them:
+the D8 flow directions of ``pysheds``, or read from subbasin polygons. The subbasins
+come before the hydro units, as no hydro unit may span two subbasins (it would drain
+to two outlets):
 
 .. code-block:: python
 
@@ -662,8 +662,9 @@ subbasins, so that none spans two of them:
 
 The subbasins are an implicit criterion of the discretization (``discretize_by`` and
 ``create_elevation_bands``), and the hydro units it creates carry their ``subbasin``
-column. Delineated after the discretization instead, the subbasins are assigned to
-the existing hydro units; see ``split_units`` below.
+column. A unit raster loaded after the delineation (``load_unit_ids_from_raster``)
+gets the subbasins of its units, and is refused if a unit spans several of them.
+Delineating the subbasins of a catchment that already has hydro units is refused.
 
 Each outlet is snapped to the nearest stream cell (a cell draining more than
 ``stream_threshold_area``, 1 km² by default, or a cell crossed by the lines of
@@ -730,17 +731,11 @@ network, the flow directions are still computed, for the reaches only.
 * ``reach_lengths`` — ``'auto'`` (default) measures the reaches along the
   ``river_network`` lines when one is given and along the D8 flow path otherwise;
   ``'flow_path'`` always uses the flow path.
-* ``split_units`` — ``True`` splits the hydro units spanning several subbasins,
-  one part per subbasin, and rebuilds them from the DEM (extract the land covers
-  afterwards). ``False`` (default) assigns each unit to the subbasin holding
-  most of its cells and lists the spanning units in a warning. Only relevant when
-  the hydro units exist before the delineation.
 
 The result is the subbasin table (``id``, ``downstream``, ``name``,
 ``area_local``, ``area_drained``, ``length``, ``slope``, ``elevation_outlet``,
 ``outlet_x``, ``outlet_y``), set on the catchment's hydro units together with their
-``subbasin`` column (by the discretization, when it comes after). Save what a
-project file needs:
+``subbasin`` column when they are created. Save what a project file needs:
 
 .. code-block:: python
 

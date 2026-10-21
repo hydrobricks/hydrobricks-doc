@@ -1543,11 +1543,125 @@ Parameters:
 Use this formulation when a simpler quick-flow representation is preferred.
 
 
+.. _outflow-processes:
+
+Reservoir outflow
+-----------------
+
+The following outflow mechanisms are used by storage bricks across all models.
+
+**Linear outflow** (``outflow:linear``)
+   The most common outflow type. Outflow is proportional to the current storage:
+
+   .. math::
+
+      Q(t) = k \cdot S(t)
+
+   Parameter: ``response_factor`` [d\ :sup:`-1`]. Used for the slow reservoirs, glacier
+   area storages, the linear quick-flow option, and the HBV-96 lower zone
+   (``k_lz``).
+
+**Non-linear outflow** (``runoff:hbv``)
+   The :ref:`HBV-96 <hbv96>` upper zone outflow (:cite:t:`Lindstrom1997`).
+   Outflow increases non-linearly with the current storage:
+
+   .. math::
+
+      Q_0(t) = k_{uz} \cdot UZ(t)^{\,1+\alpha}
+
+   where :math:`UZ` is the upper zone content [mm]. With :math:`\alpha = 0` it
+   reduces to a linear reservoir. Parameters: ``k_uz`` (``response_factor``)
+   [mm\ :sup:`-α` d\ :sup:`-1`], range [0.0001, 1], and ``alpha`` (alias
+   ``alfa``) [−], default 1, range [0, 3]. Full names:
+   ``upper_zone:response_factor``, ``upper_zone:alpha``.
+
+**Overflow** (``outflow:overflow``)
+   Releases water instantaneously when storage exceeds its maximum capacity.
+   No parameters. Used to prevent the slow reservoir from overfilling.
+
+**Direct outflow** (``outflow:direct``)
+   Routes the entire storage content to the target in a single time step.
+   No parameters. Used internally in :ref:`GSM-Socont <gsm-socont>` to pass
+   glacier meltwater directly to the basin-level lumped storages. Because it
+   withdraws the full content, it cannot run in parallel with any other process
+   drawing from the same storage; configuration validation rejects such a
+   combination (use ``outflow:rest`` instead when several outflows must share a
+   store).
+
+**Rest outflow** (``outflow:rest``)
+   Routes whatever water remains in the store after all the other (sibling)
+   processes have taken their share. It works on both directly-computed and
+   solver-handled bricks: on a direct brick the siblings have already withdrawn
+   their share, so the remaining content is exactly "the rest"; on a solver
+   brick the siblings' current outflow rates are subtracted so the demands sum
+   to the available content. It must therefore be declared *after* the other
+   withdrawing processes. No parameters. Used for surface runoff in the Socont
+   open (soil) land cover (water not infiltrated becomes runoff), in GR4J for
+   throughfall (the net precipitation :math:`P_n` passed on to the production
+   store), and in HBV-96 for the recharge (the complement of the beta-function
+   infiltration, routed to the upper zone).
+
+**Linear outflow above a threshold** (``outflow:linear_threshold``)
+   A linear reservoir that only drains the content above a threshold — the
+   PREVAH surface runoff :math:`Q_0 = k_0 (SUZ - SGRLUZ)`:
+
+   .. math::
+
+      Q(t) = k \cdot \max\!\left(0,\; S(t) - \theta\right)
+
+   With :math:`\theta = 0` it reduces to ``outflow:linear``. Unlike
+   ``outflow:threshold``, which spills the whole excess within the step, the
+   excess drains at the reservoir rate. The response being affine in the
+   content, the :ref:`analytic solver <solvers>` integrates it exactly (the
+   content above the threshold then decays as :math:`e^{-k \Delta t}`, as in
+   PREVAH). Parameters: ``k0`` (``response_factor_threshold``)
+   [d\ :sup:`-1`], range [0.0001, 1], and ``sgrluz`` (``threshold``) [mm],
+   range [0, 100]. The response factor carries a distinct name so the process
+   can share a store with an ``outflow:linear`` (the PREVAH upper zone, which
+   produces both a surface runoff and an interflow).
+
+**Split outflow** (``outflow:split``)
+   Drains the entire storage content within the time step and divides it
+   between **two** targets in a fixed proportion:
+
+   .. math::
+
+      Q_1(t) = f \cdot \frac{S(t)}{\Delta t},
+      \qquad
+      Q_2(t) = (1 - f) \cdot \frac{S(t)}{\Delta t}
+
+   Used for the fixed 8/9 : 1/9 recharge split of the PREVAH SLOWCOMP
+   groundwater, and to route a fixed share of a wetland cover's input directly
+   to the groundwater. Because it withdraws the full content, it cannot share a
+   store with another withdrawing process. Parameter: ``split_fraction``
+   *(optional, dimensionless, default: 0.8889, [0, 1])* — the share sent to the
+   first target.
+
+**SLOWCOMP overflow** (``outflow:slowcomp``)
+   The filling rule of the fast baseflow store of the SLOWCOMP groundwater
+   module (:cite:t:`Schwarze1999`), used by :ref:`PREVAH-UniBE <prevah-unibe>`.
+   The store fills asymptotically toward its maximum content: it can only
+   absorb what it would leak when full, and the excess inflow overflows to the
+   slower stores *even when the store is far below its maximum*:
+
+   .. math::
+
+      Q_{\mathrm{over}}(t) = \max\!\left(0,\;
+          I(t) - \left(S_{\max} - S(t)\right) \cdot k\right)
+
+   where :math:`I` is the inflow of the step and :math:`k` the response factor
+   of the sibling ``outflow:linear`` baseflow of the same store. This diverts
+   the recharge peaks (snow melt) to the slow stores, which sustains the
+   recession — a plain capacity, which spills only once full, does not. The
+   store therefore carries no hard capacity. Parameter: ``slz1max``
+   (``max_content``) *(optional, mm, default: 100, [0, 1000])*.
+
+
 .. _transfer-processes:
 .. _routing-processes:
 
-Transfer
---------
+In-catchment transfer
+---------------------
 
 GR4J routing (``routing:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1718,7 +1832,7 @@ Parameters:
 .. _channel-routing:
 
 Channel routing between subbasins
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------
 
 When the catchment is a :ref:`river network of subbasins <subbasins>`, the water
 leaving a subbasin travels along the reach of the downstream subbasin before it
@@ -1732,9 +1846,10 @@ derived from the channel geometry.
 .. note::
 
    Channel routing is distinct from the in-catchment routing of a model
-   structure, the ``routing:*`` processes above (unit hydrographs, MAXBAS, the
-   translation delay): those shape the hydrograph of a subbasin's own runoff,
-   the channel routing moves the water from one subbasin outlet to the next.
+   structure, the ``routing:*`` processes of the :ref:`in-catchment transfer
+   <transfer-processes>` (unit hydrographs, MAXBAS, the translation delay):
+   those shape the hydrograph of a subbasin's own runoff, the channel routing
+   moves the water from one subbasin outlet to the next.
 
 * ``none`` (default): the inflow reaches the outlet within the same time step.
 * ``lag``: a pure translation by the travel time, with the same delivery
@@ -1895,117 +2010,3 @@ results file:
 The model computes in mm per time step over the area drained at each outlet, which
 is what the results file stores; the conversion uses that drained area and the
 computation time step.
-
-
-.. _outflow-processes:
-
-Reservoir outflow
------------------
-
-The following outflow mechanisms are used by storage bricks across all models.
-
-**Linear outflow** (``outflow:linear``)
-   The most common outflow type. Outflow is proportional to the current storage:
-
-   .. math::
-
-      Q(t) = k \cdot S(t)
-
-   Parameter: ``response_factor`` [d\ :sup:`-1`]. Used for the slow reservoirs, glacier
-   area storages, the linear quick-flow option, and the HBV-96 lower zone
-   (``k_lz``).
-
-**Non-linear outflow** (``runoff:hbv``)
-   The :ref:`HBV-96 <hbv96>` upper zone outflow (:cite:t:`Lindstrom1997`).
-   Outflow increases non-linearly with the current storage:
-
-   .. math::
-
-      Q_0(t) = k_{uz} \cdot UZ(t)^{\,1+\alpha}
-
-   where :math:`UZ` is the upper zone content [mm]. With :math:`\alpha = 0` it
-   reduces to a linear reservoir. Parameters: ``k_uz`` (``response_factor``)
-   [mm\ :sup:`-α` d\ :sup:`-1`], range [0.0001, 1], and ``alpha`` (alias
-   ``alfa``) [−], default 1, range [0, 3]. Full names:
-   ``upper_zone:response_factor``, ``upper_zone:alpha``.
-
-**Overflow** (``outflow:overflow``)
-   Releases water instantaneously when storage exceeds its maximum capacity.
-   No parameters. Used to prevent the slow reservoir from overfilling.
-
-**Direct outflow** (``outflow:direct``)
-   Routes the entire storage content to the target in a single time step.
-   No parameters. Used internally in :ref:`GSM-Socont <gsm-socont>` to pass
-   glacier meltwater directly to the basin-level lumped storages. Because it
-   withdraws the full content, it cannot run in parallel with any other process
-   drawing from the same storage; configuration validation rejects such a
-   combination (use ``outflow:rest`` instead when several outflows must share a
-   store).
-
-**Rest outflow** (``outflow:rest``)
-   Routes whatever water remains in the store after all the other (sibling)
-   processes have taken their share. It works on both directly-computed and
-   solver-handled bricks: on a direct brick the siblings have already withdrawn
-   their share, so the remaining content is exactly "the rest"; on a solver
-   brick the siblings' current outflow rates are subtracted so the demands sum
-   to the available content. It must therefore be declared *after* the other
-   withdrawing processes. No parameters. Used for surface runoff in the Socont
-   open (soil) land cover (water not infiltrated becomes runoff), in GR4J for
-   throughfall (the net precipitation :math:`P_n` passed on to the production
-   store), and in HBV-96 for the recharge (the complement of the beta-function
-   infiltration, routed to the upper zone).
-
-**Linear outflow above a threshold** (``outflow:linear_threshold``)
-   A linear reservoir that only drains the content above a threshold — the
-   PREVAH surface runoff :math:`Q_0 = k_0 (SUZ - SGRLUZ)`:
-
-   .. math::
-
-      Q(t) = k \cdot \max\!\left(0,\; S(t) - \theta\right)
-
-   With :math:`\theta = 0` it reduces to ``outflow:linear``. Unlike
-   ``outflow:threshold``, which spills the whole excess within the step, the
-   excess drains at the reservoir rate. The response being affine in the
-   content, the :ref:`analytic solver <solvers>` integrates it exactly (the
-   content above the threshold then decays as :math:`e^{-k \Delta t}`, as in
-   PREVAH). Parameters: ``k0`` (``response_factor_threshold``)
-   [d\ :sup:`-1`], range [0.0001, 1], and ``sgrluz`` (``threshold``) [mm],
-   range [0, 100]. The response factor carries a distinct name so the process
-   can share a store with an ``outflow:linear`` (the PREVAH upper zone, which
-   produces both a surface runoff and an interflow).
-
-**Split outflow** (``outflow:split``)
-   Drains the entire storage content within the time step and divides it
-   between **two** targets in a fixed proportion:
-
-   .. math::
-
-      Q_1(t) = f \cdot \frac{S(t)}{\Delta t},
-      \qquad
-      Q_2(t) = (1 - f) \cdot \frac{S(t)}{\Delta t}
-
-   Used for the fixed 8/9 : 1/9 recharge split of the PREVAH SLOWCOMP
-   groundwater, and to route a fixed share of a wetland cover's input directly
-   to the groundwater. Because it withdraws the full content, it cannot share a
-   store with another withdrawing process. Parameter: ``split_fraction``
-   *(optional, dimensionless, default: 0.8889, [0, 1])* — the share sent to the
-   first target.
-
-**SLOWCOMP overflow** (``outflow:slowcomp``)
-   The filling rule of the fast baseflow store of the SLOWCOMP groundwater
-   module (:cite:t:`Schwarze1999`), used by :ref:`PREVAH-UniBE <prevah-unibe>`.
-   The store fills asymptotically toward its maximum content: it can only
-   absorb what it would leak when full, and the excess inflow overflows to the
-   slower stores *even when the store is far below its maximum*:
-
-   .. math::
-
-      Q_{\mathrm{over}}(t) = \max\!\left(0,\;
-          I(t) - \left(S_{\max} - S(t)\right) \cdot k\right)
-
-   where :math:`I` is the inflow of the step and :math:`k` the response factor
-   of the sibling ``outflow:linear`` baseflow of the same store. This diverts
-   the recharge peaks (snow melt) to the slow stores, which sustains the
-   recession — a plain capacity, which spills only once full, does not. The
-   store therefore carries no hard capacity. Parameter: ``slz1max``
-   (``max_content``) *(optional, mm, default: 100, [0, 1000])*.
