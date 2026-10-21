@@ -204,6 +204,14 @@ Additional keyword arguments control each criterion independently:
      - Number of slope bands for quantiles; default ``6``.
    * - ``min_slope`` / ``max_slope``
      - Force the slope range (degrees); defaults ``0`` / ``90``.
+   * - ``aspect_classes``
+     - ``4`` (N, E, S, W; default) or ``8`` (N, NE, E, SE, S, SW, W, NW). The
+       sectors are centred on their direction, so N spans 337.5–22.5° with 8
+       classes and 315–45° with 4.
+   * - ``flat_slope_threshold``
+     - Slope (degrees) below which a cell goes to the ``FLAT`` aspect class rather
+       than to a direction; default ``3`` (see the note below). ``0`` keeps only
+       the cells whose aspect is undefined. PREVAH uses ``0.5``.
    * - ``radiation_method``
      - ``'equal_intervals'`` or ``'quantiles'``; default ``'equal_intervals'``.
    * - ``radiation_distance``
@@ -226,8 +234,35 @@ Additional keyword arguments control each criterion independently:
 
 .. note::
 
-   Aspect is always split into four cardinal-direction classes (N, E, S, W) and
-   has no configurable parameters.
+   **Flat cells and the** ``FLAT`` **class.** A flat cell has no aspect: the
+   computation marks it -1, and the border of the DEM is NaN. Such cells belong
+   to no direction, so they are gathered in a ``FLAT`` class, which is created
+   only when they exist. Without it their area would be dropped from the
+   catchment altogether.
+
+   ``flat_slope_threshold`` widens that class to the cells whose slope is too
+   gentle for their aspect to mean anything. It defaults to 3°, where two
+   independent limits meet on a 25 m DEM with about a metre of vertical error:
+
+   * **the aspect is no longer measurable.** Perturbing the DEM by 1 m moves
+     37 % of the cells of the 1–2° band to another aspect class out of four,
+     against 14 % at 3–5° and 4 % above 10° (a uniformly random aspect would
+     move 75 %). Below 1° the class is close to a coin toss.
+   * **the aspect no longer matters.** The difference in annual clear-sky direct
+     radiation between a north- and a south-facing plane is 2.7 % of the
+     horizontal at 1°, 8 % at 3° and 27 % at 10°, so splitting gentle terrain by
+     aspect separates units that receive nearly the same energy.
+
+   On the test catchments the default sends 2–3 % of the area to ``FLAT`` and
+   raises the number of hydro units by about a fifth. Set ``0`` to gather only
+   the cells whose aspect is undefined.
+
+   The right threshold belongs to the DEM rather than to the catchment: the
+   error of the aspect scales with the vertical error over the cell size, so
+   ``atan(1.1 * sigma_z / cell_size)``, which holds the median error of the
+   aspect near 15°, gives 2.5° for a 25 m grid with ``sigma_z`` = 1 m, 5° if the
+   error is 2 m, and close to 10° for a 2 m grid with ``sigma_z`` = 0.3 m. A
+   finer DEM calls for a *higher* threshold, not a lower one.
 
 Whatever the criteria, each hydro unit carries the mean of its cells for the
 area, elevation, slope, aspect, latitude and longitude — the slope in
@@ -401,6 +436,63 @@ provided.
    ``Model.setup()``. The generic soil cover (``open``) absorbs the residual area
    automatically, so it is never passed as a mapping target on its own.
 
+
+
+.. _unit-properties-from-rasters:
+
+Hydro unit properties from rasters
+----------------------------------
+
+Any raster can become a property of the hydro units. Once the catchment has been
+discretized, ``extract_unit_property_from_raster()`` warps the raster onto the DEM
+grid and stores the mean of each unit's cells:
+
+.. code-block:: python
+
+   catchment.extract_unit_property_from_raster('path/to/soil_depth.tif',
+                                               name='soil_depth', unit='m')
+
+A parameter can then follow that property per hydro unit with
+``parameters.set_spatial('<parameter>', 'soil_depth')`` (see
+:ref:`spatial parameters <spatial-parameters>`).
+
+Soil maps are often given as class codes rather than as values — a cell belongs to
+field-capacity class 3, and a table says what the class is worth. Pass that table as
+``reclassify``; the codes it does not cover are ignored rather than averaged in, and
+the raster is then resampled with nearest-neighbour so that codes are never mixed:
+
+.. code-block:: python
+
+   from hydrobricks.soils import PREVAH_SOIL_AWC_CLASSES
+
+   catchment.extract_unit_property_from_raster(
+       'path/to/nfk.tif', name='awc', unit='%',
+       reclassify=PREVAH_SOIL_AWC_CLASSES)
+
+**Soil properties**
+
+``extract_soil_properties()`` is the convenience for the three soil properties the
+models read, writing them under the names they expect — ``awc`` [%], ``soil_depth``
+[m] and ``conductivity`` [-]:
+
+.. code-block:: python
+
+   catchment.extract_soil_properties(
+       available_water_content='path/to/nfk.tif',
+       soil_depth='path/to/btif.tif',
+       conductivity='path/to/k.tif',
+       reclassify=True)
+
+Each raster is optional. ``reclassify=True`` applies PREVAH's tables for the
+class-coded Swiss soil suitability map (``hydrobricks.soils``:
+``PREVAH_SOIL_AWC_CLASSES``, ``PREVAH_SOIL_DEPTH_CLASSES`` and
+``PREVAH_SOIL_CONDUCTIVITY_CLASSES``); a dict instead gives one mapping per
+property, keyed by argument name. Omit it when the rasters already hold values.
+
+These three properties are what :ref:`PREVAH-UniBE <prevah-unibe>` needs for its
+soil moisture capacity (``apply_land_use_field_capacity``, from ``awc`` and
+``soil_depth``) and for its percolation factor KWPER
+(``apply_land_use_percolation``, from ``conductivity``).
 
 
 .. _glacier-cover-init:
