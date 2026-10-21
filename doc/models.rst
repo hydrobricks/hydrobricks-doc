@@ -931,9 +931,10 @@ The defaults are PREVAH's own processes, and they expect the inputs PREVAH works
   parameter to absorb a PET of another magnitude, and pyet's default Hamon runs about
   1.5 times hotter;
 * the **monthly vegetation tables** of the cover classes (see
-  :ref:`cover classes <prevah-cover-classes>`), which are applied automatically to the covers
-  named after a PREVAH cover class. A cover with a generic name (``open``, ``forest``)
-  keeps constant canopy parameters until ``apply_cover_parameters`` is called for it.
+  :ref:`cover classes <prevah-cover-classes>`), which are applied automatically to
+  the covers named after a PREVAH cover class. A cover with a generic name
+  (``open``, ``forest``) keeps constant canopy parameters until
+  ``apply_cover_parameters`` is called for it.
 
 Each process can be swapped for a simpler one through the options below.
 
@@ -1237,11 +1238,6 @@ Cover classes
    to look up those parameters; it is finer-grained than a type, and a cover is
    usually named after the class it stands for.
 
-   PREVAH calls its table a land-use table, after the German *Landnutzung*, but
-   its classes are land cover — forests, meadows, crops, water, built-up, firn,
-   bare ice, rock, wetland — and the values read from them are physical properties
-   of the canopy and the soil, so hydrobricks names them as land cover throughout.
-
 The original PREVAH carries a fixed table of cover classes: water, built-up, coniferous /
 deciduous / mixed forest, cereals, pasture, bush, firn, bare ice, rock, fruits,
 vegetables, wheat, alpine vegetation, wetlands, rough pasture, sub-alpine and alpine
@@ -1306,10 +1302,12 @@ table, stores it as twelve hydro-unit properties and binds the parameter to them
         soil_depth=soil_depth,               # [m], one value per hydro unit
     )
 
-A PREVAH hydrotope carries a single cover class, so the cover class is given per hydro unit
-here; a single name applies to all of them. A per-unit value times a shared monthly
-shape would not do, because each unit's own soil depth caps its rooting depth, so the
-shape of the year differs from unit to unit.
+A PREVAH hydrotope carries a single cover class, so the cover class is given per
+hydro unit here; a single name applies to all of them. A per-unit value times a
+shared monthly shape would not do: the units can carry different cover classes,
+hence different rooting-depth curves, and each unit's own soil depth caps that
+depth from above while the minimum capacity holds it up from below, so the shape
+of the year differs from unit to unit.
 
 Whether the capacity actually moves through the year depends on the cover classes in play:
 only the crops of the table root deeper in summer, and where none of them occurs the
@@ -1357,17 +1355,8 @@ parameters of the original taken as they are — **nothing is calibrated in
 hydrobricks** — it reproduces the discharge of the Fortran PREVAH with a
 Nash-Sutcliffe efficiency of about 0.985. The example also scores against the gauged
 discharge of the Ticino at Bellinzona, where both models land around 0.79.
-
 Because the parameters belong to the original, they are only consistent with the
-original's process set. Making *one* component faithful while its neighbours stay
-approximate therefore tends to lower the score, since the approximations were
-compensating each other; the remedy is to make the others faithful too, never to
-retune. The same example shows both halves of that: adding the cover tables on
-top of the hotter default PET raised the Nash-Sutcliffe efficiency but lowered the
-Kling-Gupta efficiency, whereas moving the PET, the evapotranspiration processes, the
-snow water release and finally the melt to their faithful form together raised the
-Nash-Sutcliffe efficiency from 0.96 to 0.985 and the Kling-Gupta efficiency from 0.91
-to 0.97.
+original's process set.
 
 The following components of the original are **not** reproduced:
 
