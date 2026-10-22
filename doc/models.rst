@@ -967,7 +967,9 @@ Specific options
   soil-bearing land covers. With ``share_soil=False`` each cover gets its own store,
   with its own ``fc_<cover>`` and ``lp_<cover>``, as PREVAH parameterizes the soil per
   cover class; the percolation is then gated by their area-weighted mean
-  saturation. ``fc_<cover>`` is the capacity of the cover's own soil, in mm over the
+  saturation, and the snow-albedo reduction of ``et:prevah`` is read from the
+  cover owning the store rather than from the whole hydro unit.
+  ``fc_<cover>`` is the capacity of the cover's own soil, in mm over the
   cover's area. Each store represents its cover's area, so in each hydro unit its
   capacity and its evapotranspiration are scaled by the cover's area fraction, read
   live so that land cover changes apply during the run. A cover absent from a unit

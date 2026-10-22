@@ -1155,7 +1155,20 @@ snow-free ground albedo (``albedo_land``) and the age-dependent snow albedo of
 the unit's snowpacks (see ``sublimation:prevah`` above), weighted by the
 snow-covered fraction. It is therefore neutral (a factor of 1) when the unit is
 snow-free at the default ``albedo_land`` = 0.2, and strongly reduces the soil ET
-under snow — PREVAH's ET-under-snow suppression.
+under snow.
+
+The albedo belongs to the potential rate of the unit, not to any single flux:
+PREVAH computes one PET per hydrotope from the albedo of whatever surface the
+sun sees, and the interception store, the snowpack and the soil then all draw
+on that same reduced rate. The snow evaporation of ``sublimation:prevah`` is
+served from the snowpack, but the soil ET is damped under snow all the same —
+that damping is PREVAH's only suppression of the soil ET under a snow cover.
+
+A soil store of its own (``share_soil=False``) belongs to a single land cover,
+and then reads that cover alone: the albedo is the snow albedo while the cover
+holds snow and ``albedo_land`` otherwise, as in a PREVAH hydrotope, so snow
+lying on a neighbouring cover no longer damps its evapotranspiration. A shared
+store spans several covers and keeps the mean over the unit.
 
 Parameters:
 
@@ -1892,11 +1905,12 @@ criterion of Ponce and Theurer (1982),
 
 The number of sub reaches is computed once, at the first time step, from the
 ``reference_discharge`` and not from the discharge of the step: every sub reach
-carries its own state, which a changing count would invalidate. It is capped at
-50, with a warning naming the subbasin — a reach that long is better split into
-several subbasins, which also gives it its own runoff. The other schemes are
-never divided: ``lag`` is exact whatever the length, and ``muskingum`` takes its
-:math:`X` from the user rather than from the grid.
+carries its own state, which a changing count would invalidate. The count is
+capped at 50 sub reaches, with a warning naming the subbasin — a reach that
+needs more is better split into several subbasins, which also gives it its own
+runoff. The other schemes are never divided: ``lag`` is exact whatever the
+length, and ``muskingum`` takes its :math:`X` from the user rather than from the
+grid.
 
 The celerity of ``lag`` and ``muskingum`` is constant by default. A non-zero
 ``celerity_exponent`` makes it follow the discharge,
