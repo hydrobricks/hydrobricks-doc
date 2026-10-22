@@ -721,6 +721,8 @@ Global attributes that map variable indices to names:
 
 * ``labels_aggregated``: names of lumped elements (fluxes and states)
 * ``labels_distributed``: names of distributed elements
+* ``labels_distributed_basis``: the area each distributed element is expressed
+  over (see :ref:`below <area-basis>`), in the order of ``labels_distributed``
 * ``labels_land_covers``: names of land covers
 
 To inspect the available labels:
@@ -780,6 +782,8 @@ Example output for GSM-Socont with two glacier types:
 * ``time`` (1D): dates as Modified Julian Dates (days since 1858-11-17 00:00)
 * ``hydro_units_ids`` (1D): IDs of the hydro units
 * ``hydro_units_areas`` (1D): area of each hydro unit [m²]
+* ``hydro_units_subbasin_fractions`` (1D): share of its subbasin's area covered
+  by each hydro unit (unit area / subbasin area)
 * ``subbasin_ids``, ``subbasin_downstream_ids``, ``subbasin_local_areas``,
   ``subbasin_drained_areas`` (1D): the subbasins of the river network, in
   processing order (the catchment outlet last); a single entry without a network
@@ -791,30 +795,77 @@ Example output for GSM-Socont with two glacier types:
   when no id is given). Files written before v0.10 hold a 2D
   ``sub_basin_values`` (one subbasin), which the same method reads.
 * ``hydro_units_values`` (2D): distributed time series, indexed by
-  ``labels_distributed``. Two important subtypes:
-
-  * **Flux variables** (names ending in ``:output``, unit: mm): already weighted
-    by land cover fraction and relative hydro unit area. You can sum them
-    directly over all hydro units to get the catchment-total contribution of a
-    component (e.g., total glacier melt).
-  * **State variables** (names ending in ``:content`` or ``:snow``, unit: mm):
-    the water depth stored in a reservoir. These are *not* area-weighted — to
-    aggregate over the catchment, multiply each value by its land cover fraction
-    and relative hydro unit area. The :class:`Results <hydrobricks.results.Results>`
-    class provides helpers that do this for you:
-    :meth:`get_mean_hydro_units_values() <hydrobricks.results.Results.get_mean_hydro_units_values>`
-    (area-weighted catchment mean of any component for one land cover),
-    :meth:`get_land_cover_areas() <hydrobricks.results.Results.get_land_cover_areas>`
-    (per-unit area of a land cover over time), and, specifically for snow water
-    equivalent,
-    :meth:`get_total_swe() <hydrobricks.results.Results.get_total_swe>` (per-unit
-    SWE aggregated across all land covers) and
-    :meth:`get_mean_swe() <hydrobricks.results.Results.get_mean_swe>` (the
-    catchment-wide mean). Land covers without a snowpack (e.g. open water)
-    contribute zero SWE over their area.
+  ``labels_distributed``, in mm over the area given by
+  ``labels_distributed_basis`` (see :ref:`below <area-basis>`). To aggregate a
+  state over the catchment, the :class:`Results <hydrobricks.results.Results>`
+  class provides helpers that weight it for you:
+  :meth:`get_mean_hydro_units_values() <hydrobricks.results.Results.get_mean_hydro_units_values>`
+  (area-weighted catchment mean of any component for one land cover),
+  :meth:`get_land_cover_areas() <hydrobricks.results.Results.get_land_cover_areas>`
+  (per-unit area of a land cover over time), and, specifically for snow water
+  equivalent,
+  :meth:`get_total_swe() <hydrobricks.results.Results.get_total_swe>` (per-unit
+  SWE aggregated across all land covers) and
+  :meth:`get_mean_swe() <hydrobricks.results.Results.get_mean_swe>` (the
+  catchment-wide mean). Land covers without a snowpack (e.g. open water)
+  contribute zero SWE over their area.
 
 * ``land_cover_fractions`` (2D, optional): time series of land cover fractions,
   present when glacier or other land cover evolution is active.
+
+.. _area-basis:
+
+Area basis of the distributed values
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Every distributed value is a depth in mm, but not over the same area. A state is
+expressed over the area of the brick that holds it, and a flux over the area of the
+element that *receives* it, so that the recorded amounts are exactly the ones the
+model exchanges and their sums close the water balance. The area of each value is
+its *basis*:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 82
+
+   * - Basis
+     - Values
+   * - ``land_cover``
+     - The content of a land cover and of its surface components (snowpack,
+       canopy), and the fluxes that stay on that land cover (e.g. the snowmelt
+       of ``open_snowpack`` into ``open``): mm over the area of the land cover.
+   * - ``hydro_unit``
+     - The content of the bricks spanning the whole unit (e.g. the soil
+       reservoirs), the fluxes between them, and the fluxes from a land cover to
+       them, weighted by its fraction (e.g. ``open:infiltration:output``): mm
+       over the hydro unit.
+   * - ``subbasin``
+     - The fluxes delivered to the outlet or to a subbasin brick (e.g.
+       ``slow_reservoir:outflow:output``, or the glacier melt routed by the
+       subbasin-level glacier reservoirs): mm over the local area of the
+       subbasin. Summed over the hydro units of a subbasin, they give its total
+       directly.
+
+The basis of a label is read with ``model.get_recorded_hydro_unit_basis(label)`` or
+``results.get_hydro_units_basis(label)``. Both readers convert the values to another
+basis on request, from the recorded areas and land-cover fractions:
+
+.. code-block:: python
+
+   # Snow water equivalent over the whole unit rather than over the glacier
+   swe = results.get_hydro_units_values('glacier_snowpack:snow_content',
+                                        basis='hydro_unit')
+
+   # Outflow of each unit in mm over that unit, rather than its share of the subbasin
+   q = model.get_recorded_hydro_unit_values('slow_reservoir:outflow:output',
+                                            basis='hydro_unit')
+
+Converting to or from a land cover needs the land-cover fractions, which are recorded
+with ``record_all=True`` (or ``fractions=True`` in a
+:class:`RecordingRequest <hydrobricks.evaluation.base.RecordingRequest>`). Values
+over a land cover are NaN where that land cover is absent from the unit. Without the
+``basis`` argument, the values are returned as recorded. Files written before the
+basis was recorded cannot be converted.
 
 
 .. _others:

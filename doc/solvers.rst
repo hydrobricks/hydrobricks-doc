@@ -12,7 +12,7 @@ selected at model instantiation:
 
 .. code-block:: python
 
-   socont = models.Socont(solver="crank_nicolson")  # the default
+   socont = models.Socont(solver="exponential_euler")  # the default
 
 
 Available solvers
@@ -53,13 +53,13 @@ Available solvers
      - iterative
      - Backward Euler (see :ref:`below <implicit-solver>`); unconditionally
        stable for any process, including non-linear ones; no transit lag.
-   * - ``crank_nicolson`` (or ``trapezoidal``) — **default**
+   * - ``crank_nicolson`` (or ``trapezoidal``)
      - 2
      - iterative
      - Implicit trapezoidal (see :ref:`below <crank-nicolson-solver>`);
        second-order accurate and unconditionally stable for any process; no
        transit lag.
-   * - ``exponential_euler``
+   * - ``exponential_euler`` — **default**
      - 2 (exact for linear)
      - 3
      - Analytic integration of the per-step linearized system (see
@@ -227,12 +227,12 @@ where the second-order Crank-Nicolson solver can show a decaying oscillation.
 
 .. _crank-nicolson-solver:
 
-The Crank-Nicolson solver (default)
------------------------------------
+The Crank-Nicolson solver
+-------------------------
 
-The ``crank_nicolson`` solver is the default. It shares the sequential,
-iterative structure of the implicit Euler solver but advances each reservoir
-with the implicit trapezoidal rule,
+The ``crank_nicolson`` solver shares the sequential, iterative structure of the
+implicit Euler solver but advances each reservoir with the implicit trapezoidal
+rule,
 
 .. math::
 
@@ -250,8 +250,7 @@ applying to each process the average of its start- and end-of-step rates.
    close to the exact curve while remaining unconditionally stable.
 
 This combines **second-order accuracy** (like Heun) with **unconditional
-stability** (like implicit Euler) for any process formulation, which is why it
-is the default. One caveat: the trapezoidal rule is *A-stable but not
+stability** (like implicit Euler) for any process formulation. One caveat: the trapezoidal rule is *A-stable but not
 L-stable*. These two properties describe how a scheme handles a stiff
 (fast-decaying) reservoir, and differ in a way that matters here:
 
@@ -374,100 +373,176 @@ calibration explores such values, prefer ``analytic_linear`` or
 Choosing a solver
 -----------------
 
-``crank_nicolson`` is the default because it is the only scheme that is both
-second-order accurate and unconditionally stable for any process. It is also
-among the more expensive ones. The two tables below give the orders of
-magnitude to weigh, both measured on the same setup: the Socont model on the
-Sitter catchment, 35 hydro units, 40 years at a daily time step.
+The two tables below give the orders of magnitude to weigh, both measured on
+the same setup: the Socont model of ``examples/basics/sitter_project.yaml``
+(the Sitter catchment, 35 hydro units, 40 years), with the parameters of that
+file. Its reservoirs react fast (response factors of 0.8 to
+:math:`1\,\mathrm{d^{-1}}`, so :math:`k\,h` is close to 1 at a daily step),
+which is where the schemes differ most.
 
-Relative run time, taking the cheapest scheme as the unit:
+The accuracy is measured against a reference solution of the same model, not
+against the observed discharge: the ``runge_kutta`` scheme at a 15-minute step,
+with the daily forcing spread evenly over the day (``crank_nicolson`` at the
+same step agrees with it to :math:`1 - \mathrm{NSE} = 3 \cdot 10^{-8}`). The
+scores therefore measure the discretization error alone, and a perfect scheme
+would reach 1 whatever the quality of the model. For context, the reference
+itself reaches NSE = 0.70 and KGE = 0.81 against the observed discharge.
+
+At a daily step:
 
 .. list-table::
    :header-rows: 1
-   :widths: 34 22
+   :widths: 26 14 12 12 16 20
 
    * - Solver
-     - Relative run time
+     - Run time
+     - NSE
+     - KGE
+     - Peak error
+     - Largest error
    * - ``euler_explicit``
      - 1.0
+     - 0.576
+     - 0.676
+     - −4.7 %
+     - 77 %
    * - ``analytic_linear``
-     - 1.2
+     - 1.1
+     - 0.994
+     - 0.996
+     - +0.1 %
+     - 2.9 %
    * - ``heun_explicit``
-     - 1.4
-   * - ``exponential_euler``
-     - 2.0
+     - 1.6
+     - 0.954
+     - 0.974
+     - +4.8 %
+     - 20 %
+   * - ``exponential_euler`` (default)
+     - 2.1
+     - 0.999
+     - 0.997
+     - −0.5 %
+     - 4.2 %
    * - ``runge_kutta``
-     - 2.2
-   * - ``implicit_euler``
-     - 2.2
+     - 2.9
+     - 0.999
+     - 0.993
+     - +0.2 %
+     - 1.6 %
    * - ``crank_nicolson``
-     - 2.3
+     - 4.0
+     - 0.997
+     - 0.989
+     - −1.1 %
+     - 5.9 %
+   * - ``implicit_euler``
+     - 4.4
+     - 0.933
+     - 0.965
+     - +6.0 %
+     - 24 %
 
-Accuracy, as the Nash-Sutcliffe efficiency of the simulated discharge against
-the observed series, for three values of the quick-runoff response factor
-:math:`k` (the daily step makes :math:`k\,h` equal to the value in the column
-header). The parameter is documented up to :math:`1\,\mathrm{d^{-1}}`, so the
-last column is the edge of the range a calibration may explore:
+The run time is that of the integration alone (the parameters and the forcing
+already in place), relative to ``euler_explicit``, which takes 0.24 s for the 40
+years. The peak error is taken on the largest peak of the reference, and the
+largest error is the largest daily difference over the 40 years, both relative
+to that peak.
+
+NSE / KGE against the same reference as the time step shrinks:
 
 .. list-table::
    :header-rows: 1
-   :widths: 34 22 22 22
+   :widths: 26 15 15 15 15 15
 
    * - Solver
-     - :math:`k = 0.05`
-     - :math:`k = 0.5`
-     - :math:`k = 1.0`
-   * - ``crank_nicolson``
-     - 0.216
-     - 0.702
-     - 0.704
-   * - ``analytic_linear``
-     - 0.216
-     - 0.701
-     - 0.690
-   * - ``runge_kutta``
-     - 0.216
-     - 0.701
-     - 0.686
-   * - ``heun_explicit``
-     - 0.217
-     - 0.692
-     - 0.557
-   * - ``implicit_euler``
-     - 0.239
-     - 0.648
-     - 0.557
+     - 24 h
+     - 12 h
+     - 6 h
+     - 3 h
+     - 1 h
    * - ``euler_explicit``
-     - 0.189
-     - 0.607
-     - 0.181
+     - 0.58 / 0.68
+     - 0.95 / 0.93
+     - 0.99 / 0.97
+     - 1.00 / 0.99
+     - 1.00 / 1.00
+   * - ``analytic_linear``
+     - 0.99 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+   * - ``heun_explicit``
+     - 0.95 / 0.97
+     - 1.00 / 0.99
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+   * - ``exponential_euler``
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+   * - ``runge_kutta``
+     - 1.00 / 0.99
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+   * - ``crank_nicolson``
+     - 1.00 / 0.99
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+     - 1.00 / 1.00
+   * - ``implicit_euler``
+     - 0.93 / 0.97
+     - 0.98 / 0.98
+     - 0.99 / 0.99
+     - 1.00 / 0.99
+     - 1.00 / 1.00
 
-Read the rows against each other, not against the absolute values: the model
-is uncalibrated here, so the efficiencies themselves mean little, but the
-spread between schemes at a given :math:`k` is the discretization error.
+The script that produces these tables is ``doc/images/benchmark_solvers.py``
+in the documentation repository.
 
 What this says in practice:
 
-* **At small response factors every scheme agrees.** With
-  :math:`k = 0.05\,\mathrm{d^{-1}}` the six schemes fall within 0.05 of each
-  other, and the cheap explicit ones are a legitimate choice. If your response
-  factors are all small and run time matters (a long calibration, a large
-  catchment), ``heun_explicit`` gives most of the accuracy for 60% of the cost
-  of the default.
-* **The schemes separate as** :math:`k\,h` **approaches 1.** At
-  :math:`k = 1\,\mathrm{d^{-1}}` the three reference schemes cluster around
-  0.69, while ``heun_explicit`` drops to 0.56 and overshoots the peak
-  discharge by about 7%; ``euler_explicit`` breaks down entirely. This is the
-  reason the default is implicit: a calibration exploring the upper part of the
-  parameter range would otherwise carry that error into the fitted parameters.
-* **First-order schemes cost accuracy even where they are stable.**
-  ``implicit_euler`` is unconditionally stable but only first order, and it is
-  no cheaper than ``crank_nicolson``. Reach for it when a very stiff reservoir
-  makes the trapezoidal rule ring (see
-  :ref:`above <crank-nicolson-solver>`), not for speed.
-* **Reducing the time step is the other lever.** All the differences above
-  shrink with :math:`h`; a sub-daily model is far less sensitive to the choice
-  of scheme.
+* **With fast reservoirs at a daily step, the schemes differ widely.**
+  ``euler_explicit`` breaks down (errors up to 77 % of the peak).
+  ``heun_explicit`` and ``implicit_euler`` stay around 0.93 to 0.95, but
+  misplace part of each flood (errors up to 20 to 24 % of the peak). The four
+  other schemes stay at 0.99 or above.
+* **The exponential and analytic schemes give the most accuracy for the
+  cost.** ``analytic_linear`` reaches 0.994 for barely more than the cost of
+  explicit Euler, and ``exponential_euler`` 0.999 for twice that cost, which
+  makes it the default: as accurate as the most accurate schemes, cheaper than
+  them, and unconditionally stable.
+  ``analytic_linear`` does well here because this Socont structure is drained
+  mostly by linear outflows, which it integrates exactly. It is not always the
+  best option: every other process on a store (evapotranspiration, percolation,
+  non-linear runoff) is held at its start-of-step rate, which is explicit Euler
+  for that part. These processes are then first order and only conditionally
+  stable, and they do not react within the step to water reaching a store that
+  was empty at its start. On a structure with significant non-linear processes
+  (the HBV or GR soil functions, the Socont kinematic runoff), prefer
+  ``exponential_euler``, which linearizes every process and keeps the exactness
+  for the linear ones.
+* **The Crank-Nicolson and Runge-Kutta schemes are as accurate, at three to
+  four times the cost.**
+* **Implicit Euler is the most expensive and, being first order, the least
+  accurate of the implicit schemes.** Reach for it when a very stiff reservoir
+  makes the trapezoidal rule ring (see :ref:`above <crank-nicolson-solver>`),
+  not for accuracy or speed.
+* **Reducing the time step is the other lever.** At 12 h, every scheme but
+  explicit Euler is at about 0.98 or above, and at 6 h every scheme is at 0.97
+  or above; a sub-daily model is far less sensitive to the choice of scheme.
+* **Calibrate with the solver you run with.** Across the schemes, the NSE
+  against the observed discharge ranges from 0.57 to 0.72 for the same
+  parameters at a daily step: a calibration absorbs part of the error of its
+  scheme into the fitted parameters, which do not carry over unchanged to
+  another scheme.
 
 Verification
 ------------

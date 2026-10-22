@@ -21,9 +21,9 @@ Common options
 
 All models accept the following options at instantiation:
 
-* ``solver``: numerical solver to use; choices are ``crank_nicolson``
+* ``solver``: numerical solver to use; choices are ``exponential_euler``
   (default), ``heun_explicit``, ``runge_kutta``, ``euler_explicit``,
-  ``analytic_linear``, ``implicit_euler``, and ``exponential_euler``. See the
+  ``analytic_linear``, ``implicit_euler``, and ``crank_nicolson``. See the
   :ref:`solvers page <solvers>` for their properties and how to choose.
 * ``channel_routing`` (default ``"none"``): the channel routing between the subbasins
   of a :ref:`river network <subbasins>`; ``"lag"``, ``"muskingum"`` or
@@ -48,7 +48,7 @@ Example:
 
 .. code-block:: python
 
-    socont = models.Socont(solver="crank_nicolson", record_all=False)
+    socont = models.Socont(solver="exponential_euler", record_all=False)
 
 
 Shared processes
