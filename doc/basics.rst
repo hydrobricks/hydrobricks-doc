@@ -824,27 +824,17 @@ element that *receives* it, so that the recorded amounts are exactly the ones th
 model exchanges and their sums close the water balance. The area of each value is
 its *basis*:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 18 82
-
-   * - Basis
-     - Values
-   * - ``land_cover``
-     - The content of a land cover and of its surface components (snowpack,
-       canopy), and the fluxes that stay on that land cover (e.g. the snowmelt
-       of ``open_snowpack`` into ``open``): mm over the area of the land cover.
-   * - ``hydro_unit``
-     - The content of the bricks spanning the whole unit (e.g. the soil
-       reservoirs), the fluxes between them, and the fluxes from a land cover to
-       them, weighted by its fraction (e.g. ``open:infiltration:output``): mm
-       over the hydro unit.
-   * - ``subbasin``
-     - The fluxes delivered to the outlet or to a subbasin brick (e.g.
-       ``slow_reservoir:outflow:output``, or the glacier melt routed by the
-       subbasin-level glacier reservoirs): mm over the local area of the
-       subbasin. Summed over the hydro units of a subbasin, they give its total
-       directly.
+* ``land_cover``: mm over the area of the land cover. The content of a land cover
+  and of its surface components (snowpack, canopy), and the fluxes that stay on
+  that land cover (e.g. the snowmelt of ``open_snowpack`` into ``open``).
+* ``hydro_unit``: mm over the hydro unit. The content of the bricks spanning the
+  whole unit (e.g. the soil reservoirs), the fluxes between them, and the fluxes
+  from a land cover to them, weighted by its fraction (e.g.
+  ``open:infiltration:output``).
+* ``subbasin``: mm over the local area of the subbasin. The fluxes delivered to
+  the outlet or to a subbasin brick (e.g. ``slow_reservoir:outflow:output``, or
+  the glacier melt routed by the subbasin-level glacier reservoirs). Summed over
+  the hydro units of a subbasin, they give its total directly.
 
 The basis of a label is read with ``model.get_recorded_hydro_unit_basis(label)`` or
 ``results.get_hydro_units_basis(label)``. Both readers convert the values to another

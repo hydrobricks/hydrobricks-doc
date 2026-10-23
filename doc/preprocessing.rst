@@ -463,17 +463,19 @@ the raster is then resampled with nearest-neighbour so that codes are never mixe
 
 .. code-block:: python
 
-   from hydrobricks.soils import PREVAH_SOIL_AWC_CLASSES
+   from hydrobricks.soils import SWISS_SOIL_SUITABILITY_AWC_CLASSES
 
    catchment.extract_unit_property_from_raster(
        'path/to/nfk.tif', name='awc', unit='%',
-       reclassify=PREVAH_SOIL_AWC_CLASSES)
+       reclassify=SWISS_SOIL_SUITABILITY_AWC_CLASSES)
+
+Extracting a property that the hydro units already have replaces it.
 
 **Soil properties**
 
 ``extract_soil_properties()`` is the convenience for the three soil properties the
-models read, writing them under the names they expect — ``awc`` [%], ``soil_depth``
-[m] and ``conductivity`` [-]:
+models read, writing them under the names they expect — ``awc`` (available water
+content) [Vol-%], ``soil_depth`` [m] and ``conductivity`` (hydraulic conductivity):
 
 .. code-block:: python
 
@@ -481,18 +483,64 @@ models read, writing them under the names they expect — ``awc`` [%], ``soil_de
        available_water_content='path/to/nfk.tif',
        soil_depth='path/to/btif.tif',
        conductivity='path/to/k.tif',
-       reclassify=True)
+       reclassify='swiss_soil_suitability')
 
-Each raster is optional. ``reclassify=True`` applies PREVAH's tables for the
-class-coded Swiss soil suitability map (``hydrobricks.soils``:
-``PREVAH_SOIL_AWC_CLASSES``, ``PREVAH_SOIL_DEPTH_CLASSES`` and
-``PREVAH_SOIL_CONDUCTIVITY_CLASSES``); a dict instead gives one mapping per
+Each raster is optional. ``reclassify`` names a supported class-coded soil map, whose
+tables are in ``hydrobricks.soils.SOIL_CLASS_TABLES``; ``'swiss_soil_suitability'``
+applies PREVAH's tables for the Swiss soil suitability map
+(``SWISS_SOIL_SUITABILITY_AWC_CLASSES``, ``SWISS_SOIL_SUITABILITY_DEPTH_CLASSES`` and
+``SWISS_SOIL_SUITABILITY_CONDUCTIVITY_CLASSES``). A dict instead gives one mapping per
 property, keyed by argument name. Omit it when the rasters already hold values.
+
+The conductivity unit follows the class tables: the Swiss classes are relative
+(``-``). A raster of values is taken in mm/h unless ``conductivity_unit`` says
+otherwise.
 
 These three properties are what :ref:`PREVAH-UniBE <prevah-unibe>` needs for its
 soil moisture capacity (``apply_cover_field_capacity``, from ``awc`` and
 ``soil_depth``) and for its percolation factor KWPER
-(``apply_cover_percolation``, from ``conductivity``).
+(``apply_cover_percolation``, from ``conductivity``). KWPER only reads the
+conductivity relative to the catchment, so its unit does not matter there.
+
+**Soil data outside Switzerland**
+
+Most soil products give values rather than classes, but often per depth layer, or
+give the texture only. ``hydrobricks.soils`` turns them into the three rasters above:
+
+* ``integrate_layers()`` averages depth layers into one raster, each layer weighted
+  by its thickness down to ``max_depth``. This suits SoilGrids, HiHydroSoil and
+  EU-SoilHydroGrids.
+* ``hydraulics_from_texture()`` writes ``awc.tif`` [Vol-%] and ``ksat.tif`` [mm/h]
+  from sand, clay and (optionally) organic matter rasters. It uses the pedotransfer
+  function of :cite:t:`Saxton2006`, also available on arrays as ``saxton_rawls()``.
+  The function is fitted on soils of up to 8% organic matter and 60% clay.
+* ``class_table_from_csv()`` builds a ``reclassify`` mapping from the attribute
+  table of a class-coded map. For the Harmonized World Soil Database (HWSD), it
+  weights the soils of a mapping unit by their share (``weight_column='SHARE'``).
+
+For example, from SoilGrids, whose six layers span 0–2 m and whose sand and clay
+contents are stored in g/kg:
+
+.. code-block:: python
+
+   from hydrobricks import soils
+
+   depths = [(0, 0.05), (0.05, 0.15), (0.15, 0.3), (0.3, 0.6), (0.6, 1.0), (1.0, 2.0)]
+   layers = ['0-5cm', '5-15cm', '15-30cm', '30-60cm', '60-100cm', '100-200cm']
+   for name in ('sand', 'clay'):
+       soils.integrate_layers([f'path/to/{name}_{layer}_mean.tif' for layer in layers],
+                              depths, f'path/to/{name}.tif', max_depth=1.0)
+   rasters = soils.hydraulics_from_texture('path/to/sand.tif', 'path/to/clay.tif',
+                                           'path/to/soil', scale={'sand': 0.1, 'clay': 0.1})
+
+   catchment.extract_soil_properties(
+       available_water_content=rasters['awc'],
+       soil_depth='path/to/depth_to_bedrock.tif',
+       conductivity=rasters['ksat'])
+
+Check the scaling of each product in its documentation: many store scaled integers.
+The layer rasters must share a grid, but not the grid of the DEM, onto which
+``extract_soil_properties()`` warps them.
 
 
 .. _glacier-cover-init:

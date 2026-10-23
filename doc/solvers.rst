@@ -385,8 +385,7 @@ against the observed discharge: the ``runge_kutta`` scheme at a 15-minute step,
 with the daily forcing spread evenly over the day (``crank_nicolson`` at the
 same step agrees with it to :math:`1 - \mathrm{NSE} = 3 \cdot 10^{-8}`). The
 scores therefore measure the discretization error alone, and a perfect scheme
-would reach 1 whatever the quality of the model. For context, the reference
-itself reaches NSE = 0.70 and KGE = 0.81 against the observed discharge.
+would reach 1 whatever the quality of the model.
 
 At a daily step:
 

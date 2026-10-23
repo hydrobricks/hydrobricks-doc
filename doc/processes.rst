@@ -1974,7 +1974,7 @@ reaches the outlet after routing) and ``reach:storage`` (in transit), read with
 subbasin records zeros.
 
 Inspecting the network
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 What the routing actually does with a network is easier to check than to infer.
 Once the model is set up, it reports the tree it built, the reach of every
