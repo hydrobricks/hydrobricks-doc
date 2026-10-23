@@ -193,6 +193,103 @@ values and ranges can be specified:
    )
 
 
+
+.. _monthly-parameters:
+
+Monthly parameters
+------------------
+
+A parameter can follow the calendar month instead of holding a single value for
+the whole simulation. This reproduces the seasonal tables of the vegetation
+parameters — the interception capacity and the vegetation cover fraction of
+:ref:`PREVAH-UniBE <prevah-unibe>`, for instance:
+
+.. code-block:: python
+
+   # January to December
+   parameters.set_monthly_values('ic', [0.5, 0.5, 0.8, 1.4, 2.1, 2.4,
+                                        2.4, 2.3, 1.9, 1.2, 0.7, 0.5])
+
+The twelve values are given from January to December. The parameter then changes
+at the start of every month during the simulation. The scalar value of the
+parameter is set to the annual mean and is kept as a baseline (it is what a
+model reports when the monthly values are not applied, e.g. before a run).
+
+Monthly values can be read back with ``parameters.get_monthly_parameters()``.
+A parameter that varies monthly is not a good calibration target on its own:
+calibrate the scalar first, then apply a monthly pattern around it.
+
+These values are shared by every hydro unit. To vary a parameter in space *and*
+through the year, see :ref:`spatial monthly parameters <spatial-monthly-parameters>`
+below; combining ``set_monthly_values`` with ``set_spatial`` on the same parameter
+raises an error instead, because the per-unit value would take precedence over the
+shared one the monthly update writes and the monthly variation would be lost.
+
+
+.. _spatial-parameters:
+
+Spatial (per-unit) parameters
+-----------------------------
+
+A parameter can also take a different value in every hydro unit, read from a
+hydro unit property rather than calibrated globally. This is how a field
+capacity derived from a soil map, or the wet-surface fraction of each unit,
+enters the model:
+
+.. code-block:: python
+
+   # The property is given as a (name, unit) pair and one value per hydro unit.
+   hydro_units.add_property(('fc', 'mm'), field_capacities)
+
+   parameters = model.generate_parameters()
+   parameters.set_spatial('fc', 'fc')      # parameter name, property name
+
+The values are absolute (they replace the global value, they do not scale it).
+The global scalar set with ``set_values`` is kept as a fallback for the units
+that do not carry the property, so it must still be defined. Adding a property
+after the hydro units have been loaded refreshes the spatial structure
+automatically.
+
+The bound parameters can be listed with ``parameters.get_spatial_parameters()``.
+Both brick and process parameters can be bound this way.
+
+
+.. _spatial-monthly-parameters:
+
+Spatial monthly parameters
+--------------------------
+
+A parameter can vary in space and through the year at once, each hydro unit
+following its own monthly series. The series are given as twelve hydro unit
+properties, January first:
+
+.. code-block:: python
+
+   for month in range(1, 13):
+       # one value per hydro unit, for that month
+       hydro_units.add_property((f'fc_{month:02d}', 'mm'), capacities[:, month - 1])
+
+   parameters.set_spatial_monthly(
+       'fc', [f'fc_{month:02d}' for month in range(1, 13)]
+   )
+
+Each unit's value is rewritten at the start of every month during the simulation.
+As for a plain spatial parameter, the global scalar is kept as a fallback: a unit
+missing any of the twelve properties falls back on it entirely. Before the first
+month is reached the unit holds the mean of its own twelve values.
+
+The full per-unit table is asked for, rather than a per-unit value scaled by a
+shared monthly shape, because the two are not always separable. In
+:ref:`PREVAH-UniBE <prevah-unibe>` the soil moisture capacity is built from a soil
+map and from a rooting depth that depends on the cover class and the month, but each
+unit's own soil depth caps its rooting depth, so the shape of the year differs from
+unit to unit. ``PrevahUniBE.apply_cover_field_capacity`` builds that table and
+binds it in one call.
+
+The bound parameters can be listed with
+``parameters.get_spatial_monthly_parameters()``.
+
+
 .. _calibration:
 
 Calibration using SPOTPY

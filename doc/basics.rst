@@ -75,7 +75,7 @@ The diagram can be tuned with several options (also available on
        structure_id=2,      # which structure variant to draw
    )
 
-Models with glacier or lake covers define several structure *variants* (e.g. a
+Models with glacier or open-water covers define several structure *variants* (e.g. a
 glacier-free base and a with-glacier variant); pass ``structure_id=`` to inspect a
 specific one. ``with_forcing`` is also available on ``get_structure_graph()``.
 
@@ -194,8 +194,16 @@ The available land cover types are:
 * ``forest``: a soil-bearing surface that can optionally intercept rain in a canopy
   store (HBV only, enabled with ``forest_interception=True``; see
   :ref:`HBV land covers <hbv-land-covers>`).
-* ``lake``: an exclusive open-water surface — all precipitation enters the open water,
+* ``water``: an exclusive open-water surface — all precipitation enters the open water,
   which evaporates at the potential rate and drains through a linear outflow (HBV only).
+  (The name ``lake`` is reserved for a future distinct cover — a regulated lake or
+  reservoir with its own release rules — and is not accepted as a cover type.)
+* ``wetland``, ``urban``, ``rock``: generic soil covers. They behave like ``open`` (the
+  same soil routine) but keep a distinct identity for the land-cover extraction, the
+  labelling and their own per-cover parameters, and a model may give them a specific
+  behaviour — :ref:`PREVAH-UniBE <prevah-unibe>` routes part of a ``wetland`` cover's
+  input straight to the groundwater. They are accepted by every model that accepts
+  ``open``.
 
 Which types a given model accepts depends on the model (see :ref:`Models <models>`);
 all models support ``open`` and ``glacier``. For example, a catchment with bare-ice
@@ -242,6 +250,69 @@ The CSV must list the area of each land cover per hydro unit
    4490, 2.210, 0.288, 0.266
    4526, 2.136, 0.341, 0.363
    4562, 1.654, 0.613, 0.275
+
+
+.. _subbasins:
+
+Declaring subbasins (river network)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A basin can be described as a tree of **subbasins**, each holding its own
+hydro units and draining into one downstream subbasin (the terminal subbasin is
+the basin outlet). The hydro units carry a ``subbasin`` column giving the
+subbasin each unit drains to; it is picked up from the CSV file when present
+(``id``, ``subbasin`` with unit ``-``) or added afterwards:
+
+.. code-block:: python
+
+   hydro_units.add_property(("subbasin", "-"), subbasin_ids)
+
+The network itself is a table with one row per subbasin, given as a DataFrame or
+a CSV path:
+
+.. code-block:: python
+
+   import pandas as pd
+
+   hydro_units.set_subbasins(pd.DataFrame({
+       "id": [1, 2],
+       "downstream": [0, 1],           # 0: the basin outlet
+       "name": ["St. Gallen", "Appenzell"],
+       "length": [12500.0, 8300.0],   # reach length [m], and any other property
+   }))
+
+The tree is validated when set (unique IDs, exactly one outlet, no cycle, every
+unit on a declared subbasin, no empty subbasin) and saved with the hydro units
+by ``save_as()`` (a ``subbasin`` variable and a ``subbasins`` dimension in the
+NetCDF file). ``get_subbasin_ids()`` lists the subbasins.
+
+The model then runs the subbasins upstream first, each with its own solver. The
+water leaving a subbasin enters the reach of its downstream subbasin and joins
+that subbasin's own runoff at its outlet. By default the routing is instantaneous
+(``channel_routing="none"``); with ``channel_routing="lag"`` or
+``channel_routing="muskingum"`` the water
+travels along the reach for ``length / celerity`` (see :ref:`channel routing
+<channel-routing>`), which is why the subbasin table above carries the reach
+``length``. After a run, the discharge at every subbasin outlet is available, in
+mm per time step over the area drained at that outlet (its own units plus every
+upstream subbasin), which is what a gauge normalized by its basin area
+shows:
+
+.. code-block:: python
+
+   model.get_subbasin_ids()            # [2, 1]: upstream first, outlet last
+   model.get_subbasin_discharge(2)     # the upper Sitter at Appenzell
+   model.get_outlet_discharge()        # the basin outlet (subbasin 1)
+   model.get_subbasin_areas()          # local and drained areas [m2]
+   model.get_outlet_discharge(units='m3/s')   # the same series as a gauge records
+
+A basin without a declared network is a single subbasin and runs exactly as
+before. The subbasin-level stores of the model (e.g. the slow reservoirs of
+SOCONT) are built once per subbasin, with the same parameters, from the
+structure variant matching the land covers of the subbasin's units: a subbasin
+without glaciers carries no glacier reservoir, like a hydro unit without a
+glacier carries no glacier brick. The results file records the variant of each
+subbasin (``subbasin_structure_ids``).
 
 
 Generating hydro units from a DEM
@@ -351,6 +422,76 @@ To export all internal fluxes and states to a NetCDF file for further analysis:
 .. code-block:: python
 
    socont.dump_outputs('/output/dir/')
+
+
+.. _computation-time-step:
+
+Computation time step
+~~~~~~~~~~~~~~~~~~~~~~
+
+The model runs on a daily step by default. ``setup()`` takes ``time_step`` and
+``time_step_unit`` (``'day'``, ``'hour'`` or ``'minute'``) to run it on a shorter
+one:
+
+.. code-block:: python
+
+   socont.setup(
+      spatial_structure=hydro_units,
+      output_path='/output/dir/',
+      start_date='2020-01-01',
+      end_date='2020-12-31',
+      time_step=1,
+      time_step_unit='hour',
+   )
+
+Two conventions matter when the step is not a day, and they differ from each other:
+
+* **The parameters and the process rates are per day, always.** A response factor is
+  in d\ :sup:`-1` and a degree-day factor in mm d\ :sup:`-1` °C\ :sup:`-1` whatever
+  the step, so the values and the ranges of a calibrated parameter set carry over
+  unchanged. Nothing has to be rescaled when the step changes.
+* **The forcing is an amount per time step.** Precipitation and potential
+  evapotranspiration are the water that falls or is demanded *during one step*, so an
+  hourly run takes hourly totals, not daily ones. Temperature and radiation are
+  instantaneous values and are read as they are.
+
+The forcing must be provided at the resolution of the computation step. A mismatch is
+refused when the forcing is attached, naming both resolutions, rather than running on
+whatever the two happen to do together. ``compute_pet()`` takes care of its own side:
+the pyet methods are daily formulations, so their daily demand is shared between the
+steps of its day when the forcing is sub-daily.
+
+Refining the step changes the result, because the reservoirs and the non-linear soil
+function are then integrated over shorter intervals. The difference shrinks as the step
+shrinks, and a step of 24 hours is exactly the daily run.
+
+A shorter step alone changes the result little: the gain comes from forcing that varies
+within the day, such as an hourly temperature or precipitation. On the
+Ticino-Bellinzona catchment of ``examples/advanced/prevah_ticino.py``, moving
+PREVAH-UniBE from a daily to an hourly step while keeping the daily information (the
+precipitation shared evenly over the 24 hours, the temperature held at the daily value)
+changes the discharge by 0.9 % in volume, and the hourly run agrees with the daily one
+to a Nash-Sutcliffe efficiency of 0.98. Giving that same hourly run a temperature that 
+swings 8 °C through the day, around exactly the same daily mean, changes it by 2.3 % 
+in volume and by 25 % in the winter months. A sub-daily step is therefore worth using 
+only with sub-daily forcing.
+
+That also means a parameter set calibrated on daily forcing does not automatically
+transfer to a sub-daily run of the same catchment. The rates carry over unchanged, but
+the processes that switch on a threshold see a different signal: see the
+:ref:`PREVAH snow water release <prevah-snow-release>` for the clearest case.
+
+.. note::
+
+   :ref:`GR4J <gr4j>` and :ref:`GR6J <gr6j>` stay daily: their production store works
+   on step volumes and their unit hydrographs advance by one slot per step, so the model
+   is a discrete daily formulation rather than a continuous one sampled at a step. Giving
+   one of them a shorter step is refused at ``setup()``, naming the process that cannot
+   honour it, rather than silently reinterpreting its parameters as hours.
+   :ref:`GSM-Socont <gsm-socont>`, :ref:`HBV-96 <hbv96>` and
+   :ref:`PREVAH-UniBE <prevah-unibe>` follow the step: their reservoirs, snow routine and
+   evapotranspiration are continuous in time, and the MAXBAS routing of HBV-96 is a
+   duration in days that is resolved on whatever grid the step gives it.
 
 
 Initializing state variables
@@ -580,6 +721,8 @@ Global attributes that map variable indices to names:
 
 * ``labels_aggregated``: names of lumped elements (fluxes and states)
 * ``labels_distributed``: names of distributed elements
+* ``labels_distributed_basis``: the area each distributed element is expressed
+  over (see :ref:`below <area-basis>`), in the order of ``labels_distributed``
 * ``labels_land_covers``: names of land covers
 
 To inspect the available labels:
@@ -639,32 +782,80 @@ Example output for GSM-Socont with two glacier types:
 * ``time`` (1D): dates as Modified Julian Dates (days since 1858-11-17 00:00)
 * ``hydro_units_ids`` (1D): IDs of the hydro units
 * ``hydro_units_areas`` (1D): area of each hydro unit [m²]
-* ``sub_basin_values`` (2D): lumped time series, indexed by ``labels_aggregated``
+* ``hydro_units_subbasin_fractions`` (1D): share of its subbasin's area covered
+  by each hydro unit (unit area / subbasin area)
+* ``subbasin_ids``, ``subbasin_downstream_ids``, ``subbasin_local_areas``,
+  ``subbasin_drained_areas`` (1D): the subbasins of the river network, in
+  processing order (the catchment outlet last); a single entry without a network
+* ``subbasin_values`` (3D, ``aggregated_values`` x ``subbasins`` x ``time``):
+  the lumped time series of each subbasin, indexed by ``labels_aggregated``;
+  the ``outlet`` of a subbasin is in mm over its drained area, the other
+  components in mm over its own area. Read them with
+  ``results.get_subbasin_values("outlet", subbasin_id)`` (the catchment outlet
+  when no id is given). Files written before v0.10 hold a 2D
+  ``sub_basin_values`` (one subbasin), which the same method reads.
 * ``hydro_units_values`` (2D): distributed time series, indexed by
-  ``labels_distributed``. Two important subtypes:
-
-  * **Flux variables** (names ending in ``:output``, unit: mm): already weighted
-    by land cover fraction and relative hydro unit area. You can sum them
-    directly over all hydro units to get the catchment-total contribution of a
-    component (e.g., total glacier melt).
-  * **State variables** (names ending in ``:content`` or ``:snow``, unit: mm):
-    the water depth stored in a reservoir. These are *not* area-weighted — to
-    aggregate over the catchment, multiply each value by its land cover fraction
-    and relative hydro unit area. The :class:`Results <hydrobricks.results.Results>`
-    class provides helpers that do this for you:
-    :meth:`get_mean_hydro_units_values() <hydrobricks.results.Results.get_mean_hydro_units_values>`
-    (area-weighted catchment mean of any component for one land cover),
-    :meth:`get_land_cover_areas() <hydrobricks.results.Results.get_land_cover_areas>`
-    (per-unit area of a land cover over time), and, specifically for snow water
-    equivalent,
-    :meth:`get_total_swe() <hydrobricks.results.Results.get_total_swe>` (per-unit
-    SWE aggregated across all land covers) and
-    :meth:`get_mean_swe() <hydrobricks.results.Results.get_mean_swe>` (the
-    catchment-wide mean). Land covers without a snowpack (e.g. open water)
-    contribute zero SWE over their area.
+  ``labels_distributed``, in mm over the area given by
+  ``labels_distributed_basis`` (see :ref:`below <area-basis>`). To aggregate a
+  state over the catchment, the :class:`Results <hydrobricks.results.Results>`
+  class provides helpers that weight it for you:
+  :meth:`get_mean_hydro_units_values() <hydrobricks.results.Results.get_mean_hydro_units_values>`
+  (area-weighted catchment mean of any component for one land cover),
+  :meth:`get_land_cover_areas() <hydrobricks.results.Results.get_land_cover_areas>`
+  (per-unit area of a land cover over time), and, specifically for snow water
+  equivalent,
+  :meth:`get_total_swe() <hydrobricks.results.Results.get_total_swe>` (per-unit
+  SWE aggregated across all land covers) and
+  :meth:`get_mean_swe() <hydrobricks.results.Results.get_mean_swe>` (the
+  catchment-wide mean). Land covers without a snowpack (e.g. open water)
+  contribute zero SWE over their area.
 
 * ``land_cover_fractions`` (2D, optional): time series of land cover fractions,
   present when glacier or other land cover evolution is active.
+
+.. _area-basis:
+
+Area basis of the distributed values
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Every distributed value is a depth in mm, but not over the same area. A state is
+expressed over the area of the brick that holds it, and a flux over the area of the
+element that *receives* it, so that the recorded amounts are exactly the ones the
+model exchanges and their sums close the water balance. The area of each value is
+its *basis*:
+
+* ``land_cover``: mm over the area of the land cover. The content of a land cover
+  and of its surface components (snowpack, canopy), and the fluxes that stay on
+  that land cover (e.g. the snowmelt of ``open_snowpack`` into ``open``).
+* ``hydro_unit``: mm over the hydro unit. The content of the bricks spanning the
+  whole unit (e.g. the soil reservoirs), the fluxes between them, and the fluxes
+  from a land cover to them, weighted by its fraction (e.g.
+  ``open:infiltration:output``).
+* ``subbasin``: mm over the local area of the subbasin. The fluxes delivered to
+  the outlet or to a subbasin brick (e.g. ``slow_reservoir:outflow:output``, or
+  the glacier melt routed by the subbasin-level glacier reservoirs). Summed over
+  the hydro units of a subbasin, they give its total directly.
+
+The basis of a label is read with ``model.get_recorded_hydro_unit_basis(label)`` or
+``results.get_hydro_units_basis(label)``. Both readers convert the values to another
+basis on request, from the recorded areas and land-cover fractions:
+
+.. code-block:: python
+
+   # Snow water equivalent over the whole unit rather than over the glacier
+   swe = results.get_hydro_units_values('glacier_snowpack:snow_content',
+                                        basis='hydro_unit')
+
+   # Outflow of each unit in mm over that unit, rather than its share of the subbasin
+   q = model.get_recorded_hydro_unit_values('slow_reservoir:outflow:output',
+                                            basis='hydro_unit')
+
+Converting to or from a land cover needs the land-cover fractions, which are recorded
+with ``record_all=True`` (or ``fractions=True`` in a
+:class:`RecordingRequest <hydrobricks.evaluation.base.RecordingRequest>`). Values
+over a land cover are NaN where that land cover is absent from the unit. Without the
+``basis`` argument, the values are returned as recorded. Files written before the
+basis was recorded cannot be converted.
 
 
 .. _others:

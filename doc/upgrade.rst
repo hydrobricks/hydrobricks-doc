@@ -6,6 +6,22 @@ Upgrade guide
 Only breaking changes that require attention are listed here. For a complete list of changes, see the
 `changelog <https://github.com/hydrobricks/hydrobricks/blob/main/CHANGELOG.md>`_.
 
+v0.9.1 to v0.9.2
+----------------
+
+Breaking changes:
+
+* The minimum Python version is now 3.11 (Python 3.10 reached its end of life in
+  October 2026). The ``StrEnum`` back-port is no longer a dependency: the
+  standard library has provided ``enum.StrEnum`` since 3.11.
+* The HBV open-water land cover ``lake`` is renamed ``water``, and its outflow
+  parameter alias ``k_lake`` (or ``k_lake_<cover>``) becomes ``k_water`` (or
+  ``k_water_<cover>``). The name ``lake`` is no longer accepted as a cover type: it
+  is reserved for a future regulated lake or reservoir cover with its own release
+  rules. Rename the cover type in the land cover definitions and the hydro units
+  files (``lake`` to ``water``), and the parameter in the parameter sets and
+  project files (``k_lake`` to ``k_water``).
+
 v0.8 to v0.9
 ------------
 

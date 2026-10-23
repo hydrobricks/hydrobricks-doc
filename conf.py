@@ -5,6 +5,7 @@
 
 import os
 import sys
+import tomllib
 
 # -- Mock modules -------------------------------------------------------------
 # Use autodoc_mock_imports (set below) instead of manual sys.modules patching
@@ -32,7 +33,8 @@ sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bind
 project = 'hydrobricks'
 copyright = '2022, Pascal Horton'
 author = 'Pascal Horton'
-release = '0.8.7'
+with open(os.path.join(BASE_PATH, "_deps", "hydrobricks", "pyproject.toml"), "rb") as f:
+    release = tomllib.load(f)["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

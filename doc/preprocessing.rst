@@ -25,6 +25,41 @@ accessible through the ``Catchment`` object.
   for the delta-h and area-scaling glacier evolution methods.
 
 
+.. _catchment-dem:
+
+Loading the DEM
+---------------
+
+Every preprocessing step starts from a catchment outline and a DEM:
+
+.. code-block:: python
+
+   catchment = hb.Catchment(outline='path/to/watershed.shp')
+   catchment.extract_dem('path/to/dem.tif')
+
+Only the window covering the catchment is read: the bounding box of the
+outline, padded by at least ``margin`` (1 km by default) and rounded outwards
+to a multiple of ``snap`` (1 km by default), clipped to the raster extent. A
+regional or national DEM can therefore be passed as is — everything derived
+from the DEM afterwards (slope and aspect, potential radiation, the
+discretization, the attribute rasters resampled onto the DEM grid) works on
+that window, which is what keeps those steps affordable.
+
+.. code-block:: python
+
+   # The whole raster, as before
+   catchment.extract_dem('path/to/dem.tif', crop=False)
+
+   # A wider margin, without rounding the extent
+   catchment.extract_dem('path/to/dem.tif', margin=5000, snap=0)
+
+The margin matters: slope, aspect and the cast shadows of the radiation are
+computed from the neighbourhood of each cell, so the window must extend beyond
+the catchment. The values are expressed in the units of the coordinate
+reference system (converted from metres, and never rounded, for a geographic
+CRS).
+
+
 .. _catchment-topography:
 
 Catchment topography
@@ -169,6 +204,14 @@ Additional keyword arguments control each criterion independently:
      - Number of slope bands for quantiles; default ``6``.
    * - ``min_slope`` / ``max_slope``
      - Force the slope range (degrees); defaults ``0`` / ``90``.
+   * - ``aspect_classes``
+     - ``4`` (N, E, S, W; default) or ``8`` (N, NE, E, SE, S, SW, W, NW). The
+       sectors are centred on their direction, so N spans 337.5–22.5° with 8
+       classes and 315–45° with 4.
+   * - ``flat_slope_threshold``
+     - Slope (degrees) below which a cell goes to the ``FLAT`` aspect class rather
+       than to a direction; default ``3`` (see the note below). ``0`` keeps only
+       the cells whose aspect is undefined. PREVAH uses ``0.5``.
    * - ``radiation_method``
      - ``'equal_intervals'`` or ``'quantiles'``; default ``'equal_intervals'``.
    * - ``radiation_distance``
@@ -191,8 +234,43 @@ Additional keyword arguments control each criterion independently:
 
 .. note::
 
-   Aspect is always split into four cardinal-direction classes (N, E, S, W) and
-   has no configurable parameters.
+   **Flat cells and the** ``FLAT`` **class.** A flat cell has no aspect: the
+   computation marks it -1, and the border of the DEM is NaN. Such cells belong
+   to no direction, so they are gathered in a ``FLAT`` class, which is created
+   only when they exist. Without it their area would be dropped from the
+   catchment altogether.
+
+   ``flat_slope_threshold`` widens that class to the cells whose slope is too
+   gentle for their aspect to mean anything. It defaults to 3°, where two
+   independent limits meet on a 25 m DEM with about a metre of vertical error:
+
+   * **the aspect is no longer measurable.** Perturbing the DEM by 1 m moves
+     37 % of the cells of the 1–2° band to another aspect class out of four,
+     against 14 % at 3–5° and 4 % above 10° (a uniformly random aspect would
+     move 75 %). Below 1° the class is close to a coin toss.
+   * **the aspect no longer matters.** The difference in annual clear-sky direct
+     radiation between a north- and a south-facing plane is 2.7 % of the
+     horizontal at 1°, 8 % at 3° and 27 % at 10°, so splitting gentle terrain by
+     aspect separates units that receive nearly the same energy.
+
+   On the test catchments the default sends 2–3 % of the area to ``FLAT`` and
+   raises the number of hydro units by about a fifth. Set ``0`` to gather only
+   the cells whose aspect is undefined.
+
+   The right threshold belongs to the DEM rather than to the catchment: the
+   error of the aspect scales with the vertical error over the cell size, so
+   ``atan(1.1 * sigma_z / cell_size)``, which holds the median error of the
+   aspect near 15°, gives 2.5° for a 25 m grid with ``sigma_z`` = 1 m, 5° if the
+   error is 2 m, and close to 10° for a 2 m grid with ``sigma_z`` = 0.3 m. A
+   finer DEM calls for a *higher* threshold, not a lower one.
+
+Whatever the criteria, each hydro unit carries the mean of its cells for the
+area, elevation, slope, aspect, latitude and longitude — the slope in
+particular, which the surface runoff and the snow redistribution read, is
+always available (the slope and the latitude are kept when the units are written
+to CSV with ``catchment.save_hydro_units_to_csv()`` and loaded back; the others
+are listed in ``other_columns`` to be reloaded). When a criterion also defines
+bands, its bounds are stored alongside (e.g. ``slope_min`` / ``slope_max``).
 
 **Sub-catchments**
 
@@ -276,7 +354,10 @@ Once the catchment has been discretized, the land-cover fractions of each hydro 
 can be set from a categorical raster or a vector dataset. This is handled by the
 ``CatchmentLandCover`` class, accessible via ``catchment.land_cover``. Each source
 class is mapped to a hydrobricks land cover (``open``, ``forest``, ``glacier``,
-``lake``, or a user-defined name); classes without a mapping entry fall into the
+``water``, ``wetland``, ``urban``, ``rock``, or a user-defined name); the built-in ESA
+WorldCover and CORINE presets map the built-up classes to ``urban``, the bare-rock and
+sparsely vegetated classes to ``rock`` and the herbaceous wetland classes to
+``wetland``. Classes without a mapping entry fall into the
 residual absorbed by the generic (soil) cover. Covers targeted by the mapping that the
 catchment does not yet declare are registered automatically.
 
@@ -354,6 +435,142 @@ provided.
    These methods set the *initial* land-cover fractions and must be called before
    ``Model.setup()``. The generic soil cover (``open``) absorbs the residual area
    automatically, so it is never passed as a mapping target on its own.
+
+
+
+.. _unit-properties-from-rasters:
+
+Hydro unit properties from rasters
+----------------------------------
+
+Any raster can become a property of the hydro units. Once the catchment has been
+discretized, ``extract_unit_property_from_raster()`` warps the raster onto the DEM
+grid and stores the mean of each unit's cells:
+
+.. code-block:: python
+
+   catchment.extract_unit_property_from_raster('path/to/soil_depth.tif',
+                                               name='soil_depth', unit='m')
+
+A parameter can then follow that property per hydro unit with
+``parameters.set_spatial('<parameter>', 'soil_depth')`` (see
+:ref:`spatial parameters <spatial-parameters>`).
+
+Soil maps are often given as class codes rather than as values — a cell belongs to
+field-capacity class 3, and a table says what the class is worth. Pass that table as
+``reclassify``; the codes it does not cover are ignored rather than averaged in, and
+the raster is then resampled with nearest-neighbour so that codes are never mixed:
+
+.. code-block:: python
+
+   from hydrobricks.soils import SWISS_SOIL_SUITABILITY_AWC_CLASSES
+
+   catchment.extract_unit_property_from_raster(
+       'path/to/nfk.tif', name='awc', unit='%',
+       reclassify=SWISS_SOIL_SUITABILITY_AWC_CLASSES)
+
+Extracting a property that the hydro units already have replaces it.
+
+**Soil properties**
+
+``extract_soil_properties()`` is the convenience for the three soil properties the
+models read, writing them under the names they expect — ``awc`` (available water
+content) [Vol-%], ``soil_depth`` [m] and ``conductivity`` (hydraulic conductivity):
+
+.. code-block:: python
+
+   catchment.extract_soil_properties(
+       available_water_content='path/to/nfk.tif',
+       soil_depth='path/to/btif.tif',
+       conductivity='path/to/k.tif',
+       reclassify='swiss_soil_suitability')
+
+Each raster is optional. ``reclassify`` names a supported class-coded soil map, whose
+tables are in ``hydrobricks.soils.SOIL_CLASS_TABLES``; ``'swiss_soil_suitability'``
+applies PREVAH's tables for the Swiss soil suitability map
+(``SWISS_SOIL_SUITABILITY_AWC_CLASSES``, ``SWISS_SOIL_SUITABILITY_DEPTH_CLASSES`` and
+``SWISS_SOIL_SUITABILITY_CONDUCTIVITY_CLASSES``). A dict instead gives one mapping per
+property, keyed by argument name. Omit it when the rasters already hold values.
+
+The conductivity unit follows the class tables: the Swiss classes are relative
+(``-``). A raster of values is taken in mm/h unless ``conductivity_unit`` says
+otherwise.
+
+These three properties are what :ref:`PREVAH-UniBE <prevah-unibe>` needs for its
+soil moisture capacity (``apply_cover_field_capacity``, from ``awc`` and
+``soil_depth``) and for its percolation factor KWPER
+(``apply_cover_percolation``, from ``conductivity``). KWPER only reads the
+conductivity relative to the catchment, so its unit does not matter there.
+
+**Soil data outside Switzerland**
+
+Most soil products give values rather than classes, but often per depth layer, or
+give the texture only. ``hydrobricks.soils`` turns them into the three rasters above:
+
+* ``integrate_layers()`` averages depth layers into one raster, each layer weighted
+  by its thickness down to ``max_depth``. This suits SoilGrids, HiHydroSoil and
+  EU-SoilHydroGrids.
+* ``hydraulics_from_texture()`` writes ``awc.tif`` [Vol-%] and ``ksat.tif`` [mm/h]
+  from sand, clay and (optionally) organic matter rasters. It uses the pedotransfer
+  function of :cite:t:`Saxton2006`, also available on arrays as ``saxton_rawls()``.
+  The function is fitted on soils of up to 8% organic matter and 60% clay.
+* ``class_table_from_csv()`` builds a ``reclassify`` mapping from the attribute
+  table of a class-coded map. For the Harmonized World Soil Database (HWSD), it
+  weights the soils of a mapping unit by their share (``weight_column='SHARE'``).
+
+For example, from SoilGrids, whose six layers span 0–2 m and whose sand and clay
+contents are stored in g/kg:
+
+.. code-block:: python
+
+   from hydrobricks import soils
+
+   depths = [(0, 0.05), (0.05, 0.15), (0.15, 0.3), (0.3, 0.6), (0.6, 1.0), (1.0, 2.0)]
+   layers = ['0-5cm', '5-15cm', '15-30cm', '30-60cm', '60-100cm', '100-200cm']
+   for name in ('sand', 'clay'):
+       soils.integrate_layers([f'path/to/{name}_{layer}_mean.tif' for layer in layers],
+                              depths, f'path/to/{name}.tif', max_depth=1.0)
+   rasters = soils.hydraulics_from_texture('path/to/sand.tif', 'path/to/clay.tif',
+                                           'path/to/soil', scale={'sand': 0.1, 'clay': 0.1})
+
+   catchment.extract_soil_properties(
+       available_water_content=rasters['awc'],
+       soil_depth='path/to/depth_to_bedrock.tif',
+       conductivity=rasters['ksat'])
+
+Check the scaling of each product in its documentation: many store scaled integers.
+The layer rasters must share a grid, but not the grid of the DEM, onto which
+``extract_soil_properties()`` warps them.
+
+
+.. _glacier-cover-init:
+
+Splitting a glacier at the equilibrium line
+-------------------------------------------
+
+Models that distinguish the ablation and accumulation zones of a glacier — the
+:ref:`PREVAH glacier module <glacier-modules>` in particular — need two glacier
+covers: bare ice below the equilibrium line altitude (ELA), and firn above it.
+``initialize_glacier_covers_split_by_elevation`` extracts the glacier extent — from
+an ice-thickness raster or a glacier-outline shapefile, as
+``initialize_glacier_cover_from_extent`` — and splits its cells between the two
+covers at a given elevation:
+
+.. code-block:: python
+
+   import hydrobricks.preprocessing as pp
+
+   pp.initialize_glacier_covers_split_by_elevation(
+       catchment,
+       ela=2900,                                  # equilibrium line altitude [m a.s.l.]
+       glacier_outline='path/to/glaciers.shp',    # or ice_thickness='path/to/thickness.tif'
+       ice_cover='glacier_ice',
+       firn_cover='glacier_firn',
+   )
+
+Glacierized DEM cells at or above the ELA count as firn, those below it as ice, and
+the resulting per-unit areas initialize the two covers (which the hydro units must
+declare). The ELA is therefore a preprocessing input, not a calibrated parameter.
 
 
 .. _potential-solar-radiation:
@@ -460,11 +677,125 @@ When setting up the model, load it into the ``HydroUnits`` object:
 
    hydro_units.set_connectivity('path/to/connectivity.csv')
 
+or declare the file in a :ref:`project file <project-files-lateral>`
+(``hydro_units.connectivity``).
+
 Or pass the ``DataFrame`` directly if it is already in memory:
 
 .. code-block:: python
 
    hydro_units.set_connectivity(connectivity)
+
+
+.. _subbasin-delineation:
+
+Subbasins of a river network
+----------------------------
+
+To run a catchment as a :ref:`river network of subbasins <subbasins>`, the
+subbasins are either delineated from the gauge (outlet) locations on the DEM, with
+the D8 flow directions of ``pysheds``, or read from subbasin polygons. The subbasins
+come before the hydro units, as no hydro unit may span two subbasins (it would drain
+to two outlets):
+
+.. code-block:: python
+
+   catchment = hb.Catchment(outline='path/to/watershed.shp')
+   catchment.extract_dem('path/to/dem.tif')
+
+   subbasins = catchment.delineate_subbasins(
+       {'Appenzell': (2749050.0, 1244200.0)},   # gauges, in the catchment CRS
+   )
+   catchment.create_elevation_bands(method='equal_intervals', distance=100)
+
+The subbasins are an implicit criterion of the discretization (``discretize_by`` and
+``create_elevation_bands``), and the hydro units it creates carry their ``subbasin``
+column. A unit raster loaded after the delineation (``load_unit_ids_from_raster``)
+gets the subbasins of its units, and is refused if a unit spans several of them.
+Delineating the subbasins of a catchment that already has hydro units is refused.
+
+Each outlet is snapped to the nearest stream cell (a cell draining more than
+``stream_threshold_area``, 1 km² by default, or a cell crossed by the lines of
+``river_network`` when a river shapefile is given), its upstream area is
+delineated and the nested areas are carved out, so that every subbasin holds
+only its own area. A subbasin named ``outlet`` is added for the part of the
+catchment no gauge drains (unless a gauge drains the whole catchment). The
+reach of each subbasin runs from the entry of its upstream subbasins to its
+outlet (for a headwater, along its longest flow path). Its ``length`` is
+measured along the ``river_network`` lines when one is given, and along the D8
+flow path otherwise; its ``slope`` is the elevation drop over that length, so
+the product of the two is the drop whichever length is used.
+
+A flow path traced cell by cell cannot see the meanders a mapped river has, and
+at a coarse resolution it is the shorter of the two by a margin that depends on
+the river and on the DEM. The length matters: every scheme takes the travel time
+as ``length / celerity``, and :ref:`Muskingum-Cunge <channel-routing>` has no
+calibrated celerity to absorb the error. There, the slope being the drop over
+that length, a shorter reach is also a steeper one, and the travel time follows
+the length to the power 1.3 rather than proportionally. The mapped river is
+generalised at its own scale, so it is the better estimate rather than the true
+one; pass ``reach_lengths='flow_path'`` to keep the DEM path. A reach whose ends
+are not joined by the lines — a headwater above the mapped network, or a network
+not noded at its confluences — keeps its flow path length and says so in a
+warning.
+
+**From polygons.** When the subbasins are available as polygons, they replace the
+delineation:
+
+.. code-block:: python
+
+   subbasins = catchment.delineate_subbasins(
+       subbasins='path/to/subbasins.shp',
+       river_network='path/to/rivers.shp',
+   )
+
+The polygons can be the local areas of the subbasins (a partition of the
+catchment), the areas drained at each gauge (nested in each other), or a mix of
+both: every DEM cell goes to the smallest polygon covering it, which carves the
+nested areas out of the larger ones. The subbasin each polygon drains into is found
+on the DEM, from the cell just downstream of its outlet, unless
+``downstream_column`` gives it. A sliver of the catchment that no polygon covers
+(less than 0.5% of its area) goes to the nearest subbasin; a larger uncovered part
+becomes the ``outlet`` subbasin. With a ``river_network``, the flow directions are
+not computed at all (``pysheds`` is not needed): the outlet of a polygon is its
+lowest cell, the reaches are measured along the lines, and the reach of a headwater
+subbasin runs up to the farthest point of the network within it. A headwater the
+lines do not reach has no reach length, and a warning says so. Without a river
+network, the flow directions are still computed, for the reaches only.
+
+**Parameters** (see also :ref:`API <api_catchment_network>`):
+
+* ``outlets`` — a point vector file (a ``name`` column names the subbasins), a
+  GeoDataFrame, a list of ``(x, y)`` pairs or a mapping of name to ``(x, y)``.
+* ``subbasins`` — in place of ``outlets``, a polygon vector file or GeoDataFrame,
+  with the optional ``id_column`` (the polygon IDs, kept as ``source_id``),
+  ``downstream_column`` (the ID of the polygon each drains into; 0, empty or an ID
+  absent from the file for the catchment outlet) and ``name_column`` (default
+  ``name``).
+* ``snap_distance`` — the maximum distance [m] to move an outlet onto a stream;
+  default 10 DEM cells.
+* ``stream_threshold_area`` — the drained area [m²] from which a cell is a stream
+  (default 1 km²); ``river_network`` replaces it by the lines of a shapefile.
+* ``reach_lengths`` — ``'auto'`` (default) measures the reaches along the
+  ``river_network`` lines when one is given and along the D8 flow path otherwise;
+  ``'flow_path'`` always uses the flow path.
+
+The result is the subbasin table (``id``, ``downstream``, ``name``,
+``area_local``, ``area_drained``, ``length``, ``slope``, ``elevation_outlet``,
+``outlet_x``, ``outlet_y``), set on the catchment's hydro units together with their
+``subbasin`` column when they are created. Save what a project file needs:
+
+.. code-block:: python
+
+   catchment.save_hydro_units_to_csv('path/to/hydro_units.csv')  # with 'subbasin'
+   subbasins.to_csv('path/to/subbasins.csv', index=False)
+   catchment.save_subbasin_ids_raster('path/to/')                 # subbasin_ids.tif
+
+and declare them under ``hydro_units`` and ``subbasins`` (see
+:ref:`project files <project-files-subbasins>`). The delineation from outlets
+follows the DEM: where the flow directions of a coarse or filled DEM differ from
+the real drainage, the subbasin areas differ from official outlines accordingly.
+Official outlines, when available, avoid that difference.
 
 
 .. _glacier-lookup-tables:
