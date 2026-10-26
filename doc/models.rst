@@ -743,10 +743,11 @@ take a per-cover suffix instead — ``fc_<cover>``, ``lp_<cover>``, ``beta_<cove
   - Response factor of the non-linear upper zone.
   - Full name: ``upper_zone:response_factor``.
 
-* ``alpha``, ``alfa`` *(dimensionless, default: 1, [0, 3])*
+* ``alpha``, ``alfa`` *(dimensionless, default: 1, [0, 2])*
 
   - Non-linearity coefficient of the upper zone runoff (``alfa`` is the SMHI
-    spelling).
+    spelling). Beyond 2, the upper zone is so stiff that a daily time step
+    overshoots it.
   - Full name: ``upper_zone:alpha``.
 
 * ``perc`` *(mm/d, no default, [0, 10])*
