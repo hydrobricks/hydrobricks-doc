@@ -1,17 +1,28 @@
 Hydrobricks documentation
 ==========================
 
-Hydrobricks is a flexible, modular hydrological modelling framework.
-Its computational core is written in C++ for performance, while data
-preparation, model configuration, and calibration are handled through a
-Python interface.
+**A modular framework for building, calibrating and comparing conceptual
+hydrological models.**
 
-Hydrobricks ships with pre-built model structures for common use cases.
+Hydrobricks assembles hydrological models from reusable components: storages,
+land covers, snowpacks and glaciers (the *bricks*), the processes acting on
+them, and the fluxes connecting them. The established models it ships with
+(Socont, GR4J, GR6J, HBV, PREVAH) are built from the same components, so they
+share one numerical core and one workflow. Changing a single process or
+comparing whole model structures then becomes a matter of configuration rather
+than a new code base. The computation engine is written in C++ and driven from
+Python, which handles data preparation, model configuration and calibration.
+
 The available models are described on the :ref:`models page<models>`.
 The main building blocks of the framework are explained on the
 :ref:`basics page<basics>`.
 Additional resources contributed by the community are listed on the
 :ref:`resources page<resources>`.
+
+If you use hydrobricks in your work, please cite it:
+`doi:10.5281/zenodo.7139899 <https://doi.org/10.5281/zenodo.7139899>`_
+(this DOI always points to the latest release; the citation metadata is in
+`CITATION.cff <https://github.com/hydrobricks/hydrobricks/blob/main/CITATION.cff>`_).
 
 
 .. toctree::

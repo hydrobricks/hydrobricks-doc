@@ -108,12 +108,12 @@ accounts for the influence of solar radiation on melt rates. It requires potenti
 solar radiation as a model input (which can be computed by HydroBricks), 
 and includes the following parameters:
 
-* ``<component>:melt_factor`` *(mm/d/°C, no default, [0, 12])*
+* ``<component>:melt_factor`` *(mm/d/°C, no default, [0.5, 12])*
 
   - Base melt factor :math:`m` (independent of radiation).
   - Full name: ``snowpack:melt_factor`` / ``<name>:melt_factor``.
 
-* ``<component>:radiation_coefficient`` *(m² W⁻¹ mm d⁻¹ °C⁻¹, no default, [0, 1])*
+* ``<component>:radiation_coefficient`` *(m² W⁻¹ mm d⁻¹ °C⁻¹, no default, [0, 0.05])*
 
   - Radiation scaling coefficient :math:`r_j` for snow or ice.
   - Full name: ``snowpack:radiation_coefficient`` / ``<name>:radiation_coefficient``.
@@ -239,10 +239,43 @@ GSM-Socont is a conceptual glacio-hydrological model described in :cite:t:`Schae
 Specific options
 ^^^^^^^^^^^^^^^^^
 
+* ``preset``: ``hydrobricks`` (default, the current defaults below) or
+  ``original``. ``original`` sets the options to the published model of
+  :cite:t:`Schaefli2005`: one slow reservoir, ``socont_runoff``, ``et:socont``,
+  ``infiltration:socont``, ``melt:degree_day`` and the GSM glacier module, without
+  snow redistribution or sublimation. Options given explicitly still apply, with a
+  warning when they depart from the original. The rain/snow split is not pinned.
+  The model is still solved in continuous time, so it approximates the original
+  discrete scheme rather than reproducing it to the digit.
 * ``soil_storage_nb``: ``1`` or ``2``. Number of soil reservoirs; the second
   represents the baseflow component (not in the original model).
+* ``percolation_process``: percolation from the first to the second soil
+  reservoir (``soil_storage_nb: 2``). ``percolation:constant`` (default, the rate
+  ``percol`` whatever the wetness) or ``percolation:power_law``
+  (:math:`r_{\max} (S/A)^{\gamma}`, the recharge following the wetness of the
+  first reservoir; see :ref:`percolation processes <percolation-processes>`).
 * ``surface_runoff``: ``socont_runoff`` (the original non-linear quick reservoir)
   or ``linear_storage`` (a classic linear storage).
+* ``soil_et_process``: evapotranspiration from the slow reservoir.
+  ``et:hbv`` (default, :math:`PET` above the filling ratio ``lp``, linear below),
+  ``et:socont`` (the original :math:`ET = PET \sqrt{S/A}`), ``et:power_law``
+  (:math:`PET\,(S/A)^{\beta_{ET}}`) or ``et:exponential``
+  (:math:`PET\,(1 - e^{-\alpha_{ET} S/A})`). ``preset: original`` selects
+  ``et:socont``.
+* ``infiltration_process``: infiltration into the slow reservoir.
+  ``infiltration:socont`` (default, the original share :math:`1 - (S/A)^2` of the
+  input) or ``infiltration:hbv`` (:math:`1 - (S/A)^{\beta_{soil}}`, the exponent
+  calibrated). Not in the original model.
+
+  The original formulation reaches :math:`PET` only when the slow reservoir is
+  full, while the infiltration keeps it from filling, which caps the
+  evapotranspiration well below :math:`PET` in lowland catchments, and the
+  calibration then hides the surplus water in a reservoir that never drains or a
+  snowpack that never melts. Either option lifts that cap. ``et:hbv`` is the default
+  because it closed the water balance of every calibrated set on Swiss Plateau test
+  catchments, with an evapotranspiration close to HBV-96's; ``et:power_law`` with
+  ``et_beta = 0.5`` and ``infiltration:hbv`` with ``beta_soil = 2`` reproduce the
+  original formulations.
 * ``snow_melt_process``: melt model to use; see :ref:`melt models <melt-models>`.
   Default: ``"melt:degree_day"``.
 * ``glacier_infinite_storage`` (default ``True``): treat the glacier ice as an
@@ -299,14 +332,14 @@ Parameters
 
 **Glacier area lumped reservoir**
 
-* ``k_snow`` *(1/d, no default, [0.05, 0.25])*
+* ``k_snow`` *(1/d, no default, [0.0001, 1])*
 
   - Response factor for the lumped reservoir receiving rain and snowmelt water from the
     glacier area. Similar to :math:`k_\mathrm{snow}` in :cite:t:`Schaefli2005`, but in
     different units.
   - Full name: ``glacier_area_rain_snowmelt_storage:response_factor``.
 
-* ``k_ice`` *(1/d, no default, [0.05, 1])*
+* ``k_ice`` *(1/d, no default, [0.0001, 1])*
 
   - Response factor for the lumped reservoir receiving ice melt water. Similar to
     :math:`k_\mathrm{ice}` in :cite:t:`Schaefli2005`, but in different units.
@@ -315,15 +348,20 @@ Parameters
 
 **Quick runoff (non-linear version)**
 
-* ``beta`` *(m^(4/3)/s, no default, [100, 30000])*
+* ``beta`` *(m^(4/3)/s, no default, [100, 100000], log transform)*
 
-  - Runoff coefficient (to calibrate).
+  - Runoff coefficient (to calibrate), calibrated in log space (see
+    :ref:`parameter transforms <parameter-transforms>`).
+  - The quickflow time constant scales with the hydro unit area divided by
+    :math:`\beta \sqrt{\text{slope}}`. Large or flat units therefore need a higher
+    ``beta``. Above a threshold that depends on the unit, ``beta`` hardly changes the
+    discharge any more.
   - Full name: ``surface_runoff:runoff_coefficient``.
 
 
 **Quick runoff (linear version)**
 
-* ``k_quick`` *(1/d, no default, [0.05, 1])*
+* ``k_quick`` *(1/d, no default, [0.0001, 1])*
 
   - Response factor for the quick reservoir.
   - Full name: ``surface_runoff:response_factor``.
@@ -331,33 +369,82 @@ Parameters
 
 **Slow reservoir**
 
-* ``A`` *(mm, no default, [10, 3000])*
+* ``A`` *(mm, no default, [10, 1000])*
 
   - Maximum storage capacity of the slow reservoir.
   - Full name: ``slow_reservoir:capacity``.
 
-* ``k_slow``, ``k_slow_1`` *(1/d, no default, [0.001, 1])*
+* ``k_slow``, ``k_slow_1`` *(1/d, no default, [0.0001, 1], log transform)*
 
   - Response factor for the slow reservoir. Same as :math:`k` in :cite:t:`Schaefli2005`,
     but in different units.
+  - Calibrated in log space as :math:`\log(k/24)`, the logarithm of the rate in
+    1/h of the reference implementation (see
+    :ref:`parameter transforms <parameter-transforms>`).
   - Full name: ``slow_reservoir:response_factor``.
+
+
+**Slow reservoir evapotranspiration and infiltration**
+
+* ``lp`` *(dimensionless, default: 0.5, [0.1, 1])*, with ``soil_et_process: et:hbv``
+  (the default)
+
+  - Filling ratio of the slow reservoir above which the evapotranspiration is at
+    :math:`PET`. Socont sets its own range and starting value: HBV-96's
+    (0.9, [0.3, 1]) evaporate less than the original formulation at every
+    filling ratio.
+  - Full name: ``slow_reservoir:lp``. The process also registers the optional
+    ``et_correction_factor`` (default 1).
+
+* ``et_beta`` *(dimensionless, default: 0.5, [0.2, 3])*, with ``soil_et_process: et:power_law``
+
+  - Exponent of the filling ratio.
+  - Full name: ``slow_reservoir:exponent``.
+
+* ``et_alpha`` *(dimensionless, default: 2, [0.5, 10])*, with ``soil_et_process: et:exponential``
+
+  - Shape factor of the exponential.
+  - Full name: ``slow_reservoir:alpha``.
+
+* ``beta_soil`` *(dimensionless, default: 2, [0.3, 6])*, with ``infiltration_process: infiltration:hbv``
+
+  - Exponent of the infiltration function (2 in the original model). Suffixed
+    ``_soil`` to keep it apart from the quick-runoff ``beta``.
+  - Full name: ``<soil cover>:beta`` (e.g. ``open:beta``).
 
 
 **Baseflow (optional)**
 
-* ``percol`` *(mm/d, no default, [0, 10])*
+* ``percol`` *(mm/d, no default, [0, 10])*, with ``percolation_process:
+  percolation:constant`` (the default)
 
   - Percolation rate from the first slow reservoir to the baseflow reservoir.
   - Full name: ``slow_reservoir:percolation_rate``.
 
-* ``k_slow_2`` *(1/d, no default, [0.001, 1])*
+* ``percol_max`` *(mm/d, no default, [0, 10])*, with ``percolation_process:
+  percolation:power_law``
 
-  - Response factor for the baseflow reservoir.
+  - Percolation rate to the baseflow reservoir when the first slow reservoir is
+    full.
+  - Full name: ``slow_reservoir:percolation_rate``.
+
+* ``percol_exp`` *(dimensionless, default: 1, [0.5, 5])*, with
+  ``percolation_process: percolation:power_law``
+
+  - Exponent of the filling ratio of the first slow reservoir.
+  - Full name: ``slow_reservoir:exponent``.
+
+* ``k_slow_2`` *(1/d, no default, [0.0001, 1], log transform)*
+
+  - Response factor for the baseflow reservoir. Calibrated in log space as
+    :math:`\log(k/24)`, like ``k_slow_1``.
   - Full name: ``slow_reservoir_2:response_factor``.
 
 
 For the ``melt:degree_day_aspect`` and ``melt:temperature_index`` options, see
 :ref:`Snow / Glacier melt parameters <snow-melt-params>` under Shared processes.
+With ``melt:temperature_index``, Socont narrows the snow radiation coefficient
+``r_snow`` (``snowpack:radiation_coefficient``) to [0.001, 0.03].
 
 
 Pre-defined parameter constraints:
@@ -370,7 +457,11 @@ Pre-defined parameter constraints:
 
   - ``k_slow_1 < k_quick``
   - ``k_slow_2 < k_quick``
-  - ``k_slow_2 < k_slow_1``
+
+``k_slow_2`` is not constrained against ``k_slow_1``. The two reservoirs are in
+series and receive different inputs, so the lower one does not have to be the
+slower one. Across HydroMIP calibrations, the optima fall on both sides. Add
+``parameters.define_constraint('k_slow_2', '<', 'k_slow_1')`` to enforce the order.
 
 
 .. _gr4j:
@@ -405,6 +496,14 @@ Specific options
   water equivalent directly to the atmosphere (``'sublimation:constant'`` or
   ``'sublimation:pet'``). Default ``None``.
   See the :ref:`snow sublimation section <snow-sublimation>`.
+* ``lumped_runoff``: run the interception, the production store and the routing
+  once for the whole subbasin (default ``False``: one per hydro unit). The hydro
+  units then only carry the snow: each passes its rain and melt to the subbasin,
+  whose processes work on the area-weighted mean of the units' water and PET.
+  With CemaNeige on elevation bands (the hydro units), this is the GR-CemaNeige
+  set-up of airGR (:cite:t:`Valery2014`); CemaNeige's ``Cn`` is then given per
+  band (see :ref:`project files <project-files>`, *Parameters per hydro unit*).
+  With a single hydro unit it changes nothing.
 
 
 Parameters
@@ -519,7 +618,7 @@ Specific options
 ^^^^^^^^^^^^^^^^^
 
 Identical to :ref:`GR4J <gr4j>` (``discrete``, ``snow_melt_process``,
-``snow_redistribution``).
+``snow_redistribution``, ``lumped_runoff``).
 
 
 Parameters
@@ -905,14 +1004,30 @@ That mapping is exact rather than approximate, and it dictates the solver. PREVA
 storage coefficients are themselves *exponential decay factors*: the model computes
 :math:`k_{\mathrm{PREVAH}} = 1 - e^{-\Delta t / K_h}` once at initialization and
 then applies it as a plain multiplier, so an outflow written :math:`k_{\mathrm{PREVAH}}
-\cdot S` is really the analytical solution of the linear reservoir over the sub-step
+\cdot S` is really the analytical solution of the linear reservoir over the step
 (:cite:t:`Viviroli2007b`, Eq. 4.5-5 and 4.5-10). A linear reservoir integrated
 analytically with :math:`k = 24 / K_h` decays over a day by exactly
 :math:`e^{-24 / K_h}` — the same value. ``PrevahUniBE`` therefore defaults to the
 ``analytic_linear`` :ref:`solver <solvers>`, which reproduces those coefficients
-exactly; the other solvers only approximate them. The remaining difference is the
-sub-step structure: PREVAH adds the inflow at the start of each sub-step (six a day,
-or hourly in the gridded version), where the solver spreads it over the whole step.
+exactly; the other solvers only approximate them. The groundwater stores of the
+original follow that reading: they decay by :math:`e^{-\Delta t / K_h}` in each
+of their six sub-steps, which composes to :math:`e^{-24 / K_h}` over the day.
+
+The **upper zone** does not. Its surface runoff and interflow are computed with the
+*daily* coefficient :math:`1 - e^{-24 / K_h}` and applied one sixth at a time to
+the state at the start of each sub-step — an explicit step on an exponential
+coefficient — so the store keeps :math:`(1 - (1 - e^{-k}) / 6)^6` of its content
+over a day instead of :math:`e^{-k}`. The two agree to second order in :math:`k`
+and part company when the store is fast: with K0H = 10 h (:math:`k_0 = 2.4`
+d\ :sup:`-1`) the original keeps 37 % of the content above the threshold where an
+exact integration keeps 9 %. On a small, flashy catchment this is the largest
+remaining difference against the original, worth a few hundredths of NSE on the
+daily discharge; feeding ``k0`` and ``k1`` the equivalent rate
+:math:`-6 \ln(1 - (1 - e^{-k}) / 6)` reproduces the original's depletion.
+
+The inflow is placed differently too: PREVAH adds it at the start of each
+sub-step (six a day, or hourly in the gridded version), where the solver spreads
+it over the whole step.
 
 * **Spatial structure**: distributed or semi-distributed (hydrological units)
 * **Time step**: daily, or shorter (see
@@ -1018,13 +1133,13 @@ factors (PREVAH's cf_rain / cf_snow). See
 
 **Snow routine**
 
-* ``melt_factor`` (alias ``mf``) *(mm/d/°C, no default, [0, 12])*
+* ``melt_factor`` (alias ``mf``) *(mm/d/°C, no default, [0.5, 12])*
 
   - Temperature factor of the radiation-corrected melt (PREVAH CSNOMF), shared by the
     snow and the glacier ice.
   - Full name: ``type:snowpack,type:glacier:melt_factor``.
 
-* ``r_snow`` *(m²/W·mm/d/°C, no default, [0, 1])*
+* ``r_snow`` *(m²/W·mm/d/°C, no default, [0, 0.05])*
 
   - Radiation coefficient of the snow melt (PREVAH CASNO).
   - Full name: ``snowpack:radiation_coefficient``.
@@ -1093,6 +1208,14 @@ factors (PREVAH's cf_rain / cf_snow). See
     ``canopy_et_process='et:open_water_prevah'``; usually set monthly).
   - Full name: ``<cover>_canopy:et_factor``.
 
+* ``canopy_albedo_land`` (or ``canopy_albedo_land_<cover>``) *(optional,
+  dimensionless, default: 0.2, [0, 0.4])*
+
+  - Albedo of the cover in the snow-albedo reduction of the canopy evaporation
+    (only with ``canopy_et_process='et:open_water_prevah'``; usually set monthly,
+    see :ref:`cover classes <prevah-cover-classes>`).
+  - Full name: ``<cover>_canopy:albedo_land``.
+
 **Soil moisture routine**
 
 * ``fc`` *(mm, no default, [0, 3000])*
@@ -1106,7 +1229,9 @@ factors (PREVAH's cf_rain / cf_snow). See
 
 * ``lp`` (alias ``cu``) *(dimensionless, no default, [0.3, 1])*
 
-  - Fraction of ``fc`` above which the actual ET reaches the potential rate.
+  - Fraction of ``fc`` above which the actual ET reaches the potential rate. Where
+    it leaves no threshold at all (``lp * fc = 0``), the soil evaporates nothing,
+    as PREVAH does on a cover with no plant-available water.
   - Full name: ``soil_moisture:lp``.
 
 * ``cevpf`` *(optional, dimensionless, default: 1, [0.5, 2])*
@@ -1120,6 +1245,15 @@ factors (PREVAH's cf_rain / cf_snow). See
     (0.2 makes the reduction neutral without snow).
   - Full name: ``soil_moisture:albedo_land``.
 
+* ``et_potential_fraction`` *(optional, dimensionless, default: 0, [0, 1])*
+
+  - Share of the unit evaporating at the potential rate whatever the soil moisture,
+    the other branch of PREVAH's ``s_eta_soil``. PREVAH takes it on its vegetated
+    covers when its ``et_calc_method`` is 2 or 3, and never on its water, built-up
+    and rock covers, so it is usually set per unit from the land-use class (see
+    :ref:`the process description <evapotranspiration>`).
+  - Full name: ``soil_moisture:potential_fraction``.
+
 * ``beta_<cover>`` *(dimensionless, no default, [0.3, 6])*
 
   - Shape coefficient of the beta recharge function (PREVAH CBETA), per soil-bearing
@@ -1128,7 +1262,7 @@ factors (PREVAH's cf_rain / cf_snow). See
 
 **Runoff generation (upper zone)**
 
-* ``k0`` *(1/d, no default, [0.0001, 1])*
+* ``k0`` *(1/d, no default, [0.4, 3])*
 
   - Surface runoff response factor (= 24 / K0H).
   - Full name: ``upper_zone:response_factor_threshold``.
@@ -1138,12 +1272,12 @@ factors (PREVAH's cf_rain / cf_snow). See
   - Upper zone storage threshold above which surface runoff is generated.
   - Full name: ``upper_zone:threshold``.
 
-* ``k1`` *(1/d, no default, [0.0001, 1])*
+* ``k1`` *(1/d, no default, [0.08, 0.5])*
 
   - Interflow response factor (= 24 / K1H).
   - Full name: ``upper_zone:response_factor``.
 
-* ``cperc`` *(mm/d, no default, [0, 10])*
+* ``cperc`` *(mm/d, no default, [0, 12])*
 
   - Maximum percolation rate to the groundwater.
   - Full name: ``upper_zone:percolation_rate``.
@@ -1156,12 +1290,23 @@ factors (PREVAH's cf_rain / cf_snow). See
 
 **SLOWCOMP groundwater**
 
-* ``k_gw1``, ``k_gw2``, ``k_gw3`` *(1/d, no default, [0.0001, 1])*
+* ``k_gw1`` *(1/d, no default, [0.01, 0.15])* and ``k_gw2`` *(1/d, no default,
+  [0.001, 0.03])*
 
-  - Response factors of the fast, slow and very slow stores (= 24 / CG1H, 24 / K2H and
-    24 / CG3H, with CG3H = 9 × CG1H).
-  - Full names: ``slz1:response_factor``, ``slz2:response_factor``,
-    ``slz3:response_factor``.
+  - Response factors of the fast and slow stores (= 24 / CG1H and 24 / K2H).
+  - Full names: ``slz1:response_factor``, ``slz2:response_factor``.
+
+* ``k_gw3`` *(1/d, linked to ``k_gw1 / 9``, [0.001, 0.02])*
+
+  - Response factor of the very slow store (= 24 / CG3H). As in PREVAH, where
+    CG3H = 9 × CG1H, it is :ref:`linked <linked-parameters>` to ``k_gw1 / 9`` and is
+    not calibrated. Free it with ``parameters.unlink_parameter('k_gw3')``.
+  - Full name: ``slz3:response_factor``.
+
+The storage ranges come from the PEST calibrations of 89 Swiss PREVAH catchments
+(K0H 10–30 h, K1H 50–150 h, CG1H 200–1000 h, K2H 1000–10000 h). With these ranges,
+about 90 % of random parameter sets satisfy the ordering constraints below, so few
+calibration runs are rejected.
 
 * ``slz1max`` *(optional, mm, default: 100, [0, 1000])*
 
@@ -1206,7 +1351,9 @@ Pre-defined parameter constraints (the response cascade must slow down with dept
 * ``k1 < k0``
 * ``k_gw1 < k1``
 * ``k_gw2 < k_gw1``
-* ``k_gw3 < k_gw2``
+
+``k_gw3`` is not ordered against ``k_gw2``: the PREVAH calibrations put the very slow
+store on either side of the slow one.
 
 
 Land covers
@@ -1276,7 +1423,8 @@ and ``PrevahUniBE`` applies them:
 ``generate_parameters`` applies the tables to every canopy whose cover is named after
 a cover class: the canopy interception capacity is set to
 :math:`si_{\max} \cdot veg_{cov}` and, when the canopy uses ``et:open_water_prevah``
-(the default), the canopy evaporation factor to :math:`veg_{cov}`, both as
+(the default), the canopy evaporation factor to :math:`veg_{cov}` and the canopy
+albedo to the land-use albedo, all as
 :ref:`monthly parameters <monthly-parameters>`. A cover under another name gets them
 from ``apply_cover_parameters``, given the cover class it stands for:
 
@@ -1312,6 +1460,19 @@ hence different rooting-depth curves, and each unit's own soil depth caps that
 depth from above while the minimum capacity holds it up from below, so the shape
 of the year differs from unit to unit.
 
+The albedo goes the same way. PREVAH's potential rate carries
+:math:`(1 - \alpha) / 0.8` with the monthly albedo of the land use, about 1.10
+for a winter forest and 0.94 for summer pasture, so leaving the neutral default
+of 0.2 in place costs up to 10 % of the evapotranspiration.
+``apply_cover_albedo`` sets it on the soil store, per cover or (with a shared
+store) per hydro unit; ``apply_cover_parameters`` sets the canopy's own:
+
+.. code-block:: python
+
+    model.apply_cover_albedo(parameters, hydro_units, cover_classes)
+
+The snow albedo replaces it while the ground carries snow, whatever is set here.
+
 Whether the capacity actually moves through the year depends on the cover classes in play:
 only the crops of the table root deeper in summer, and where none of them occurs the
 capacity is constant and a plain :ref:`spatial parameter <spatial-parameters>` would do
@@ -1339,10 +1500,11 @@ model needs no option to do so:
     model = models.PrevahUniBE(land_cover_names=covers, land_cover_types=covers)
 
 together with the vapour-density Hamon PET used by PREVAH
-(``forcing.compute_pet(method="Hamon_vapor_density", ...)``, see
-:ref:`potential evapotranspiration <pet>`), the monthly vegetation tables
+(``forcing.compute_pet(method="Hamon_vapor_density", ..., daylight_offset=0.277)``,
+see :ref:`potential evapotranspiration <pet>`), the monthly vegetation tables
 (``ic`` = :math:`si_{\max} \cdot veg_{cov}`, ``canopy_et_factor`` =
-:math:`veg_{cov}`, see :ref:`cover classes <prevah-cover-classes>`) and the potential
+:math:`veg_{cov}`, and the land-use albedo through ``apply_cover_albedo``, see
+:ref:`cover classes <prevah-cover-classes>`) and the potential
 clear-sky radiation of each unit for the radiation-corrected (Hock) melt of the
 control file. The refreezing brings its own seasonal factor, since there is no
 degree-day melt to read it from.
@@ -1356,7 +1518,7 @@ Ticino-Bellinzona test catchment (570 hydrotopes, daily step, 1984-2000), buildi
 the soil moisture capacity of each hydrotope from its own soil and cover class. With the
 parameters of the original taken as they are — **nothing is calibrated in
 hydrobricks** — it reproduces the discharge of the Fortran PREVAH with a
-Nash-Sutcliffe efficiency of about 0.985. The example also scores against the gauged
+Nash-Sutcliffe efficiency of about 0.99. The example also scores against the gauged
 discharge of the Ticino at Bellinzona, where both models land around 0.79.
 Because the parameters belong to the original, they are only consistent with the
 original's process set.
@@ -1437,7 +1599,10 @@ bricks start where the snow routine ends. The rules:
   declared land cover (the name must match the model's ``land_cover_names``);
   other kinds (e.g. ``storage``) create new stores. Fixed brick properties go
   in ``parameters`` (e.g. ``{capacity: 200}``); ``computed_directly: true``
-  marks a brick as explicitly computed (outside the ODE solver). ``area_of:
+  marks a brick as explicitly computed (outside the ODE solver); a subbasin
+  brick computed directly runs after those of the hydro units. The processes of
+  a subbasin brick that need forcing (e.g. PET) read the area-weighted mean of
+  the hydro units' forcing. ``area_of:
   <land cover>`` makes a store represent that cover's area rather than the whole
   unit (e.g. one soil store per cover, fed by it): its ``capacity`` is then the
   cover's own, and the capacity and the evapotranspiration of the store are scaled

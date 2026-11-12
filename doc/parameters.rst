@@ -60,7 +60,7 @@ To add a custom constraint:
 
 .. code-block:: python
 
-   parameters.define_constraint('k_slow_2', '<', 'k_slow_1')
+   parameters.define_constraint('k_slow_1', '<', 'k_quick')
 
 Supported operators: ``>`` (or ``gt``), ``>=`` (or ``ge``), ``<`` (or ``lt``),
 ``<=`` (or ``le``).
@@ -72,6 +72,44 @@ These built-in constraints can be removed when needed:
 .. code-block:: python
 
    parameters.remove_constraint('a_snow', '<', 'a_ice')
+
+.. note::
+
+   A rejected parameter set still counts towards the calibration budget, but no
+   simulation is run for it. Narrow default ranges keep the constraints from
+   binding often. For example, the PREVAH-UniBE storage ranges are disjoint enough
+   that about 90 % of random parameter sets satisfy the ordering constraints.
+   When adding constraints, check that the ranges leave most of the space
+   feasible.
+
+
+.. _linked-parameters:
+
+Linked parameters
+------------------
+
+A parameter can be tied to another so that it always takes the driver's value,
+optionally multiplied by a strictly positive factor. The dependent is then no
+longer free: it is excluded from the calibrated parameters and updated whenever
+values are set.
+
+.. code-block:: python
+
+   # One bulk precipitation correction instead of two independent ones:
+   parameters.link_parameter('snow_correction_factor', 'rain_correction_factor')
+
+   # A storage coefficient tied to a fixed fraction of another:
+   parameters.link_parameter('k_gw3', 'k_gw1', factor=1 / 9)
+
+   parameters.get_link('k_gw3')        # -> ('k_gw1', 0.111...)
+   parameters.unlink_parameter('k_gw3')  # free it again
+
+The driver's range, multiplied by the factor, must lie within the dependent's
+range. Chained links (linking to a parameter that is itself linked) are not
+supported. A value given to a linked parameter in ``set_values()`` is overridden
+by the linked value, and a warning is logged; call ``unlink_parameter()`` first to
+set it independently. Some models define links by default, such as
+PREVAH-UniBE's ``k_gw3 = k_gw1 / 9``.
 
 
 Parameter ranges
@@ -126,6 +164,13 @@ follow the airGR ``TransfoParam`` conventions:
    * - X6 (exponential store, GR6J)
      - ``log``
      - > 0
+
+GSM-Socont calibrates the quickflow coefficient ``beta`` in log space. Its range
+spans three orders of magnitude ([100, 100000]), and the discharge responds to
+relative rather than absolute changes of ``beta``. The slow-reservoir response
+factors ``k_slow_1`` and ``k_slow_2`` [1/d] are calibrated as
+:math:`\log(k/24)`, the logarithm of the rate in 1/h used by the reference
+implementation; their ranges span four orders of magnitude ([0.0001, 1]).
 
 How it works:
 
@@ -252,6 +297,11 @@ automatically.
 
 The bound parameters can be listed with ``parameters.get_spatial_parameters()``.
 Both brick and process parameters can be bound this way.
+
+The per-unit values are range-checked against the parameter definition, like the
+values given to ``set_values``. The check happens when the parameters meet the
+hydro units, at ``setup()`` or ``run()``, since that is where the values become
+known, and the error names the property the offending value came from.
 
 
 .. _spatial-monthly-parameters:
@@ -385,16 +435,20 @@ With the setup object ready, run the calibration with
 :func:`trainer.calibrate <hydrobricks.trainer.calibrate>`, choosing an algorithm based
 on the goal:
 
-**Optimization** (finding the best parameter set): SCE-UA is well suited to
-multi-parameter hydrological calibration problems:
+**Optimization** (finding the best parameter set): DDS (Dynamically Dimensioned
+Search) is the recommended algorithm. Compared with the other SPOTPY algorithms on
+Socont and HBV-96 in four Swiss catchments, it found the best calibrations, with the
+smallest scatter between seeds, and reached its best score within the first few
+thousand runs; a budget of about 5000 is enough for a dozen parameters. SCE-UA did
+as well on HBV-96 but no better than random sampling on Socont:
 
 .. code-block:: python
 
    sampler = trainer.calibrate(
       spot_setup,
-      'sceua',
-      10000,
-      dbname='socont_SCEUA',
+      'dds',
+      5000,
+      dbname='socont_DDS',
       dbformat='csv',
    )
 
@@ -488,7 +542,7 @@ to the setup (``warmup`` must then be left unset):
       obj_func='kge_2012',
       periods=periods,
    )
-   sampler = trainer.calibrate(spot_setup, 'sceua', 10000)
+   sampler = trainer.calibrate(spot_setup, 'dds', 5000)
 
 For the validation, do **not** restart cold on the validation period: re-run the
 best parameters once over the full span (continuous, warm states) and read the
@@ -581,7 +635,8 @@ runs sequentially or in parallel; only ``parallel`` changes.
      ``if __name__ == '__main__':`` guard.
    - Not every algorithm benefits equally: independent samplers such as ``mc``, ``lhs``,
      ``rope`` and the ``dream`` chains scale close to linearly with the number of cores,
-     whereas SCE-UA is largely sequential and sees only a modest speedup.
+     whereas DDS and SCE-UA improve their best set step by step and see a smaller
+     speedup.
 
 For finer control you can assemble the pieces yourself:
 :meth:`SpotpySetup.from_factory <hydrobricks.trainer.SpotpySetup.from_factory>` (whose
@@ -805,7 +860,7 @@ aggregated:
        combine='weighted',
        discharge_weight=1.0,
    )
-   sampler = trainer.calibrate(spot_setup, 'sceua', 5000, dbformat='ram')
+   sampler = trainer.calibrate(spot_setup, 'dds', 5000, dbformat='ram')
 
    # Pareto front (NSGAII needs n_obj via sample_kwargs)
    spot_setup = trainer.SpotpySetup(
@@ -966,7 +1021,7 @@ Snow cover is combined with discharge exactly like glacier mass balance — the 
        extra_observations=[snow_cover],   # metric defaults to 'rmse'
        combine='weighted',
    )
-   sampler = trainer.calibrate(spot_setup, 'sceua', 5000, dbformat='ram')
+   sampler = trainer.calibrate(spot_setup, 'dds', 5000, dbformat='ram')
 
 The simulated snow cover can also be computed on its own (for plotting or evaluation) with
 the observation's ``simulated`` method after a run:

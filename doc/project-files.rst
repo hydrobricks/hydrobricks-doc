@@ -113,8 +113,8 @@ An annotated example
      percol: 9.8
 
    calibration:                # optional: how to optimize the parameters
-     algorithm: sceua
-     repetitions: 10000
+     algorithm: dds
+     repetitions: 5000
      objective: kge_2012
      transform: power(0.2)
      parameters: [a_snow, A, k_slow_1, k_slow_2, k_quick, percol]
@@ -151,6 +151,7 @@ at all:
        # split_discontinuous: true  # one hydro unit per connected patch
        # min_patch_area: 10000      # smallest patch to promote [m2]
        # connectivity: 8            # 8 (default) or 4
+       # min_unit_area: 100000      # merge smaller units into a neighbour [m2]
 
 ``file`` and ``discretization`` are mutually exclusive (``columns``,
 ``columns_areas`` and ``unit_ids_raster`` only apply to the CSV case). The
@@ -171,7 +172,9 @@ disable the cropping.
 An elevation band usually covers several spatially disconnected patches;
 ``split_discontinuous`` turns each patch into its own hydro unit, with
 ``min_patch_area`` and ``connectivity`` as described in
-:ref:`Spatially discontinuous units <discontinuous-hydro-units>`.
+:ref:`Spatially discontinuous units <discontinuous-hydro-units>`. ``min_unit_area``
+merges the bands smaller than this area into a neighbouring band, see
+:ref:`Minimum unit area <min-unit-area>`.
 
 
 .. _project-files-lateral:
@@ -349,6 +352,69 @@ The range is widened before the value is set. The value must lie inside the rang
 given for it, and ``min`` and ``max`` go together: either both or neither.
 
 
+Parameters per hydro unit
+-------------------------
+
+A parameter can take its value per hydro unit from a column of the hydro units CSV,
+declared in ``hydro_units.columns``. The ``value`` is still required: it is the
+fallback of the units lacking the property.
+
+.. code-block:: yaml
+
+   hydro_units:
+     file: hydro_units.csv
+     columns: {mean_annual_snow: mean_annual_snow}
+
+   parameters:
+     Cn: {value: 100, property: mean_annual_snow}   # CemaNeige, per elevation band
+
+This is how CemaNeige's ``Cn`` (the mean annual solid precipitation, which airGR
+computes from the data rather than calibrating it) is given per band.
+
+
+.. _project-files-prevah:
+
+PREVAH cover tables
+-------------------
+
+PREVAH-UniBE parameterizes its covers from PREVAH's cover class tables (monthly
+interception capacity, vegetation cover and albedo, and the rooting depth that
+turns a soil map into a field capacity). The optional ``prevah`` section applies
+them. Each cover stands for the PREVAH class it is named after (``pasture``,
+``coniferous_forest``, ...; see ``hydrobricks.land_covers.PREVAH_COVER_TYPES``)
+or for the one given in ``cover_classes``. The hydro unit columns holding the
+available water content [Vol-%] and the soil depth [m] give each cover its monthly
+field capacity per unit, so with several soil-bearing covers the model needs a soil
+store per cover (``share_soil: false``):
+
+.. code-block:: yaml
+
+   model:
+     name: prevah_unibe
+     options:
+       land_cover_names: [coniferous_forest, pasture, open]
+       land_cover_types: [forest, open, open]
+       share_soil: false
+
+   hydro_units:
+     file: hydro_units.csv
+     columns: {awc: awc, soil_depth: soil_depth}
+     columns_areas:
+       coniferous_forest: area_coniferous_forest
+       pasture: area_pasture
+       open: area_open
+
+   prevah:
+     cover_classes: {open: alpine_meadow}   # covers not named after a class
+     available_water_content: awc           # a hydro unit property
+     soil_depth: soil_depth                 # optional: caps the rooting depth
+
+The tables are applied after the ``parameters`` section, so they replace a constant
+given there for the same parameters. PREVAH's percolation tables
+(``apply_cover_percolation``) are not applied: they are set per hydrotope (one
+cover class per unit) and depend on ``cu_perc``.
+
+
 .. _project-files-spatialized:
 
 Already spatialized forcing
@@ -484,7 +550,10 @@ Section reference
    :ref:`above <project-files-radiation>`).
    PET is taken from a ``pet`` source when given, and computed from the
    temperature otherwise (``pet.method``, default ``Oudin``, with
-   ``pet.lat`` unless an outline/DEM is given).
+   ``pet.lat`` unless an outline/DEM is given). ``pet.daylight_offset``
+   adds hours to the day length of the vapour-density Hamon (PREVAH and
+   WaSiM add 0.277 h of twilight to it; see
+   :ref:`potential evapotranspiration <pet>`).
 
 ``subbasins``
    Optional river network (see :ref:`above <project-files-subbasins>`):
@@ -517,7 +586,7 @@ Section reference
 ``calibration``
    Optional: how to optimize the parameters (see
    :ref:`below <project-files-calibration>`). ``algorithm`` (a SPOTPY
-   algorithm name, default ``sceua``), ``repetitions``, ``objective`` (a
+   algorithm name, default ``dds``), ``repetitions``, ``objective`` (a
    metric name, default: the non-parametric KGE), ``transform`` (an optional
    :ref:`discharge transformation <discharge-transformations>` applied in the
    objective, e.g. ``power(0.2)``) and ``parameters`` — the names of the
@@ -700,8 +769,8 @@ the optimization needs — declare a ``database``:
 .. code-block:: yaml
 
    calibration:
-     algorithm: sceua
-     repetitions: 10000
+     algorithm: dds
+     repetitions: 5000
      parameters: [a_snow, A]
      database:
        format: csv              # or 'sql', 'hdf5'

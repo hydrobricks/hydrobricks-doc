@@ -162,6 +162,8 @@ shortcut:
 * ``split_discontinuous`` / ``min_patch_area`` / ``connectivity`` — optionally create
   one hydro unit per connected patch, see
   :ref:`Spatially discontinuous units <discontinuous-hydro-units>`.
+* ``min_unit_area`` — optionally merge the units smaller than this area (m²) into a
+  neighbour, see :ref:`Minimum unit area <min-unit-area>`.
 
 **Multiple criteria**
 
@@ -231,6 +233,10 @@ Additional keyword arguments control each criterion independently:
        default ``None`` (no minimum).
    * - ``connectivity``
      - Pixel connectivity defining a patch, ``8`` *(default)* or ``4``.
+   * - ``min_unit_area``
+     - Minimum area (m²) of a hydro unit: smaller units are merged into a
+       neighbouring unit of the same sub-catchment; default ``None`` (no
+       minimum). See :ref:`Minimum unit area <min-unit-area>`.
 
 .. note::
 
@@ -329,6 +335,39 @@ diagonal neighbours belong to the same patch (``8``, the default) or not (``4``)
    Splitting refines the discretization: it increases the number of hydro units and
    renumbers them. The unit-ID raster changes accordingly, so any cached gridded
    forcing, radiation or snow-cover aggregation is recomputed.
+
+.. _min-unit-area:
+
+**Minimum unit area**
+
+Every combination of the criteria found in the catchment becomes a hydro unit,
+however small. With several criteria, and even more within sub-catchments, many of
+them are scraps of a few cells. ``min_unit_area`` (m²) merges each unit smaller than
+the threshold into a unit it borders: the one in the closest elevation band, and
+among those the one sharing the longest border. The units are merged smallest first,
+until every unit reaches the threshold. No area is lost.
+
+A unit is never merged out of its sub-catchment (or subbasin). Combined with
+``'sub_catchments'``, this gives few hydro units whose parts may be disconnected
+but all lie within one sub-catchment, so their distance is bounded by its size:
+
+.. code-block:: python
+
+   catchment.discretize_by(
+      ['elevation', 'radiation', 'slope', 'sub_catchments'],
+      elevation_distance=100,
+      radiation_method='quantiles',
+      radiation_number=4,
+      slope_distance=20,
+      sub_catchments='path/to/sub_catchments.gpkg',
+      min_unit_area=100000
+   )
+
+A unit that has no neighbour within its sub-catchment is kept as it is, even below
+the threshold. The receiving unit keeps its criteria values (its elevation band,
+radiation and slope classes), while its area, mean elevation, slope and aspect are
+computed from all its cells. The merge comes before ``split_discontinuous``, which
+can then split the merged units into their patches.
 
 After discretization, save the hydro unit table and the unit-ID raster for
 reuse in subsequent runs:
