@@ -104,10 +104,10 @@ Parameters:
     ``rain:rain_correction_factor`` for no-snow models).
 
 * ``snow_correction_factor`` (aliases ``snow_corr_factor``, ``sfcf``, ``scf``)
-  *(optional, dimensionless, default: 1.0, [0.8, 1.6])*
+  *(optional, dimensionless, default: 1.0, [0.5, 1.5])*
 
   - Multiplicative correction applied to the snow fraction. Not registered for
-    no-snow models. Constrained to ``rain_correction_factor <= snow_correction_factor``.
+    no-snow models. Independent of the rain factor: it may be the smaller of the two.
   - Full name: ``snow_rain_transition:snow_correction_factor``.
 
 
@@ -262,15 +262,19 @@ See :cite:t:`Argentin2025` for a comparative evaluation of all three models.
 
 Parameters:
 
-* ``melt_factor`` (alias ``hock_melt_factor``) *(mm d⁻¹ °C⁻¹, no default, [0, 12])*
+* ``melt_factor`` (alias ``hock_melt_factor``) *(mm d⁻¹ °C⁻¹, no default, [0.5, 12])*
 
-  - Base melt factor :math:`m`, common to ice and snow.
+  - Base melt factor :math:`m`, common to ice and snow. The lower bound is strictly
+    positive so that there is always some melt above the melting temperature.
+    Otherwise, a calibration can drive both terms to zero and let snow pile up.
   - Full name: ``<component>:melt_factor``.
 
 * ``radiation_coefficient`` (alias ``hock_radiation_coefficient``)
-  *(m² W⁻¹ mm d⁻¹ °C⁻¹, no default, [0, 1])*
+  *(m² W⁻¹ mm d⁻¹ °C⁻¹, no default, [0, 0.05])*
 
   - Radiation factor :math:`r_j`, set independently per snow or ice component.
+    :cite:t:`Hock1999` found 0.6–0.9 × 10⁻³ at the hourly step, i.e. about
+    0.015–0.02 at the daily step.
   - Full name: ``<component>:radiation_coefficient``.
 
 * ``melting_temperature`` (alias ``hock_melting_temperature``)
@@ -777,18 +781,29 @@ SnowSlide (``transport:snow_slide``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Implements the SnowSlide algorithm (:cite:t:`Bernhardt2010`): snow exceeding a
-slope-dependent holding capacity slides downslope. The holding capacity
-decreases with slope (steeper terrain holds less snow):
+slope-dependent holding capacity slides downslope. The holding capacity is a snow
+depth that decreases with slope (steeper terrain holds less snow):
 
 .. math::
 
    h_{\mathrm{hold}} = \mathrm{coeff} \cdot \theta^{\mathrm{exp}}
 
 where :math:`\theta` is the slope in degrees (clamped to ``min_slope`` from
-below), converted from metres to a SWE threshold via a fixed snow density. Above
-``max_slope``, the holding capacity is set directly to
-``min_snow_holding_depth`` instead of following the equation. The excess SWE
-above the holding capacity is redistributed to the downslope neighbours.
+below) and :math:`h_{\mathrm{hold}}` is in metres. It is bounded by
+``min_snow_holding_depth`` and ``max_snow_depth``, and compared with the snow
+depth of the unit, derived from its SWE with a fixed snow density of
+250 kg m⁻³. Above ``max_slope``, the holding capacity is set directly to
+``min_snow_holding_depth``. The excess SWE above the holding capacity is
+redistributed to the downslope neighbours.
+
+:cite:t:`Bernhardt2010` give the holding depth as a regression on the slope in a
+figure only. The default coefficients, the slope clamp at 10° and the 20 m cap
+are those of the SnowSlide module of the Canadian Hydrological Model
+(:cite:t:`Marsh2020`), which several studies use. CHM further multiplies the
+holding depth by :math:`\cos\theta` to obtain a thickness normal to the slope;
+hydrobricks treats it as a vertical depth and does not. The minimum holding depth
+is the 5 cm SWE of :cite:t:`Bernhardt2010`, held from 75° on, expressed as a
+snow depth (200 mm).
 
 Parameters:
 
@@ -814,16 +829,18 @@ Parameters:
     of the equation.
   - Full name: ``<snowpack>:max_slope``.
 
-* ``snow_slide_min_snow_depth`` *(optional, mm, default: 50, [0, 1000])*
+* ``snow_slide_min_snow_depth`` *(optional, mm, default: 200, [0, 1000])*
 
-  - Minimum snow holding depth, used as a floor on the equation's result and
-    directly above ``max_slope``.
+  - Minimum snow holding depth (snow depth, not SWE; 200 mm is 5 cm SWE), used as
+    a floor on the equation's result and directly above ``max_slope``.
   - Full name: ``<snowpack>:min_snow_holding_depth``.
 
 * ``snow_slide_max_snow_depth`` *(optional, mm, default: 20000, [-1, 50000])*
 
-  - Maximum snow depth allowed to accumulate in a receiving unit (extension to
-    the original method). Set to ``-1`` for no limit.
+  - Cap on the snow holding depth (20 m in CHM, i.e. 5 m SWE at 250 kg m⁻³). A
+    unit holding more than 1.5 times this depth no longer receives snow, to
+    avoid unrealistic accumulation (extension to the original method). Set to
+    ``-1`` for no limit.
   - Full name: ``<snowpack>:max_snow_depth``.
 
 
@@ -1147,8 +1164,28 @@ potential rate applied by :ref:`PREVAH-UniBE <prevah-unibe>`:
 
 .. math::
 
-   E_a(t) = c_{\mathrm{evpf}} \cdot \frac{1 - \alpha(t)}{0.8} \cdot E_P(t)
-            \cdot \min\!\left(1,\; \frac{SM(t)}{LP \cdot FC}\right)
+   E_P^{*}(t) &= c_{\mathrm{evpf}} \cdot \frac{1 - \alpha(t)}{0.8} \cdot E_P(t)
+
+   E_a(t) &= f_{pot} \cdot E_P^{*}(t)
+             + (1 - f_{pot}) \cdot E_P^{*}(t)
+               \cdot \min\!\left(1,\; \frac{SM(t)}{LP \cdot FC}\right)
+
+PREVAH's ``s_eta_soil`` has two branches, and ``potential_fraction``
+(:math:`f_{pot}`, 0 by default) is the share of the unit taking the first one:
+
+* the **potential branch**, which evaporates at the full potential rate whatever
+  the soil moisture. PREVAH takes it on its vegetated covers when its
+  ``et_calc_method`` is 2 or 3;
+* the **soil-moisture branch**, with the limitation above. Where it leaves no
+  threshold at all (:math:`LP \cdot FC = 0`), the soil evaporates *nothing*
+  rather than without limit, as in PREVAH
+  (``IF (sgrlp .le. 0.0) THEN EA = 0.0``): a cover with no plant-available
+  water, such as bare rock on no soil, has nothing to give. PREVAH always takes
+  this branch on its water, built-up and rock covers.
+
+The two are mixed linearly, so a value in between stands for a unit split
+between them. The fraction is usually set per hydro unit with
+:py:meth:`~hydrobricks.ParameterSet.set_spatial`.
 
 The albedo :math:`\alpha` is the area-weighted mean, over the hydro unit, of the
 snow-free ground albedo (``albedo_land``) and the age-dependent snow albedo of
@@ -1186,6 +1223,12 @@ Parameters:
 
   - Evapotranspiration correction factor.
   - Full name: ``soil_moisture:et_correction_factor``.
+
+* ``et_potential_fraction`` *(optional, dimensionless, default: 0, [0, 1])*
+
+  - Share of the unit evaporating at the potential rate whatever the soil
+    moisture (the potential branch above).
+  - Full name: ``soil_moisture:potential_fraction``.
 
 
 PREVAH open-water ET (``et:open_water_prevah``)
@@ -1347,6 +1390,34 @@ Parameters:
   range [0, 10]. Full name: ``slow_reservoir:percolation_rate`` /
   ``upper_zone:percolation_rate`` (alias ``perc``).
 
+Power-law percolation (``percolation:power_law``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Drains water from a reservoir with a capacity at a rate that follows its filling
+ratio:
+
+.. math::
+
+   \mathrm{Perc}(t) = r_{\max} \left(\frac{S(t)}{S_{\max}}\right)^{\gamma}
+
+where :math:`r_{\max}` is the percolation rate of a full reservoir [mm d⁻¹],
+:math:`S_{\max}` the reservoir capacity and :math:`\gamma` the exponent. The rate
+falls to zero as the reservoir dries, so the recharge of the reservoir it feeds
+follows the wet and dry periods. With a constant percolation, a slowly draining
+lower reservoir can instead build up a large storage that sustains a nearly
+constant baseflow, whatever the weather. The rate is linear in the filling ratio
+at :math:`\gamma = 1` (the default); higher exponents concentrate the percolation
+on the wet states. Requires a reservoir with a maximum capacity. Used in
+:ref:`GSM-Socont <gsm-socont>` with ``soil_storage_nb=2`` and
+``percolation_process='percolation:power_law'``.
+
+Parameters:
+
+* ``percol_max`` (alias for ``percolation_rate``): percolation rate of a full
+  reservoir [mm d⁻¹], range [0, 10]. Full name: ``slow_reservoir:percolation_rate``.
+* ``percol_exp`` (alias for ``exponent``): exponent of the filling ratio
+  [dimensionless], default 1, range [0.5, 5]. Full name: ``slow_reservoir:exponent``.
+
 GR4J percolation (``percolation:gr4j``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1412,7 +1483,7 @@ hydrotope has no conductivity.
 
 Parameters:
 
-* ``cperc`` *(mm/d, default: 0.1, [0, 10])*
+* ``cperc`` *(mm/d, default: 0.1, [0, 12])*
 
   - Maximum percolation rate.
   - Full name: ``upper_zone:percolation_rate``.
@@ -1550,7 +1621,7 @@ formulation with a simple linear reservoir:
 
 Parameters:
 
-* ``k_quick``: response factor [d\ :sup:`-1`], range [0.05, 1].
+* ``k_quick``: response factor [d\ :sup:`-1`], range [0.0001, 1].
   Full name: ``surface_runoff:response_factor``.
 
 Use this formulation when a simpler quick-flow representation is preferred.
@@ -1585,7 +1656,7 @@ The following outflow mechanisms are used by storage bricks across all models.
    where :math:`UZ` is the upper zone content [mm]. With :math:`\alpha = 0` it
    reduces to a linear reservoir. Parameters: ``k_uz`` (``response_factor``)
    [mm\ :sup:`-α` d\ :sup:`-1`], range [0.0001, 1], and ``alpha`` (alias
-   ``alfa``) [−], default 1, range [0, 3]. Full names:
+   ``alfa``) [−], default 1, range [0, 2]. Full names:
    ``upper_zone:response_factor``, ``upper_zone:alpha``.
 
 **Overflow** (``outflow:overflow``)
@@ -1628,7 +1699,7 @@ The following outflow mechanisms are used by storage bricks across all models.
    content, the :ref:`analytic solver <solvers>` integrates it exactly (the
    content above the threshold then decays as :math:`e^{-k \Delta t}`, as in
    PREVAH). Parameters: ``k0`` (``response_factor_threshold``)
-   [d\ :sup:`-1`], range [0.0001, 1], and ``sgrluz`` (``threshold``) [mm],
+   [d\ :sup:`-1`], range [0.0001, 3], and ``sgrluz`` (``threshold``) [mm],
    range [0, 100]. The response factor carries a distinct name so the process
    can share a store with an ``outflow:linear`` (the PREVAH upper zone, which
    produces both a surface runoff and an interflow).

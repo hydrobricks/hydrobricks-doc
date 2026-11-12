@@ -31,8 +31,8 @@ sys.path.insert(0, os.path.join(BASE_PATH, "_deps", "hydrobricks", "core", "bind
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'hydrobricks'
-copyright = '2022, Pascal Horton'
-author = 'Pascal Horton'
+copyright = '2022, the hydrobricks authors'
+author = 'Pascal Horton, Anne-Laure Argentin, Jan Schwanbeck'
 with open(os.path.join(BASE_PATH, "_deps", "hydrobricks", "pyproject.toml"), "rb") as f:
     release = tomllib.load(f)["project"]["version"]
 

@@ -256,8 +256,9 @@ form of the Hamon equation (:cite:t:`Schulla2000`), the one used by
    E_P = 0.1651 \cdot \frac{h_d}{12} \cdot \frac{216.7 \, e_s}{T + 273.3}
 
 where :math:`h_d` is the day length [h], :math:`e_s` the saturation vapour
-pressure at the air temperature :math:`T` [hPa] and :math:`T` the daily mean air
-temperature [°C]. It needs temperature and latitude only:
+pressure at the air temperature :math:`T` [hPa] (Magnus-Tetens) and :math:`T` the
+daily mean air temperature [°C]; the second factor is the saturation vapour
+density in g m\ :sup:`-3`. It needs temperature and latitude only:
 
 .. code-block:: python
 
@@ -266,3 +267,17 @@ temperature [°C]. It needs temperature and latitude only:
 Note that the default ``'Hamon'`` is pyet's exponential variant of the same
 equation, which gives markedly higher values (about 1.5 times as much on an
 Alpine test catchment). The two are not interchangeable.
+
+The day length is the astronomical one. PREVAH and WaSiM add 0.277 h of twilight
+to it, which raises the PET by 2 to 3 %; ``daylight_offset`` reproduces them:
+
+.. code-block:: python
+
+   forcing.compute_pet(method='Hamon_vapor_density', use=['t', 'lat'], lat=47.3,
+                       daylight_offset=0.277)
+
+This method is computed by hydrobricks itself rather than by pyet, whose
+``hamon(method=2)`` puts :math:`T + 273.3` in the exponent of the saturation
+vapour pressure where the Magnus-Tetens expression needs :math:`T + 237.3`, and
+so damps the seasonal amplitude (8 % low at 10 °C, 14 % at 18 °C, 18 % at
+25 °C, 5 % high at -5 °C).

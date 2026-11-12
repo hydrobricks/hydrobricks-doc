@@ -281,21 +281,30 @@ The exponential Euler solver
 ----------------------------
 
 The ``exponential_euler`` solver generalizes the analytic solver to non-linear
-processes. Each reservoir's total outflow is linearized around the
-start-of-step content, :math:`Q(S) \approx Q(S_0) + k\,(S - S_0)` (with
-:math:`k` obtained by finite difference), and the linearized equation is
-integrated exactly over the step. For linear reservoirs the linearization *is*
-the reservoir, so the solution is exact, as with ``analytic_linear``; for
-smooth non-linear processes the scheme is second-order accurate. It is
+processes. Each reservoir's total outflow is linearized,
+:math:`Q(S) \approx Q(S_0) + k\,(S - S_0)`, and the linearized equation is
+integrated exactly over the step. The slope :math:`k` is a secant between the
+start-of-step content and the end-of-step content it leads to, retaken until
+that end content settles, so that the line agrees with the real outflow at
+both ends of the step. For linear reservoirs the linearization *is* the
+reservoir, so the solution is exact, as with ``analytic_linear``; for smooth
+non-linear processes the scheme is second-order accurate. It is
 unconditionally stable and free of transit lag.
+
+The outflow of the step is then shared between the processes of the reservoir
+in proportion to their average rates over the step, none of them receiving more
+than the largest rate it reaches within the step. A reservoir filling from
+empty therefore cannot send more through a constant percolation than its rate,
+however fast its other outflows grow.
 
 .. figure:: images/solver_exponential_euler.png
    :width: 70%
 
-   **exponential_euler** — the outflow is replaced by its linear tangent at the
-   start of the step, and that linearized equation is integrated exactly (as in
-   the analytic solver). For a linear store the tangent *is* the outflow, so the
-   step is exact; for a smoothly non-linear store it is second-order accurate.
+   **exponential_euler** — the outflow is replaced by a straight line through
+   its values at the start and the end of the step, and that linearized
+   equation is integrated exactly (as in the analytic solver). For a linear
+   store the line *is* the outflow, so the step is exact; for a smoothly
+   non-linear store it is second-order accurate.
 
 
 Accuracy and the time step
@@ -417,18 +426,18 @@ At a daily step:
      - 0.974
      - +4.8 %
      - 20 %
-   * - ``exponential_euler`` (default)
-     - 2.1
-     - 0.999
-     - 0.997
-     - −0.5 %
-     - 4.2 %
    * - ``runge_kutta``
-     - 2.9
+     - 2.8
      - 0.999
      - 0.993
      - +0.2 %
      - 1.6 %
+   * - ``exponential_euler`` (default)
+     - 2.9
+     - 1.000
+     - 0.997
+     - −0.03 %
+     - 1.1 %
    * - ``crank_nicolson``
      - 4.0
      - 0.997
@@ -436,15 +445,15 @@ At a daily step:
      - −1.1 %
      - 5.9 %
    * - ``implicit_euler``
-     - 4.4
+     - 4.6
      - 0.933
      - 0.965
      - +6.0 %
      - 24 %
 
 The run time is that of the integration alone (the parameters and the forcing
-already in place), relative to ``euler_explicit``, which takes 0.24 s for the 40
-years. The peak error is taken on the largest peak of the reference, and the
+already in place), relative to ``euler_explicit``, which takes about 0.7 s for the
+40 years. The peak error is taken on the largest peak of the reference, and the
 largest error is the largest daily difference over the 40 years, both relative
 to that peak.
 
@@ -515,9 +524,10 @@ What this says in practice:
   other schemes stay at 0.99 or above.
 * **The exponential and analytic schemes give the most accuracy for the
   cost.** ``analytic_linear`` reaches 0.994 for barely more than the cost of
-  explicit Euler, and ``exponential_euler`` 0.999 for twice that cost, which
-  makes it the default: as accurate as the most accurate schemes, cheaper than
-  them, and unconditionally stable.
+  explicit Euler. ``exponential_euler`` is the most accurate scheme here
+  (NSE 0.9997, with the smallest errors on the peaks) for about three times
+  that cost, as much as ``runge_kutta`` and less than the implicit schemes,
+  and it is unconditionally stable: hence the default.
   ``analytic_linear`` does well here because this Socont structure is drained
   mostly by linear outflows, which it integrates exactly. It is not always the
   best option: every other process on a store (evapotranspiration, percolation,
@@ -528,8 +538,8 @@ What this says in practice:
   (the HBV or GR soil functions, the Socont kinematic runoff), prefer
   ``exponential_euler``, which linearizes every process and keeps the exactness
   for the linear ones.
-* **The Crank-Nicolson and Runge-Kutta schemes are as accurate, at three to
-  four times the cost.**
+* **The Runge-Kutta and Crank-Nicolson schemes are nearly as accurate, at
+  three to four times the cost.**
 * **Implicit Euler is the most expensive and, being first order, the least
   accurate of the implicit schemes.** Reach for it when a very stiff reservoir
   makes the trapezoidal rule ring (see :ref:`above <crank-nicolson-solver>`),

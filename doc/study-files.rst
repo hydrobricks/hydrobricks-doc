@@ -43,8 +43,8 @@ An annotated example
          temperature: temp(C)
          pet: pet(mm/day)
      calibration:
-       algorithm: sceua
-       repetitions: 10000
+       algorithm: dds
+       repetitions: 5000
 
    variants:                  # named config patches, per dimension
      catchment:
@@ -100,7 +100,7 @@ formulation generic. For a dimension ``d`` with value ``v``:
    names a patch (``variants.d.v``) that is deep-merged onto the base config.
    Use this for anything structural: catchments, models, forcing datasets, ...
 2. **Dotted config path** — if ``d`` contains a dot, it is a config path set
-   to ``v`` directly, e.g. ``calibration.algorithm: [sceua, mc]`` or
+   to ``v`` directly, e.g. ``calibration.algorithm: [dds, mc]`` or
    ``model.options.soil_storage_nb: [1, 2]``.
 3. **Shorthand** — ``objective`` maps to ``calibration.objective`` and
    ``transform`` to ``calibration.transform``, so the two most common
@@ -138,6 +138,20 @@ like:
    catchment model   objective transform
    appenzell socont2 kge_2012  none         0.512  0.535 0.427      0.777  0.774 0.412
    ...
+
+A job whose ``calibration.repetitions`` is 0 is not calibrated: it runs with
+the parameter values of its configuration and is assessed like the others — for
+instance a model with a published parameter set next to its recalibrations:
+
+.. code-block:: yaml
+
+   variants:
+     setup:
+       recalibrated: {}
+       published: {calibration: {repetitions: 0}}
+
+Its record carries no algorithm, a calibration time of 0, and the values of the
+``calibration.parameters`` as its best parameters.
 
 The evaluation metrics/transforms are decoupled from the calibration ones
 (the ``evaluation`` section), so you can, for instance, compare how a KGE′
